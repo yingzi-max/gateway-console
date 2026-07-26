@@ -100,7 +100,7 @@ rm -f /etc/nginx/sites-enabled/default
 # Clean reinstall removes the application data and certificates, so discard
 # old per-domain vhosts that could still reference deleted certificate files.
 find /etc/nginx/sites-enabled -maxdepth 1 -name 'gateway-*.conf' ! -name 'gateway-console-admin.conf' -delete
-rm -f /etc/nginx/sites-available/gateway-*.conf
+find /etc/nginx/sites-available -maxdepth 1 -name 'gateway-*.conf' ! -name 'gateway-console-admin.conf' -delete
 nginx -t
 
 systemctl daemon-reload
