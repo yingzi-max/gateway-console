@@ -381,6 +381,32 @@ STORE = Store(DB_PATH)
 SESSIONS: dict[str, dict] = {}
 CAPTCHAS: dict[str, dict] = {}
 MEMORY_LOCK = threading.Lock()
+RELOAD_LOCK = threading.Lock()
+RELOAD_TIMER: threading.Timer | None = None
+
+
+def schedule_web_server_reload(command: list[str]):
+    """Debounce domain changes so one reload runs after the HTTP response."""
+    global RELOAD_TIMER
+
+    def reload_server():
+        global RELOAD_TIMER
+        try:
+            subprocess.run(command, check=True, timeout=30, capture_output=True, text=True)
+        except (OSError, subprocess.SubprocessError) as exc:
+            detail = getattr(exc, "stderr", "") or str(exc)
+            print(f"Deferred nginx reload failed: {detail.strip()}")
+        finally:
+            with RELOAD_LOCK:
+                if RELOAD_TIMER is threading.current_thread():
+                    RELOAD_TIMER = None
+
+    with RELOAD_LOCK:
+        if RELOAD_TIMER is not None:
+            RELOAD_TIMER.cancel()
+        RELOAD_TIMER = threading.Timer(2.0, reload_server)
+        RELOAD_TIMER.daemon = True
+        RELOAD_TIMER.start()
 
 
 def cleanup_memory():
@@ -819,7 +845,9 @@ class Handler(BaseHTTPRequestHandler):
             domain_id = None
         if domain_id is None:
             return self.json(409, {"error": "domain already belongs to another project"})
-        return self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
+        self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
+        if configured:
+            schedule_web_server_reload(self.helper_command(helper, "reload"))
 
     def issue_certificate(self, data):
         domain = str(data.get("domain", "")).lower().strip()

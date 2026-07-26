@@ -183,7 +183,7 @@ class AppTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {
             "GATEWAY_DOMAIN_HELPER": "/usr/local/sbin/gateway-domain-helper",
             "GATEWAY_HELPER_USE_SUDO": "1",
-        }, clear=False), mock.patch("app.subprocess.run", return_value=completed) as run:
+        }, clear=False), mock.patch("app.subprocess.run", return_value=completed) as run, mock.patch("app.schedule_web_server_reload") as schedule_reload:
             status, configured = self.request("/api/domains", "POST", {
                 "domain": "helper.example.com",
                 "project_id": project_id,
@@ -210,6 +210,10 @@ class AppTest(unittest.TestCase):
             ])
             project_domains = {item["domain"] for item in app.STORE.domains() if item["project_id"] == project_id}
             self.assertEqual(project_domains, {"helper.example.com", "helper-two.example.com"})
+            self.assertEqual(schedule_reload.call_count, 2)
+            self.assertEqual(schedule_reload.call_args.args[0], [
+                "/usr/bin/sudo", "-n", "/usr/local/sbin/gateway-domain-helper", "reload",
+            ])
 
             status, certificate = self.request("/api/certificates", "POST", {
                 "domain": "helper.example.com",
@@ -322,6 +326,19 @@ class AppTest(unittest.TestCase):
         self.assertTrue(decision["allowed"])
         urlopen.assert_not_called()
         app.STORE.save_settings({"ipregistry_enabled": False})
+
+    def test_nginx_reload_is_debounced_for_multiple_domains(self):
+        first_timer, second_timer = mock.Mock(), mock.Mock()
+        app.RELOAD_TIMER = None
+        with mock.patch("app.threading.Timer", side_effect=[first_timer, second_timer]) as timer:
+            app.schedule_web_server_reload(["helper", "reload"])
+            app.schedule_web_server_reload(["helper", "reload"])
+        self.assertEqual(timer.call_count, 2)
+        first_timer.start.assert_called_once()
+        first_timer.cancel.assert_called_once()
+        second_timer.start.assert_called_once()
+        self.assertIs(app.RELOAD_TIMER, second_timer)
+        app.RELOAD_TIMER = None
 
     def test_public_frontend_records_visits_and_rotates_links(self):
         public_root = Path(self.temp.name) / "public-project"
@@ -525,6 +542,8 @@ class AppTest(unittest.TestCase):
         service = (app.ROOT / "ops" / "gateway-console.service").read_text(encoding="utf-8")
         self.assertIn("nginx -t || return 1", helper)
         self.assertIn("install_site_config", helper)
+        self.assertIn('install_site_config "$TEMP_FILE" defer', helper)
+        self.assertIn('ACTION" == "reload', helper)
         self.assertIn("--resolve \"$DOMAIN:443:127.0.0.1\"", helper)
         self.assertIn('ln -sfn "$ROOT_PATH/index.html"', helper)
         self.assertIn('config/live/$DOMAIN/fullchain.pem', helper)

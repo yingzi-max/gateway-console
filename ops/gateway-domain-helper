@@ -26,8 +26,20 @@ reload_web_server() {
   fi
 }
 
+validate_web_server() {
+  if command -v nginx >/dev/null 2>&1; then
+    nginx -t
+  elif command -v openresty >/dev/null 2>&1; then
+    openresty -t
+  else
+    echo "nginx or openresty is required" >&2
+    return 1
+  fi
+}
+
 install_site_config() {
   local source_file="$1"
+  local reload_mode="${2:-reload}"
   local available_file="$SITES_AVAILABLE/gateway-$DOMAIN.conf"
   local enabled_file="$SITES_ENABLED/gateway-$DOMAIN.conf"
   local backup_file=""
@@ -38,7 +50,13 @@ install_site_config() {
   fi
   install -o root -g root -m 0644 "$source_file" "$available_file"
   ln -sfn "$available_file" "$enabled_file"
-  if ! reload_web_server; then
+  local config_ok=1
+  if ! validate_web_server; then
+    config_ok=0
+  elif [[ "$reload_mode" != "defer" ]] && ! reload_web_server; then
+    config_ok=0
+  fi
+  if (( config_ok == 0 )); then
     rm -f "$enabled_file"
     if [[ -n "$backup_file" ]]; then
       install -o root -g root -m 0644 "$backup_file" "$available_file"
@@ -46,7 +64,11 @@ install_site_config() {
     else
       rm -f "$available_file"
     fi
-    reload_web_server >/dev/null 2>&1 || true
+    if [[ "$reload_mode" == "defer" ]]; then
+      validate_web_server >/dev/null 2>&1 || true
+    else
+      reload_web_server >/dev/null 2>&1 || true
+    fi
     if [[ -n "$backup_file" ]]; then
       rm -f "$backup_file"
     fi
@@ -57,6 +79,11 @@ install_site_config() {
     rm -f "$backup_file"
   fi
 }
+
+if [[ "$ACTION" == "reload" ]]; then
+  reload_web_server
+  exit 0
+fi
 
 if [[ ! "$DOMAIN" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$ ]]; then
   echo "invalid domain" >&2
@@ -74,7 +101,7 @@ case "$ACTION" in
     trap 'rm -f "$TEMP_FILE"' EXIT
     sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__PORT__/$PORT/g" \
       /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
-    install_site_config "$TEMP_FILE"
+    install_site_config "$TEMP_FILE" defer
     ;;
   configure-static)
     ROOT_PATH="${3:-}"
@@ -104,7 +131,7 @@ case "$ACTION" in
       sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
         /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
     fi
-    install_site_config "$TEMP_FILE"
+    install_site_config "$TEMP_FILE" defer
     ;;
   certificate)
     if [[ ! -L "$SITES_ENABLED/gateway-$DOMAIN.conf" ]]; then

@@ -61,6 +61,16 @@ jobs:
           sudo cp /tmp/gateway-site-two.conf /etc/nginx/sites-enabled/gateway-test-two.conf
           sudo nginx -t
 
+          sudo install -d -m 0755 /opt/gateway-console/ops /var/lib/gateway-console/projects/landing-page
+          sudo cp ops/nginx-static-site.conf ops/nginx-static-site-ssl.conf /opt/gateway-console/ops/
+          sudo cp /tmp/gateway-site/index.html /var/lib/gateway-console/projects/landing-page/index.html
+          sudo ops/gateway-domain-helper configure-static multi-one.example.com /var/lib/gateway-console/projects/landing-page logo.gif
+          sudo ops/gateway-domain-helper configure-static multi-two.example.com /var/lib/gateway-console/projects/landing-page logo.gif
+          sudo test -L /etc/nginx/sites-enabled/gateway-multi-one.example.com.conf
+          sudo test -L /etc/nginx/sites-enabled/gateway-multi-two.example.com.conf
+          sudo ops/gateway-domain-helper reload
+          sudo nginx -t
+
           sed -e 's|__CERT_DIR__/config/live/__DOMAIN__|/tmp/gateway-certs|g' \
               -e 's|__DOMAIN__|example.com|g' \
               -e 's|__ROOT__|/tmp/gateway-site|g' \
