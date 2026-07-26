@@ -96,8 +96,14 @@ case "$ACTION" in
     install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
-      /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
+    CERT_DIR="/var/lib/gateway-console/letsencrypt"
+    if [[ -s "$CERT_DIR/config/live/$DOMAIN/fullchain.pem" && -s "$CERT_DIR/config/live/$DOMAIN/privkey.pem" ]]; then
+      sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
+        /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
+    else
+      sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
+        /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
+    fi
     install_site_config "$TEMP_FILE"
     ;;
   certificate)

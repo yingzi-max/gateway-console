@@ -790,25 +790,35 @@ class Handler(BaseHTTPRequestHandler):
                 project_id = int(project_id)
             except (TypeError, ValueError):
                 return self.json(400, {"error": "invalid project_id"})
-        try:
-            domain_id = STORE.add_domain(domain, port, project_id, frontend_entry)
-        except sqlite3.IntegrityError:
-            domain_id = STORE.update_domain(domain, port, project_id, frontend_entry)
-            if domain_id is None:
-                return self.json(409, {"error": "domain already belongs to another project"})
+        existing = STORE.domain(domain)
+        if existing and (
+            existing["project_id"] not in (None, project_id)
+            and project_id not in (None, existing["project_id"])
+        ):
+            return self.json(409, {"error": "domain already belongs to another project"})
+        project = STORE.project(project_id) if project_id is not None else None
+        if project_id is not None and not project:
+            return self.json(404, {"error": "源码项目不存在"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         configured = False
-        static_mode = False
+        static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
         if helper:
             try:
-                project = STORE.project(project_id) if project_id is not None else None
-                static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
                 helper_args = ("configure-static", domain, project["local_path"], frontend_entry) if static_mode else ("configure", domain, str(port))
-                result = subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30, capture_output=True, text=True)
+                subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30, capture_output=True, text=True)
                 configured = True
             except (OSError, subprocess.SubprocessError) as exc:
                 detail = getattr(exc, "stderr", "") or str(exc)
-                return self.json(502, {"error": f"nginx configuration failed: {detail.strip()}", "id": domain_id})
+                return self.json(502, {"error": f"域名 {domain} 配置失败：{detail.strip()}"})
+        try:
+            if existing:
+                domain_id = STORE.update_domain(domain, port, project_id, frontend_entry)
+            else:
+                domain_id = STORE.add_domain(domain, port, project_id, frontend_entry)
+        except sqlite3.IntegrityError:
+            domain_id = None
+        if domain_id is None:
+            return self.json(409, {"error": "domain already belongs to another project"})
         return self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
 
     def issue_certificate(self, data):

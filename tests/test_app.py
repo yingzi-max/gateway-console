@@ -2,6 +2,7 @@ import http.cookiejar
 import json
 import os
 import sqlite3
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -196,6 +197,20 @@ class AppTest(unittest.TestCase):
                 "configure-static", "helper.example.com", str(project_root), "logo.gif",
             ])
 
+            status, second_domain = self.request("/api/domains", "POST", {
+                "domain": "helper-two.example.com",
+                "project_id": project_id,
+                "frontend_entry": "logo.gif",
+            })
+            self.assertEqual(status, 201)
+            self.assertTrue(second_domain["nginx_configured"])
+            self.assertEqual(run.call_args.args[0], [
+                "/usr/bin/sudo", "-n", "/usr/local/sbin/gateway-domain-helper",
+                "configure-static", "helper-two.example.com", str(project_root), "logo.gif",
+            ])
+            project_domains = {item["domain"] for item in app.STORE.domains() if item["project_id"] == project_id}
+            self.assertEqual(project_domains, {"helper.example.com", "helper-two.example.com"})
+
             status, certificate = self.request("/api/certificates", "POST", {
                 "domain": "helper.example.com",
             })
@@ -206,6 +221,20 @@ class AppTest(unittest.TestCase):
                 "certificate", "helper.example.com", str(project_root), "logo.gif",
             ])
 
+            status, second_certificate = self.request("/api/certificates", "POST", {
+                "domain": "helper-two.example.com",
+            })
+            self.assertEqual(status, 200)
+            self.assertEqual(second_certificate["status"], "active")
+            certificate_states = {
+                item["domain"]: item["certificate_status"]
+                for item in app.STORE.domains() if item["project_id"] == project_id
+            }
+            self.assertEqual(certificate_states, {
+                "helper.example.com": "active",
+                "helper-two.example.com": "active",
+            })
+
         status, invalid = self.request("/api/domains", "POST", {
             "domain": "badpath.example.com",
             "project_id": project_id,
@@ -213,6 +242,19 @@ class AppTest(unittest.TestCase):
         })
         self.assertEqual(status, 400)
         self.assertIn("前台入口", invalid["error"])
+
+        failed = subprocess.CalledProcessError(1, ["gateway-domain-helper"], stderr="nginx test failed")
+        with mock.patch.dict(os.environ, {
+            "GATEWAY_DOMAIN_HELPER": "/usr/local/sbin/gateway-domain-helper",
+        }, clear=False), mock.patch("app.subprocess.run", side_effect=failed):
+            status, error = self.request("/api/domains", "POST", {
+                "domain": "failed-helper.example.com",
+                "project_id": project_id,
+                "frontend_entry": "logo.gif",
+            })
+        self.assertEqual(status, 502)
+        self.assertIn("failed-helper.example.com", error["error"])
+        self.assertIsNone(app.STORE.domain("failed-helper.example.com"))
 
     def test_guard_device_switches_and_missing_registry_key(self):
         app.STORE.save_settings({
@@ -469,6 +511,9 @@ class AppTest(unittest.TestCase):
         self.assertIn("apply-batch-limit", script)
         self.assertIn("parseRedirectImport", script)
         self.assertIn("redirect-batch-toolbar", styles)
+        self.assertIn("originalDomains", script)
+        self.assertIn("domainsToConfigure", script)
+        self.assertIn("pending = domains.filter", script)
 
     def test_bundled_landing_page_has_no_external_redirector(self):
         source = (app.SOURCE_DIR / "landing-page" / "index.html").read_text(encoding="utf-8")
@@ -482,6 +527,8 @@ class AppTest(unittest.TestCase):
         self.assertIn("install_site_config", helper)
         self.assertIn("--resolve \"$DOMAIN:443:127.0.0.1\"", helper)
         self.assertIn('ln -sfn "$ROOT_PATH/index.html"', helper)
+        self.assertIn('config/live/$DOMAIN/fullchain.pem', helper)
+        self.assertIn("nginx-static-site-ssl.conf", helper)
         self.assertIn("/var/log/nginx /run", service)
         self.assertIn("gateway-certbot-renew.timer", installer)
         self.assertTrue((app.ROOT / "ops" / "gateway-certbot-renew.service").is_file())

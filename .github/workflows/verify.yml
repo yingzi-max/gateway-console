@@ -54,6 +54,13 @@ jobs:
           sudo cp /tmp/gateway-site.conf /etc/nginx/sites-enabled/gateway-test.conf
           sudo nginx -t
 
+          sed -e 's|__DOMAIN__|second.example.com|g' \
+              -e 's|__ROOT__|/tmp/gateway-site|g' \
+              -e 's|__ENTRY__|dahsio|g' \
+              ops/nginx-static-site.conf > /tmp/gateway-site-two.conf
+          sudo cp /tmp/gateway-site-two.conf /etc/nginx/sites-enabled/gateway-test-two.conf
+          sudo nginx -t
+
           sed -e 's|__CERT_DIR__/config/live/__DOMAIN__|/tmp/gateway-certs|g' \
               -e 's|__DOMAIN__|example.com|g' \
               -e 's|__ROOT__|/tmp/gateway-site|g' \

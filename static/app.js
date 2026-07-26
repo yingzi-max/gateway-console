@@ -199,6 +199,7 @@ function fillProjectConfig(projectId) {
   ensureRedirectLinksField(form);
   form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n');
   form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain));
+  form.dataset.originalDomains = JSON.stringify(Object.fromEntries(domains.map(item => [item.domain, item.frontend_entry || 'logo.gif'])));
   form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
   renderConfigDomains(form); form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
   setCountrySelectValue(form, 'country_whitelist', settings.country_whitelist || ''); setCountrySelectValue(form, 'country_blacklist', settings.country_blacklist || ''); form.elements.redirect_url.value = settings.redirect_url || '';
@@ -214,12 +215,14 @@ function renderConfigDomains(form) {
   list.innerHTML = domains.length ? domains.map(domain => `<div class="config-domain-row"><span>${escapeHtml(domain + (entry ? '/' + entry : ''))}</span><button type="button" data-domain="${escapeHtml(domain)}">删除</button></div>`).join('') : '<p>保存后配置的域名会显示在这里</p>';
 }
 async function saveProjectConfig(event) {
-  event.preventDefault(); const form = event.currentTarget; const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const values = {};
+  event.preventDefault(); const form = event.currentTarget; const domains = [...new Set(form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean))]; const values = {};
   ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled'].forEach(name => values[name] = form.elements[name].checked);
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(values) });
-    for (const domain of domains) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: values.frontend_entry, project_id: Number(form.elements.project_id.value) }) });
+    const original = JSON.parse(form.dataset.originalDomains || '{}'); const entry = values.frontend_entry.replace(/^\/+/, '') || 'logo.gif';
+    const domainsToConfigure = domains.filter(domain => !Object.prototype.hasOwnProperty.call(original, domain) || original[domain] !== entry);
+    for (const domain of domainsToConfigure) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: entry, project_id: Number(form.elements.project_id.value) }) });
     $('#projectConfigDialog').close(); toast('前台配置已保存'); loadFrontend();
   } catch (error) { toast(error.message, true); }
 }
@@ -244,7 +247,7 @@ $('#projectList').addEventListener('click', async event => {
   const button = event.target.closest('button'); if (!button) return; const id = Number(button.dataset.projectId); const project = state.projects.find(item => item.id === id);
   if (button.classList.contains('project-config')) { if (!state.settings.ipregistry_api_key) state.settings = await api('/api/settings'); fillProjectConfig(id); }
   if (button.classList.contains('project-update')) { button.disabled = true; try { await api(`/api/projects/${id}/update`, { method: 'POST', body: '{}' }); toast('前台源码已更新'); } catch (error) { toast(error.message, true); } finally { button.disabled = false; } }
-  if (button.classList.contains('project-cert')) { const domain = state.domains.find(item => item.project_id === id); if (!domain) return toast('请先在配置中添加域名', true); button.disabled = true; try { await api('/api/certificates', { method: 'POST', body: JSON.stringify({ domain: domain.domain }) }); toast('HTTPS 证书申请成功'); loadFrontend(); } catch (error) { toast(error.message, true); button.disabled = false; } }
+  if (button.classList.contains('project-cert')) { const domains = state.domains.filter(item => item.project_id === id); if (!domains.length) return toast('请先在配置中添加域名', true); const pending = domains.filter(item => item.certificate_status !== 'active'); if (!pending.length) return toast('全部域名均已启用 HTTPS'); button.disabled = true; try { for (const domain of pending) await api('/api/certificates', { method: 'POST', body: JSON.stringify({ domain: domain.domain }) }); toast(`已为 ${pending.length} 个域名申请 HTTPS 证书`); loadFrontend(); } catch (error) { toast(error.message, true); button.disabled = false; } }
   if (button.classList.contains('danger-link')) { if (!confirm(`确定删除“${project?.name || ''}”吗？服务器源码文件不会被删除。`)) return; try { await api(`/api/projects/${id}`, { method: 'DELETE' }); toast('源码记录已删除'); loadFrontend(); } catch (error) { toast(error.message, true); } }
 });
 $('#addConfigDomain').addEventListener('click', () => { const form = $('#projectConfigForm'); const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const current = JSON.parse(form.dataset.pendingDomains || '[]'); form.dataset.pendingDomains = JSON.stringify([...new Set([...current, ...domains])]); form.elements.domains.value = JSON.parse(form.dataset.pendingDomains).join('\n'); renderConfigDomains(form); });
