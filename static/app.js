@@ -59,13 +59,37 @@ async function saveSettings() {
   catch (error) { toast(error.message, true); }
 }
 
+function ensureRedirectLinksField(form) {
+  if ($('.redirect-links-field', form)) return;
+  const panel = $('.access-panel', form);
+  const field = document.createElement('div');
+  field.className = 'field redirect-links-field';
+  field.innerHTML = '<span>模板跳转链接</span><small>达到点击上限后自动切换到下一条，0 表示不限</small><div class="redirect-links-editor"></div><button type="button" class="secondary small add-redirect-link">+ 添加链接</button>';
+  panel.append(field);
+  field.addEventListener('click', event => {
+    if (event.target.closest('.add-redirect-link')) return renderRedirectLinks(form, [...readRedirectLinks(form), { url: '', limit: 0 }]);
+    const remove = event.target.closest('.remove-redirect-link'); if (!remove) return;
+    const links = readRedirectLinks(form); links.splice(Number(remove.dataset.index), 1); renderRedirectLinks(form, links.length ? links : [{ url: '', limit: 0 }]);
+  });
+}
+
+function readRedirectLinks(form) {
+  return $$('.redirect-link-row', form).map(row => ({ url: $('[data-link-url]', row).value.trim(), limit: Math.max(0, Number($('[data-link-limit]', row).value) || 0) })).filter(item => item.url);
+}
+
+function renderRedirectLinks(form, links) {
+  $('.redirect-links-editor', form).innerHTML = (links.length ? links : [{ url: '', limit: 0 }]).map((item, index) => `<div class="redirect-link-row"><input data-link-url type="url" value="${escapeHtml(item.url || '')}" placeholder="https://example.com/"><input data-link-limit type="number" value="${Number(item.limit) || 0}" min="0" step="1" title="点击上限"><button type="button" class="icon-button remove-redirect-link" data-index="${index}" title="删除链接">×</button></div>`).join('');
+}
+
 function fillProjectConfig(projectId) {
   const form = $('#projectConfigForm'); const domains = state.domains.filter(item => item.project_id === Number(projectId)); const settings = state.settings;
+  ensureRedirectLinksField(form);
   form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n');
   form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain));
   form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
   renderConfigDomains(form); form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
   form.elements.country_whitelist.value = settings.country_whitelist || ''; form.elements.country_blacklist.value = settings.country_blacklist || ''; form.elements.redirect_url.value = settings.redirect_url || '';
+  renderRedirectLinks(form, settings.redirect_links || []);
   ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
   $('#projectConfigDialog').showModal();
@@ -77,7 +101,7 @@ function renderConfigDomains(form) {
 }
 async function saveProjectConfig(event) {
   event.preventDefault(); const form = event.currentTarget; const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const values = {};
-  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled'].forEach(name => values[name] = form.elements[name].checked);
+  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled'].forEach(name => values[name] = form.elements[name].checked);
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(values) });

