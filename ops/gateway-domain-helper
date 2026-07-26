@@ -69,6 +69,13 @@ case "$ACTION" in
     chmod -R a+rX "$ROOT_PATH"
     CERT_DIR="/var/lib/gateway-console/letsencrypt"
     install -d -m 0700 "$CERT_DIR/config" "$CERT_DIR/work" "$CERT_DIR/logs"
+    SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+    DOMAIN_IPS="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+    DOMAIN_IPS="${DOMAIN_IPS%% }"
+    if [[ -n "$SERVER_IP" && -n "$DOMAIN_IPS" && "$DOMAIN_IPS" != "$SERVER_IP" ]]; then
+      echo "DNS for $DOMAIN resolves to [$DOMAIN_IPS], but this server is $SERVER_IP" >&2
+      exit 4
+    fi
     CERTBOT_ARGS=(certonly --webroot -w "$ROOT_PATH" --config-dir "$CERT_DIR/config" --work-dir "$CERT_DIR/work" --logs-dir "$CERT_DIR/logs" --non-interactive --agree-tos -d "$DOMAIN")
     if [[ -f /etc/gateway-console-certbot.env ]]; then
       # File is created by the installer and only contains CERTBOT_EMAIL.

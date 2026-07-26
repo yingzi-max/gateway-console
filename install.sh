@@ -37,6 +37,13 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends python3 nginx certbot python3-certbot-nginx sudo ca-certificates curl
 
+# Make the public HTTP/HTTPS challenge ports reachable when UFW is installed.
+# Do not enable UFW here, because enabling a pre-existing firewall can lock out SSH.
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow 80/tcp >/dev/null || true
+  ufw allow 443/tcp >/dev/null || true
+fi
+
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
 fi
