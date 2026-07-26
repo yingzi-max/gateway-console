@@ -419,7 +419,7 @@ class Handler(BaseHTTPRequestHandler):
     def require_auth(self):
         session = self.session()
         if not session:
-            self.json(HTTPStatus.UNAUTHORIZED, {"error": "璇峰厛鐧诲綍"})
+            self.json(HTTPStatus.UNAUTHORIZED, {"error": "请先登录"})
             return None
         return session
 
@@ -494,7 +494,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             data = self.read_json()
         except (ValueError, json.JSONDecodeError) as exc:
-            return self.json(400, {"error": str(exc) or "JSON 鏍煎紡閿欒"})
+            return self.json(400, {"error": str(exc) or "JSON 格式错误"})
         if STORE.domain(self.headers.get("Host", "")) and path not in ("/track/visit", "/track/click"):
             return self.json(404, {"error": "request failed"})
         if path == "/api/auth/login":
@@ -563,7 +563,7 @@ class Handler(BaseHTTPRequestHandler):
         user = STORE.user(username)
         if not user or not verify_password(str(data.get("password", "")), user["password_hash"]):
             time.sleep(0.25)
-            return self.json(401, {"error": "鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒"})
+            return self.json(401, {"error": "用户名或密码错误"})
         token = secrets.token_urlsafe(32)
         with MEMORY_LOCK:
             SESSIONS[token] = {"username": username, "expires": time.time() + SESSION_TTL}
@@ -709,9 +709,9 @@ class Handler(BaseHTTPRequestHandler):
         port_text = str(data.get("upstream_port", "80") or "80")
         frontend_entry = str(data.get("frontend_entry", "logo.gif")).strip().lstrip("/") or "logo.gif"
         if not DOMAIN_RE.match(domain):
-            return self.json(400, {"error": "璇疯緭鍏ユ湁鏁堢殑瀹屾暣鍩熷悕"})
+            return self.json(400, {"error": "请输入有效的完整域名"})
         if ".." in frontend_entry or "\\" in frontend_entry or frontend_entry.startswith("."):
-            return self.json(400, {"error": "鍓嶅彴鍏ュ彛鍙兘濉啓绔欑偣鍐呯殑鏂囦欢璺緞"})
+            return self.json(400, {"error": "前台入口只能填写站点内的文件路径"})
         if not PORT_RE.match(port_text) or int(port_text) > 65535:
             return self.json(400, {"error": "request failed"})
         port = int(port_text)
@@ -747,7 +747,7 @@ class Handler(BaseHTTPRequestHandler):
     def issue_certificate(self, data):
         domain = str(data.get("domain", "")).lower().strip()
         if not DOMAIN_RE.match(domain) or domain not in {item["domain"] for item in STORE.domains()}:
-            return self.json(400, {"error": "璇峰厛娣诲姞鏈夋晥鍩熷悕"})
+            return self.json(400, {"error": "请先添加有效域名"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         if not helper:
             return self.json(503, {"error": "request failed"})
@@ -760,7 +760,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(200, {"ok": True, "status": "active"})
         except subprocess.TimeoutExpired:
             STORE.set_certificate(domain, "failed")
-            return self.json(504, {"error": "璇佷功鐢宠瓒呮椂锛岃妫€鏌ュ煙鍚?DNS"})
+            return self.json(504, {"error": "证书申请超时，请检查域名 DNS"})
         except (OSError, subprocess.CalledProcessError) as exc:
             STORE.set_certificate(domain, "failed")
             detail = getattr(exc, "stderr", "") or str(exc)
@@ -813,7 +813,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(404, {"error": "request failed"})
         source = next((item for item in SOURCE_CATALOG.values() if item["slug"] == project["slug"]), None)
         if not source:
-            return self.json(400, {"error": "璇ラ」鐩笉鏄唴缃簮鐮侊紝涓嶈兘鑷姩鏇存柊"})
+            return self.json(400, {"error": "该项目不是内置源码，不能自动更新"})
         source_file = (SOURCE_DIR / source["filename"]).resolve()
         target_dir = Path(project["local_path"]).resolve()
         if SOURCE_DIR.resolve() not in source_file.parents or not (source_file.is_file() or source_file.is_dir()):

@@ -35,11 +35,21 @@ async function loadEvents() {
   } catch (error) { toast(error.message, true); }
 }
 
+function renderProjectCard(item, settings) {
+  const domains = state.domains.filter(domain => domain.project_id === item.id);
+  const primaryDomain = domains[0];
+  const entry = primaryDomain?.frontend_entry || settings.frontend_entry || 'logo.gif';
+  const address = primaryDomain ? `https://${primaryDomain.domain}/${entry}` : '';
+  const activeCertificates = domains.filter(domain => domain.certificate_status === 'active').length;
+  const addressMarkup = address ? `<a class="project-address-link" href="${escapeHtml(address)}" target="_blank" rel="noreferrer" title="${escapeHtml(address)}">${escapeHtml(address)}</a><button type="button" class="icon-button copy-address" data-address="${escapeHtml(address)}" title="复制前台地址">▣</button>` : '<span class="project-address-empty">配置域名后显示前台地址</span>';
+  return `<article class="project-card rich-project-card"><header class="project-card-head"><div class="project-logo">LP</div><div class="project-title"><h4>${escapeHtml(item.name)}</h4><p>静态前台源码</p></div><span class="project-status">已下载</span></header><section class="project-address-block"><span class="project-address-label">前台地址</span><div class="project-address-value">${addressMarkup}</div></section><div class="project-meta"><span><small>域名</small><b>${domains.length}</b></span><span><small>HTTPS</small><b>${activeCertificates}/${domains.length || 0}</b></span><span><small>入口</small><b>/${escapeHtml(entry)}</b></span></div><footer class="project-actions"><button class="primary small project-config" data-project-id="${item.id}">配置</button><button class="secondary small project-update" data-project-id="${item.id}">更新</button><button class="secondary small project-cert" data-project-id="${item.id}">申请证书</button><button class="danger-link" data-project-id="${item.id}">删除</button></footer></article>`;
+}
+
 async function loadFrontend() {
   try {
     const [projects, domains, settings] = await Promise.all([api('/api/projects'), api('/api/domains'), api('/api/settings')]); state.projects = projects.items; state.domains = domains.items; state.settings = settings;
     state.catalog = projects.catalog;
-    $('#projectList').innerHTML = state.projects.map(item => { const itemDomains = state.domains.filter(domain => domain.project_id === item.id); const firstUrl = itemDomains[0] ? `https://${itemDomains[0].domain}/${itemDomains[0].frontend_entry || settings.frontend_entry || 'logo.gif'}` : ''; return `<article class="project-card rich-project-card"><div class="project-brand"><div class="project-logo">e<sup>+</sup></div><div><h4>${escapeHtml(item.name)}</h4><p>官网：<span>待配置官网地址</span></p></div></div><label class="frontend-address">前台地址 <button type="button" class="copy-address" data-address="${escapeHtml(firstUrl)}" title="复制地址">▣</button><textarea readonly placeholder="配置域名后显示前台地址">${escapeHtml(firstUrl)}</textarea></label><div class="project-actions"><button class="link-button project-config" data-project-id="${item.id}">配置</button><button class="link-button project-update" data-project-id="${item.id}">更新前台</button><button class="link-button project-cert" data-project-id="${item.id}">申请证书</button><button class="danger-link" data-project-id="${item.id}">删除</button></div></article>`; }).join('');
+    $('#projectList').innerHTML = state.projects.map(item => renderProjectCard(item, settings)).join('');
     $('#domainList').innerHTML = state.domains.length ? state.domains.map(item => `<article class="domain-item"><span><b><a href="https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}" target="_blank" rel="noreferrer">https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}</a></b><small>${escapeHtml(item.project_name || '未关联项目')}</small></span><span class="cert-${item.certificate_status}">${item.certificate_status === 'active' ? 'HTTPS 已启用' : item.certificate_status === 'failed' ? '申请失败' : '待申请 HTTPS'}</span></article>`).join('') : '<div class="empty-state" style="padding:30px"><p>还没有配置域名</p></div>';
     renderCatalog(state.catalog);
   } catch (error) { toast(error.message, true); }
@@ -156,7 +166,6 @@ $('#projectList').addEventListener('click', async event => {
   if (button.classList.contains('danger-link')) { if (!confirm(`确定删除“${project?.name || ''}”吗？服务器源码文件不会被删除。`)) return; try { await api(`/api/projects/${id}`, { method: 'DELETE' }); toast('源码记录已删除'); loadFrontend(); } catch (error) { toast(error.message, true); } }
 });
 $('#addConfigDomain').addEventListener('click', () => { const form = $('#projectConfigForm'); const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const current = JSON.parse(form.dataset.pendingDomains || '[]'); form.dataset.pendingDomains = JSON.stringify([...new Set([...current, ...domains])]); form.elements.domains.value = JSON.parse(form.dataset.pendingDomains).join('\n'); renderConfigDomains(form); });
-$('#projectConfigForm').elements?.frontend_entry?.addEventListener('input', () => renderConfigDomains($('#projectConfigForm')));
 $('#projectConfigForm').elements?.frontend_entry?.addEventListener('input', () => renderConfigDomains($('#projectConfigForm')));
 $('.config-domain-list').addEventListener('click', event => { const button = event.target.closest('button[data-domain]'); if (!button) return; const form = $('#projectConfigForm'); const domains = JSON.parse(form.dataset.pendingDomains || '[]').filter(domain => domain !== button.dataset.domain); form.dataset.pendingDomains = JSON.stringify(domains); form.elements.domains.value = domains.join('\n'); renderConfigDomains(form); });
 $('#projectList').addEventListener('click', async event => {
