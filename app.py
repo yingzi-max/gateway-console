@@ -163,6 +163,10 @@ class Store:
                     "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
                     (key, json.dumps(value), now_text()),
                 )
+            db.execute(
+                "UPDATE settings SET value=?,updated_at=? WHERE key='frontend_entry' AND value=?",
+                (json.dumps("logo.gif"), now_text(), json.dumps("index.html")),
+            )
 
     def user(self, username: str):
         with self.connect() as db:
