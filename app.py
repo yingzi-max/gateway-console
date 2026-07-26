@@ -695,7 +695,7 @@ class Handler(BaseHTTPRequestHandler):
         redirect_links = normalize_redirect_links(STORE.get_settings().get("redirect_links", [])) if is_document else []
         closing_body = content.lower().rfind(b"</body>")
         if redirect_links and closing_body >= 0:
-            script = b'<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;e.preventDefault();window.location.assign("/__gateway/click")},true);</script>'
+            script = b'<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.location.assign("/__gateway/click")},true);</script>'
             content = content[:closing_body] + script + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)

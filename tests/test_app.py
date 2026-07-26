@@ -330,6 +330,10 @@ class AppTest(unittest.TestCase):
             "limit": 5,
         }])
 
+    def test_bundled_landing_page_has_no_external_redirector(self):
+        source = (app.SOURCE_DIR / "landing-page" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("link.ccsyshub.com/api/sdk.js", source)
+
 
 if __name__ == "__main__":
     unittest.main()
