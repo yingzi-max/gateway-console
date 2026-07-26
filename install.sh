@@ -58,7 +58,9 @@ install -o root -g root -m 0644 "$SOURCE_DIR/static/app.js" "$APP_DIR/static/app
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-site.conf" "$APP_DIR/ops/nginx-site.conf"
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-static-site.conf" "$APP_DIR/ops/nginx-static-site.conf"
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-static-site-ssl.conf" "$APP_DIR/ops/nginx-static-site-ssl.conf"
-install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page.html" "$APP_DIR/sources/landing-page.html"
+install -d -o root -g root -m 0755 "$APP_DIR/sources/landing-page" "$APP_DIR/sources/landing-page/images"
+install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/index.html" "$APP_DIR/sources/landing-page/index.html"
+install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/images/1.jpg" "$APP_DIR/sources/landing-page/images/1.jpg"
 install -o root -g root -m 0755 "$SOURCE_DIR/ops/gateway-domain-helper" /usr/local/sbin/gateway-domain-helper
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-console.service" /etc/systemd/system/gateway-console.service
 

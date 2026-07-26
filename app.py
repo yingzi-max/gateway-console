@@ -45,8 +45,8 @@ SOURCE_CATALOG = {
         "id": "landing-page",
         "name": "Landing page",
         "slug": "landing-page",
-        "filename": "landing-page.html",
-        "description": "Static landing page",
+        "filename": "landing-page",
+        "description": "Complete static landing page source",
     }
 }
 
@@ -632,12 +632,15 @@ class Handler(BaseHTTPRequestHandler):
         if not source:
             return self.json(404, {"error": "request failed"})
         source_file = (SOURCE_DIR / source["filename"]).resolve()
-        if SOURCE_DIR.resolve() not in source_file.parents or not source_file.is_file():
+        if SOURCE_DIR.resolve() not in source_file.parents or not (source_file.is_file() or source_file.is_dir()):
             return self.json(500, {"error": "request failed"})
         local_path = (DATA_DIR / "projects" / source["slug"]).resolve()
         try:
             local_path.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source_file, local_path / "index.html")
+            if source_file.is_dir():
+                shutil.copytree(source_file, local_path, dirs_exist_ok=True)
+            else:
+                shutil.copyfile(source_file, local_path / "index.html")
             project_id = STORE.add_project(source["name"], source["slug"], str(local_path))
         except sqlite3.IntegrityError:
             return self.json(409, {"error": "已经下载"})
@@ -654,11 +657,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(400, {"error": "璇ラ」鐩笉鏄唴缃簮鐮侊紝涓嶈兘鑷姩鏇存柊"})
         source_file = (SOURCE_DIR / source["filename"]).resolve()
         target_dir = Path(project["local_path"]).resolve()
-        if SOURCE_DIR.resolve() not in source_file.parents or not source_file.is_file():
+        if SOURCE_DIR.resolve() not in source_file.parents or not (source_file.is_file() or source_file.is_dir()):
             return self.json(500, {"error": "request failed"})
         try:
             target_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source_file, target_dir / "index.html")
+            if source_file.is_dir():
+                shutil.copytree(source_file, target_dir, dirs_exist_ok=True)
+            else:
+                shutil.copyfile(source_file, target_dir / "index.html")
         except OSError as exc:
             return self.json(500, {"error": f"source update failed: {exc}"})
         return self.json(200, {"ok": True, "updated_at": now_text()})
