@@ -97,6 +97,10 @@ visudo -cf /etc/sudoers.d/gateway-console
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/admin-nginx.conf" /etc/nginx/sites-available/gateway-console-admin.conf
 ln -sfn /etc/nginx/sites-available/gateway-console-admin.conf /etc/nginx/sites-enabled/gateway-console-admin.conf
 rm -f /etc/nginx/sites-enabled/default
+# Clean reinstall removes the application data and certificates, so discard
+# old per-domain vhosts that could still reference deleted certificate files.
+find /etc/nginx/sites-enabled -maxdepth 1 -type l -name 'gateway-*.conf' ! -name 'gateway-console-admin.conf' -delete
+rm -f /etc/nginx/sites-available/gateway-*.conf
 nginx -t
 
 systemctl daemon-reload
