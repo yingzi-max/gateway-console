@@ -1,6 +1,8 @@
 ﻿const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const state = { captchaId: '', eventPage: 1, eventTotal: 0, projects: [], domains: [], catalog: [], settings: {} };
+const COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
+const countryNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['zh-CN'], { type: 'region' }) : null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
@@ -11,6 +13,51 @@ async function api(path, options = {}) {
 let toastTimer;
 function toast(message, error = false) { const el = $('#toast'); el.textContent = message; el.className = `toast show${error ? ' error' : ''}`; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'toast', 2800); }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch])); }
+
+function parseCountryCodes(value) {
+  return [...new Set(String(value || '').toUpperCase().split(/[\s,]+/).filter(code => COUNTRY_CODES.includes(code)))];
+}
+function countryName(code) {
+  try { return countryNames?.of(code) || code; } catch (_) { return code; }
+}
+function closeCountrySelect(root) {
+  root.classList.remove('open'); $('.country-menu', root).classList.add('hidden'); $('.country-control', root).setAttribute('aria-expanded', 'false');
+}
+function openCountrySelect(root) {
+  $$('[data-country-select].open').forEach(item => { if (item !== root) closeCountrySelect(item); });
+  root.classList.add('open'); $('.country-menu', root).classList.remove('hidden'); $('.country-control', root).setAttribute('aria-expanded', 'true'); $('.country-search', root).focus();
+}
+function renderCountrySelect(root) {
+  const input = $('input[type="hidden"]', root); const selected = parseCountryCodes(input.value); input.value = selected.join(',');
+  const chips = $('.country-chips', root);
+  chips.innerHTML = selected.length ? selected.map(code => `<button type="button" class="country-chip" data-country-code="${code}" title="移除 ${escapeHtml(countryName(code))}">${code}<span>×</span></button>`).join('') : `<span class="country-placeholder">${input.name === 'country_whitelist' ? '选择允许访问的国家' : '选择需要拦截的国家'}</span>`;
+  const query = $('.country-search', root).value.trim().toLocaleLowerCase('zh-CN');
+  const filtered = COUNTRY_CODES.filter(code => `${code} ${countryName(code)}`.toLocaleLowerCase('zh-CN').includes(query));
+  $('.country-options', root).innerHTML = filtered.length ? filtered.map(code => `<button type="button" class="country-option${selected.includes(code) ? ' selected' : ''}" data-country-option="${code}" role="option" aria-selected="${selected.includes(code)}"><span><b>${code}</b><small>${escapeHtml(countryName(code))}</small></span><i>${selected.includes(code) ? '✓' : ''}</i></button>`).join('') : '<p class="country-empty">没有匹配的国家</p>';
+}
+function setCountrySelectValue(form, name, value) {
+  const input = form.elements[name]; input.value = parseCountryCodes(value).join(','); renderCountrySelect(input.closest('[data-country-select]'));
+}
+function initCountrySelect(root) {
+  renderCountrySelect(root);
+  $('.country-control', root).addEventListener('click', event => {
+    const chip = event.target.closest('[data-country-code]');
+    if (chip) {
+      const input = $('input[type="hidden"]', root); input.value = parseCountryCodes(input.value).filter(code => code !== chip.dataset.countryCode).join(','); renderCountrySelect(root); return;
+    }
+    root.classList.contains('open') ? closeCountrySelect(root) : openCountrySelect(root);
+  });
+  $('.country-control', root).addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCountrySelect(root); }
+    if (event.key === 'Escape') closeCountrySelect(root);
+  });
+  $('.country-search', root).addEventListener('input', () => renderCountrySelect(root));
+  $('.country-options', root).addEventListener('click', event => {
+    const option = event.target.closest('[data-country-option]'); if (!option) return;
+    const input = $('input[type="hidden"]', root); const selected = parseCountryCodes(input.value); const code = option.dataset.countryOption;
+    input.value = (selected.includes(code) ? selected.filter(item => item !== code) : [...selected, code]).join(','); renderCountrySelect(root); $('.country-search', root).focus();
+  });
+}
 
 async function loadCaptcha() { try { const data = await api('/api/auth/captcha'); state.captchaId = data.id; $('#captchaQuestion').textContent = data.question; } catch (_) { $('#captchaQuestion').textContent = '重新加载'; } }
 function showLogin() { $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); loadCaptcha(); }
@@ -61,11 +108,20 @@ function renderCatalog(items) {
 }
 
 async function loadSettings() {
-  try { state.settings = await api('/api/settings'); $('#ipregistry_api_key').value = state.settings.ipregistry_api_key || ''; $('#ipregistry_enabled').checked = Boolean(state.settings.ipregistry_enabled); }
+  try { state.settings = await api('/api/settings'); $('#ipregistry_api_key').value = state.settings.ipregistry_api_key || ''; $('#ipregistry_enabled').checked = Boolean(state.settings.ipregistry_enabled); await loadIpregistryCredits(); }
   catch (error) { toast(error.message, true); }
 }
+async function loadIpregistryCredits() {
+  const label = $('#ipregistryKeyLabel'); const key = $('#ipregistry_api_key').value.trim();
+  label.className = '';
+  if (!key) { label.textContent = 'API Key（剩余积分：未配置）'; return; }
+  label.textContent = 'API Key（剩余积分：查询中）'; label.classList.add('credit-loading');
+  try {
+    const status = await api('/api/ipregistry/status'); label.textContent = `API Key（剩余积分：${status.remaining}）`; label.className = 'credit-ready';
+  } catch (_) { label.textContent = 'API Key（剩余积分：查询失败）'; label.className = 'credit-error'; }
+}
 async function saveSettings() {
-  try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ ipregistry_api_key: $('#ipregistry_api_key').value.trim(), ipregistry_enabled: $('#ipregistry_enabled').checked }) }); toast('防红配置已保存'); }
+  try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ ipregistry_api_key: $('#ipregistry_api_key').value.trim(), ipregistry_enabled: $('#ipregistry_enabled').checked }) }); await loadIpregistryCredits(); toast('防红配置已保存'); }
   catch (error) { toast(error.message, true); }
 }
 
@@ -122,7 +178,7 @@ function fillProjectConfig(projectId) {
   form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain));
   form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
   renderConfigDomains(form); form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
-  form.elements.country_whitelist.value = settings.country_whitelist || ''; form.elements.country_blacklist.value = settings.country_blacklist || ''; form.elements.redirect_url.value = settings.redirect_url || '';
+  setCountrySelectValue(form, 'country_whitelist', settings.country_whitelist || ''); setCountrySelectValue(form, 'country_blacklist', settings.country_blacklist || ''); form.elements.redirect_url.value = settings.redirect_url || '';
   renderRedirectLinks(form, settings.redirect_links || []);
   ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
@@ -153,6 +209,9 @@ $('#refreshDashboard').addEventListener('click', loadDashboard); $('#eventFilter
 $('#eventsPrev').addEventListener('click', () => { if (state.eventPage > 1) { state.eventPage--; loadEvents(); } }); $('#eventsNext').addEventListener('click', () => { if (state.eventPage * 25 < state.eventTotal) { state.eventPage++; loadEvents(); } });
 $$('.tabs button').forEach(button => button.addEventListener('click', () => { $$('.tabs button').forEach(el => el.classList.toggle('active', el === button)); $$('.tab-panel').forEach(el => el.classList.toggle('active', el.id === `${button.dataset.tab}Tab`)); }));
 $('#openImport').addEventListener('click', () => $('#importDialog').showModal()); $('#manualInstall').addEventListener('click', () => $('#importDialog').showModal()); $('#saveSettings').addEventListener('click', saveSettings); $('#projectConfigForm').addEventListener('submit', saveProjectConfig);
+$$('[data-country-select]').forEach(initCountrySelect);
+document.addEventListener('click', event => { if (!event.target.closest('[data-country-select]')) $$('[data-country-select].open').forEach(closeCountrySelect); });
+$('#ipregistry_api_key').addEventListener('input', () => { $('#ipregistryKeyLabel').textContent = `API Key（剩余积分：${$('#ipregistry_api_key').value.trim() ? '保存后查询' : '未配置'}）`; $('#ipregistryKeyLabel').className = ''; });
 $('#sourceQuery').addEventListener('click', () => { const keyword = $('#sourceSearch').value.trim().toLowerCase(); renderCatalog(state.catalog.filter(item => `${item.name} ${item.description} ${item.filename}`.toLowerCase().includes(keyword))); });
 $('#sourceReset').addEventListener('click', () => { $('#sourceSearch').value = ''; renderCatalog(state.catalog); });
 $('#searchCode').addEventListener('keydown', event => { if (event.key === 'Enter') { $('#sourceSearch').value = event.currentTarget.value; $('#sourceQuery').click(); } });

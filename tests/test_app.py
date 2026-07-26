@@ -112,6 +112,45 @@ class AppTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(deleted["ok"])
 
+    def test_ipregistry_status_reads_real_credit_balance_header(self):
+        class StatusResponse:
+            headers = {
+                "Ipregistry-Credits-Remaining": "54179",
+                "Ipregistry-Credits-Consumed": "1",
+            }
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            @staticmethod
+            def read():
+                return b"{}"
+
+        app.STORE.save_settings({"ipregistry_api_key": "test-key"})
+        with mock.patch("app.urllib.request.urlopen", return_value=StatusResponse()) as urlopen:
+            status, result = self.request("/api/ipregistry/status")
+        self.assertEqual(status, 200)
+        self.assertEqual(result["remaining"], 54179)
+        self.assertEqual(result["consumed"], 1)
+        self.assertIn("key=test-key", urlopen.call_args.args[0].full_url)
+
+        app.STORE.save_settings({"ipregistry_api_key": ""})
+        status, result = self.request("/api/ipregistry/status")
+        self.assertEqual(status, 200)
+        self.assertFalse(result["configured"])
+        self.assertIsNone(result["remaining"])
+
+    def test_country_select_ui_and_whitelist_explanation_are_bundled(self):
+        html = (app.STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        script = (app.STATIC_DIR / "app.js").read_text(encoding="utf-8")
+        self.assertEqual(html.count("data-country-select"), 2)
+        self.assertIn("未选择的所有国家会自动加入黑名单", html)
+        self.assertIn("COUNTRY_CODES", script)
+        self.assertIn("setCountrySelectValue", script)
+
     def test_domain_helper_and_certificate_commands(self):
         project_root = Path(self.temp.name) / "helper-project"
         project_root.mkdir(parents=True, exist_ok=True)

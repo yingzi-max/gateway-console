@@ -24,7 +24,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parent
@@ -472,6 +472,8 @@ class Handler(BaseHTTPRequestHandler):
                 downloaded = {item["slug"] for item in STORE.projects()}
                 catalog = [{**item, "downloaded": item["slug"] in downloaded} for item in SOURCE_CATALOG.values()]
                 return self.json(200, {"items": STORE.projects(), "catalog": catalog})
+            if path == "/api/ipregistry/status":
+                return self.ipregistry_status()
             if path == "/api/settings":
                 return self.json(200, STORE.get_settings())
             return self.json(404, {"error": "request failed"})
@@ -643,6 +645,45 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(502, {"error": "IPRegistry 检测暂时不可用", "detail": decision["registry_error"]}, {"Access-Control-Allow-Origin": "*"})
         decision.pop("registry_error", None)
         return self.json(200, decision, {"Access-Control-Allow-Origin": "*"})
+
+    def ipregistry_status(self):
+        key = str(STORE.get_settings().get("ipregistry_api_key", "")).strip()
+        if not key:
+            return self.json(200, {"configured": False, "remaining": None})
+
+        request = urllib.request.Request(
+            f"https://api.ipregistry.co/?key={quote(key, safe='')}",
+            headers={"Accept": "application/json", "User-Agent": "GatewayConsole/1.0"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=8) as response:
+                remaining = response.headers.get("Ipregistry-Credits-Remaining")
+                consumed = response.headers.get("Ipregistry-Credits-Consumed")
+                if remaining is None:
+                    payload = json.loads(response.read().decode("utf-8"))
+                    if isinstance(payload, dict):
+                        remaining = (
+                            payload.get("credits", {}).get("remaining")
+                            if isinstance(payload.get("credits"), dict)
+                            else payload.get("credits_remaining")
+                        )
+        except urllib.error.HTTPError as exc:
+            message = "API Key 无效或 IPRegistry 拒绝了查询"
+            if exc.code == 429:
+                message = "IPRegistry 查询过于频繁，请稍后重试"
+            return self.json(502, {"error": message})
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+            return self.json(502, {"error": "IPRegistry 积分查询暂时不可用"})
+
+        try:
+            remaining = int(str(remaining))
+        except (TypeError, ValueError):
+            return self.json(502, {"error": "IPRegistry 未返回剩余积分"})
+        try:
+            consumed = int(str(consumed)) if consumed is not None else None
+        except (TypeError, ValueError):
+            consumed = None
+        return self.json(200, {"configured": True, "remaining": remaining, "consumed": consumed})
 
     def public_click(self):
         domain = STORE.domain(self.headers.get("Host", ""))
