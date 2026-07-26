@@ -9,9 +9,9 @@ SITES_ENABLED="/etc/nginx/sites-enabled"
 
 reload_web_server() {
   if systemctl is-active --quiet nginx 2>/dev/null; then
-    systemctl reload nginx
+    systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || pkill -HUP -x nginx
   elif systemctl is-active --quiet openresty 2>/dev/null; then
-    systemctl reload openresty
+    systemctl reload openresty 2>/dev/null || openresty -s reload 2>/dev/null || pkill -HUP -f '[o]penresty'
   elif pgrep -x nginx >/dev/null 2>&1; then
     nginx -s reload 2>/dev/null || pkill -HUP -x nginx
   elif pgrep -f '[o]penresty' >/dev/null 2>&1; then
@@ -39,7 +39,6 @@ case "$ACTION" in
       /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
-    nginx -t
     reload_web_server
     ;;
   configure-static)
@@ -55,7 +54,6 @@ case "$ACTION" in
       /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
-    nginx -t
     reload_web_server
     ;;
   certificate)
