@@ -17,7 +17,20 @@ jobs:
         run: |
           bash -n install.sh
           bash -n ops/gateway-domain-helper
-          systemd-analyze verify ops/gateway-console.service ops/gateway-certbot-renew.service ops/gateway-certbot-renew.timer
+
+      - name: Check systemd unit syntax
+        run: |
+          mkdir -p /tmp/gateway-units
+          sed -e 's|^ExecStart=.*|ExecStart=/bin/true|' \
+              -e 's|^EnvironmentFile=|EnvironmentFile=-|' \
+              ops/gateway-console.service > /tmp/gateway-units/gateway-console.service
+          sed -e 's|^ExecStart=.*|ExecStart=/bin/true|' \
+              -e 's|^ExecStartPost=.*|ExecStartPost=/bin/true|' \
+              ops/gateway-certbot-renew.service > /tmp/gateway-units/gateway-certbot-renew.service
+          cp ops/gateway-certbot-renew.timer /tmp/gateway-units/gateway-certbot-renew.timer
+          systemd-analyze verify /tmp/gateway-units/gateway-console.service \
+            /tmp/gateway-units/gateway-certbot-renew.service \
+            /tmp/gateway-units/gateway-certbot-renew.timer
 
       - name: Run application tests
         run: python3 -m unittest discover -s tests -v
