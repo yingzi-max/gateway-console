@@ -578,10 +578,11 @@ class Handler(BaseHTTPRequestHandler):
                 project = STORE.project(project_id) if project_id is not None else None
                 static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
                 helper_args = ("configure-static", domain, project["local_path"]) if static_mode else ("configure", domain, str(port))
-                subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30)
+                result = subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30, capture_output=True, text=True)
                 configured = True
             except (OSError, subprocess.SubprocessError) as exc:
-                return self.json(502, {"error": f"nginx configuration failed: {exc}", "id": domain_id})
+                detail = getattr(exc, "stderr", "") or str(exc)
+                return self.json(502, {"error": f"nginx configuration failed: {detail.strip()}", "id": domain_id})
         return self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
 
     def issue_certificate(self, data):

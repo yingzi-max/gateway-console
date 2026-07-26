@@ -7,6 +7,16 @@ PORT="${3:-}"
 SITES_AVAILABLE="/etc/nginx/sites-available"
 SITES_ENABLED="/etc/nginx/sites-enabled"
 
+reload_web_server() {
+  if systemctl is-active --quiet nginx 2>/dev/null; then
+    systemctl reload nginx
+  elif systemctl is-active --quiet openresty 2>/dev/null; then
+    systemctl reload openresty
+  else
+    systemctl start nginx 2>/dev/null || systemctl start openresty
+  fi
+}
+
 if [[ ! "$DOMAIN" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$ ]]; then
   echo "invalid domain" >&2
   exit 2
@@ -26,7 +36,7 @@ case "$ACTION" in
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
     nginx -t
-    systemctl reload nginx
+    reload_web_server
     ;;
   configure-static)
     ROOT_PATH="${3:-}"
@@ -42,7 +52,7 @@ case "$ACTION" in
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
     nginx -t
-    systemctl reload nginx
+    reload_web_server
     ;;
   certificate)
     if [[ ! -L "$SITES_ENABLED/gateway-$DOMAIN.conf" ]]; then
