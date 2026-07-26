@@ -238,6 +238,8 @@ class AppTest(unittest.TestCase):
                 "helper.example.com": "active",
                 "helper-two.example.com": "active",
             })
+            self.assertEqual(schedule_reload.call_count, 4)
+            self.assertEqual(schedule_reload.call_args.args[1], ("helper-two.example.com", "logo.gif"))
 
         status, invalid = self.request("/api/domains", "POST", {
             "domain": "badpath.example.com",
@@ -330,15 +332,52 @@ class AppTest(unittest.TestCase):
     def test_nginx_reload_is_debounced_for_multiple_domains(self):
         first_timer, second_timer = mock.Mock(), mock.Mock()
         app.RELOAD_TIMER = None
+        app.RELOAD_VERIFICATIONS.clear()
         with mock.patch("app.threading.Timer", side_effect=[first_timer, second_timer]) as timer:
-            app.schedule_web_server_reload(["helper", "reload"])
-            app.schedule_web_server_reload(["helper", "reload"])
+            app.schedule_web_server_reload(["helper", "reload"], ("one.example.com", "logo.gif"))
+            app.schedule_web_server_reload(["helper", "reload"], ("two.example.com", "path/index.html"))
         self.assertEqual(timer.call_count, 2)
         first_timer.start.assert_called_once()
         first_timer.cancel.assert_called_once()
         second_timer.start.assert_called_once()
         self.assertIs(app.RELOAD_TIMER, second_timer)
+        self.assertEqual(app.RELOAD_VERIFICATIONS, {
+            "one.example.com": "logo.gif",
+            "two.example.com": "path/index.html",
+        })
         app.RELOAD_TIMER = None
+        app.RELOAD_VERIFICATIONS.clear()
+
+    def test_deferred_reload_runs_https_verification(self):
+        class FakeTimer:
+            def __init__(self, delay, callback):
+                self.delay = delay
+                self.callback = callback
+                self.daemon = False
+
+            def start(self):
+                pass
+
+            def cancel(self):
+                pass
+
+        app.RELOAD_TIMER = None
+        app.RELOAD_VERIFICATIONS.clear()
+        with mock.patch("app.threading.Timer", FakeTimer):
+            app.schedule_web_server_reload(
+                ["helper", "reload"],
+                ("verified.example.com", "path/logo.gif"),
+            )
+        pending_timer = app.RELOAD_TIMER
+        completed = mock.Mock(stdout="", stderr="")
+        with mock.patch("app.threading.current_thread", return_value=pending_timer), mock.patch("app.subprocess.run", return_value=completed) as run:
+            pending_timer.callback()
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].args[0], ["helper", "reload"])
+        self.assertIn("verified.example.com:443:127.0.0.1", run.call_args_list[1].args[0])
+        self.assertIn("https://verified.example.com/path/logo.gif", run.call_args_list[1].args[0])
+        self.assertIsNone(app.RELOAD_TIMER)
+        self.assertEqual(app.RELOAD_VERIFICATIONS, {})
 
     def test_public_frontend_records_visits_and_rotates_links(self):
         public_root = Path(self.temp.name) / "public-project"
@@ -538,13 +577,14 @@ class AppTest(unittest.TestCase):
 
     def test_certificate_helper_verifies_nginx_and_local_tls(self):
         helper = (app.ROOT / "ops" / "gateway-domain-helper").read_text(encoding="utf-8")
+        application = (app.ROOT / "app.py").read_text(encoding="utf-8")
         installer = (app.ROOT / "install.sh").read_text(encoding="utf-8")
         service = (app.ROOT / "ops" / "gateway-console.service").read_text(encoding="utf-8")
         self.assertIn("nginx -t || return 1", helper)
         self.assertIn("install_site_config", helper)
         self.assertIn('install_site_config "$TEMP_FILE" defer', helper)
         self.assertIn('ACTION" == "reload', helper)
-        self.assertIn("--resolve \"$DOMAIN:443:127.0.0.1\"", helper)
+        self.assertIn('"--resolve", f"{domain}:443:127.0.0.1"', application)
         self.assertIn('ln -sfn "$ROOT_PATH/index.html"', helper)
         self.assertIn('config/live/$DOMAIN/fullchain.pem', helper)
         self.assertIn("nginx-static-site-ssl.conf", helper)

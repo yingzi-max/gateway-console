@@ -182,11 +182,7 @@ case "$ACTION" in
     trap 'rm -f "$TEMP_FILE"' EXIT
     sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
       /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
-    install_site_config "$TEMP_FILE"
-    if ! curl -sS --noproxy '*' --max-time 10 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/$ENTRY_PATH" -o /dev/null; then
-      echo "certificate was installed but the local HTTPS verification failed" >&2
-      exit 5
-    fi
+    install_site_config "$TEMP_FILE" defer
     ;;
   *)
     echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root] [entry]" >&2

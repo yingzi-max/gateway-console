@@ -383,25 +383,46 @@ CAPTCHAS: dict[str, dict] = {}
 MEMORY_LOCK = threading.Lock()
 RELOAD_LOCK = threading.Lock()
 RELOAD_TIMER: threading.Timer | None = None
+RELOAD_VERIFICATIONS: dict[str, str] = {}
 
 
-def schedule_web_server_reload(command: list[str]):
-    """Debounce domain changes so one reload runs after the HTTP response."""
+def schedule_web_server_reload(command: list[str], verification: tuple[str, str] | None = None):
+    """Debounce changes, then reload once and verify newly installed certificates."""
     global RELOAD_TIMER
 
     def reload_server():
         global RELOAD_TIMER
+        current_timer = threading.current_thread()
+        with RELOAD_LOCK:
+            if RELOAD_TIMER is not current_timer:
+                return
+            verifications = dict(RELOAD_VERIFICATIONS)
+            RELOAD_VERIFICATIONS.clear()
+            RELOAD_TIMER = None
         try:
             subprocess.run(command, check=True, timeout=30, capture_output=True, text=True)
         except (OSError, subprocess.SubprocessError) as exc:
             detail = getattr(exc, "stderr", "") or str(exc)
             print(f"Deferred nginx reload failed: {detail.strip()}")
-        finally:
-            with RELOAD_LOCK:
-                if RELOAD_TIMER is threading.current_thread():
-                    RELOAD_TIMER = None
+            for domain in verifications:
+                STORE.set_certificate(domain, "failed")
+            return
+        for domain, entry in verifications.items():
+            target = f"https://{domain}/{quote(entry.lstrip('/'), safe='/')}"
+            verify_command = [
+                "/usr/bin/curl", "-sS", "--noproxy", "*", "--max-time", "10",
+                "--resolve", f"{domain}:443:127.0.0.1", target, "-o", "/dev/null",
+            ]
+            try:
+                subprocess.run(verify_command, check=True, timeout=15, capture_output=True, text=True)
+            except (OSError, subprocess.SubprocessError) as exc:
+                STORE.set_certificate(domain, "failed")
+                detail = getattr(exc, "stderr", "") or str(exc)
+                print(f"HTTPS verification failed for {domain}: {detail.strip()}")
 
     with RELOAD_LOCK:
+        if verification is not None:
+            RELOAD_VERIFICATIONS[verification[0]] = verification[1]
         if RELOAD_TIMER is not None:
             RELOAD_TIMER.cancel()
         RELOAD_TIMER = threading.Timer(2.0, reload_server)
@@ -862,7 +883,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=180, capture_output=True, text=True)
             STORE.set_certificate(domain, "active")
-            return self.json(200, {"ok": True, "status": "active"})
+            self.json(200, {"ok": True, "status": "active"})
+            schedule_web_server_reload(
+                self.helper_command(helper, "reload"),
+                (domain, domain_row.get("frontend_entry", "index.html")),
+            )
         except subprocess.TimeoutExpired:
             STORE.set_certificate(domain, "failed")
             return self.json(504, {"error": "证书申请超时，请检查域名 DNS"})
