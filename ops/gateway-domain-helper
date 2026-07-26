@@ -61,7 +61,7 @@ case "$ACTION" in
     install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" \
+    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
       /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
@@ -109,7 +109,7 @@ case "$ACTION" in
     fi
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" \
+    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
       /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
