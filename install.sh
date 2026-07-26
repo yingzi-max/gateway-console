@@ -88,9 +88,9 @@ systemctl daemon-reload
 systemctl enable --now gateway-console nginx
 systemctl reload nginx
 
-SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || curl -4fsS --max-time 5 https://ifconfig.me 2>/dev/null || curl -4fsS --max-time 5 https://api4.my-ip.io/ip 2>/dev/null || true)"
 if [[ -z "$SERVER_IP" ]]; then
-  SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  SERVER_IP="请在云服务器控制台查看公网IP"
 fi
 echo
 echo "Gateway Console installed successfully."
