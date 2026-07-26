@@ -12,6 +12,10 @@ reload_web_server() {
     systemctl reload nginx
   elif systemctl is-active --quiet openresty 2>/dev/null; then
     systemctl reload openresty
+  elif pgrep -x nginx >/dev/null 2>&1; then
+    nginx -s reload 2>/dev/null || pkill -HUP -x nginx
+  elif pgrep -f '[o]penresty' >/dev/null 2>&1; then
+    openresty -s reload 2>/dev/null || pkill -HUP -f '[o]penresty'
   else
     systemctl start nginx 2>/dev/null || systemctl start openresty
   fi
