@@ -61,15 +61,28 @@ case "$ACTION" in
       echo "domain is not configured" >&2
       exit 3
     fi
+    ROOT_PATH="$(awk '$1 == "root" {gsub(";", "", $2); print $2; exit}' "$SITES_ENABLED/gateway-$DOMAIN.conf")"
+    if [[ ! "$ROOT_PATH" =~ ^/var/lib/gateway-console/projects/[a-zA-Z0-9._/-]+$ ]] || [[ ! -d "$ROOT_PATH" ]]; then
+      echo "static project root could not be detected" >&2
+      exit 3
+    fi
+    chmod -R a+rX "$ROOT_PATH"
     if [[ -f /etc/gateway-console-certbot.env ]]; then
       # File is created by the installer and only contains CERTBOT_EMAIL.
       source /etc/gateway-console-certbot.env
     fi
     if [[ -n "${CERTBOT_EMAIL:-}" ]]; then
-      certbot --nginx --non-interactive --agree-tos --redirect --email "$CERTBOT_EMAIL" -d "$DOMAIN"
+      certbot certonly --webroot -w "$ROOT_PATH" --non-interactive --agree-tos --email "$CERTBOT_EMAIL" -d "$DOMAIN"
     else
-      certbot --nginx --non-interactive --agree-tos --redirect --register-unsafely-without-email -d "$DOMAIN"
+      certbot certonly --webroot -w "$ROOT_PATH" --non-interactive --agree-tos --register-unsafely-without-email -d "$DOMAIN"
     fi
+    TEMP_FILE="$(mktemp)"
+    trap 'rm -f "$TEMP_FILE"' EXIT
+    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" \
+      /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
+    install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
+    ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
+    reload_web_server
     ;;
   *)
     echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root]" >&2
