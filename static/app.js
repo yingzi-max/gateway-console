@@ -60,17 +60,22 @@ async function saveSettings() {
 }
 
 function ensureRedirectLinksField(form) {
-  if ($('.redirect-links-field', form)) return;
-  const panel = $('.access-panel', form);
-  const field = document.createElement('div');
-  field.className = 'field redirect-links-field';
-  field.innerHTML = '<span>模板跳转链接</span><small>达到点击上限后自动切换到下一条，0 表示不限</small><div class="redirect-links-editor"></div><button type="button" class="secondary small add-redirect-link">+ 添加链接</button>';
-  panel.append(field);
-  field.addEventListener('click', event => {
+  if ($('.frontend-step-panel', form)) return;
+  const grid = $('.config-grid', form);
+  const panel = document.createElement('section');
+  panel.className = 'config-panel frontend-step-panel hidden';
+  panel.innerHTML = '<div class="frontend-step-heading"><div><h4>前台配置</h4><p>配置模板按钮最终跳转到的链接和每条链接的点击上限。</p></div></div><div class="field redirect-links-field"><span>模板跳转链接</span><small>达到点击上限后自动切换到下一条，0 表示不限</small><div class="redirect-links-editor"></div><button type="button" class="secondary small add-redirect-link">+ 添加链接</button></div>';
+  const summary = document.createElement('section');
+  summary.className = 'config-panel config-summary-panel hidden';
+  grid.append(panel, summary);
+  panel.addEventListener('click', event => {
     if (event.target.closest('.add-redirect-link')) return renderRedirectLinks(form, [...readRedirectLinks(form), { url: '', limit: 0 }]);
     const remove = event.target.closest('.remove-redirect-link'); if (!remove) return;
     const links = readRedirectLinks(form); links.splice(Number(remove.dataset.index), 1); renderRedirectLinks(form, links.length ? links : [{ url: '', limit: 0 }]);
   });
+  const previous = $('.wizard-actions .secondary', form); const primary = $('.wizard-actions .primary', form);
+  previous.addEventListener('click', () => setConfigStep(form, Number(form.dataset.configStep || 1) - 1));
+  primary.addEventListener('click', event => { const step = Number(form.dataset.configStep || 1); if (step < 3) { event.preventDefault(); setConfigStep(form, step + 1); } });
 }
 
 function readRedirectLinks(form) {
@@ -79,6 +84,25 @@ function readRedirectLinks(form) {
 
 function renderRedirectLinks(form, links) {
   $('.redirect-links-editor', form).innerHTML = (links.length ? links : [{ url: '', limit: 0 }]).map((item, index) => `<div class="redirect-link-row"><input data-link-url type="url" value="${escapeHtml(item.url || '')}" placeholder="https://example.com/"><input data-link-limit type="number" value="${Number(item.limit) || 0}" min="0" step="1" title="点击上限"><button type="button" class="icon-button remove-redirect-link" data-index="${index}" title="删除链接">×</button></div>`).join('');
+}
+
+function setConfigStep(form, requestedStep) {
+  const step = Math.min(3, Math.max(1, requestedStep)); form.dataset.configStep = step;
+  $$('.domain-panel, .access-panel', form).forEach(panel => panel.classList.toggle('hidden', step !== 1));
+  $('.frontend-step-panel', form).classList.toggle('hidden', step !== 2);
+  $('.config-summary-panel', form).classList.toggle('hidden', step !== 3);
+  $('.config-grid', form).classList.toggle('single-panel', step > 1);
+  $$('.wizard-step', form).forEach((item, index) => { item.classList.toggle('active', index === step - 1); item.classList.toggle('complete', index < step - 1); });
+  const headings = [['配置前台源码','域名、访问策略和前台入口统一在这里设置。'],['前台配置','设置模板的多个跳转链接和点击切换次数。'],['确认配置','确认域名、访问入口和跳转链接后保存。']];
+  $('.config-heading h3', form).textContent = headings[step - 1][0]; $('.config-heading>p:last-child', form).textContent = headings[step - 1][1];
+  const previous = $('.wizard-actions .secondary', form); const primary = $('.wizard-actions .primary', form); previous.disabled = step === 1; primary.textContent = step === 3 ? '保存并完成 →' : '下一步 →';
+  if (step === 3) renderConfigSummary(form);
+  $('.config-grid', form).scrollTop = 0;
+}
+
+function renderConfigSummary(form) {
+  const domains = JSON.parse(form.dataset.pendingDomains || '[]'); const links = readRedirectLinks(form); const entry = form.elements.frontend_entry.value.trim().replace(/^\/+/, '') || 'logo.gif';
+  $('.config-summary-panel', form).innerHTML = `<h4>配置确认</h4><div class="config-summary-grid"><div><span>域名</span><strong>${domains.length}</strong><small>${escapeHtml(domains.join('、') || '未添加')}</small></div><div><span>前台入口</span><strong>/${escapeHtml(entry)}</strong><small>访问时自动记录 IP、UA 和时间</small></div><div><span>跳转链接</span><strong>${links.length}</strong><small>${links.length ? '按设置的点击上限依次切换' : '保留模板原始链接'}</small></div></div>`;
 }
 
 function fillProjectConfig(projectId) {
@@ -92,6 +116,7 @@ function fillProjectConfig(projectId) {
   renderRedirectLinks(form, settings.redirect_links || []);
   ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
+  setConfigStep(form, 1);
   $('#projectConfigDialog').showModal();
 }
 function renderConfigDomains(form) {
