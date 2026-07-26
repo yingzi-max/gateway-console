@@ -71,12 +71,21 @@ case "$ACTION" in
       echo "domain is not configured" >&2
       exit 3
     fi
-    ROOT_PATH="$(awk '$1 == "root" {gsub(";", "", $2); print $2; exit}' "$SITES_ENABLED/gateway-$DOMAIN.conf")"
+    ROOT_PATH="${3:-$(awk '$1 == "root" {gsub(";", "", $2); print $2; exit}' "$SITES_ENABLED/gateway-$DOMAIN.conf")}"
     if [[ ! "$ROOT_PATH" =~ ^/var/lib/gateway-console/projects/[a-zA-Z0-9._/-]+$ ]] || [[ ! -d "$ROOT_PATH" ]]; then
       echo "static project root could not be detected" >&2
       exit 3
     fi
     chmod -R a+rX "$ROOT_PATH"
+    ENTRY_PATH="${4:-index.html}"
+    if [[ "$ENTRY_PATH" == /* || "$ENTRY_PATH" == *..* || "$ENTRY_PATH" == *\\* ]]; then
+      echo "invalid frontend entry" >&2
+      exit 2
+    fi
+    if [[ "$ENTRY_PATH" != "index.html" && ! -e "$ROOT_PATH/$ENTRY_PATH" ]]; then
+      install -d -m 0755 "$(dirname "$ROOT_PATH/$ENTRY_PATH")"
+      ln -sfn index.html "$ROOT_PATH/$ENTRY_PATH"
+    fi
     CERT_DIR="/var/lib/gateway-console/letsencrypt"
     install -d -m 0700 "$CERT_DIR/config" "$CERT_DIR/work" "$CERT_DIR/logs"
     SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"

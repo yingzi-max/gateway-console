@@ -592,8 +592,11 @@ class Handler(BaseHTTPRequestHandler):
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         if not helper:
             return self.json(503, {"error": "request failed"})
+        domain_row = next((item for item in STORE.domains() if item["domain"] == domain), None)
+        project = STORE.project(domain_row["project_id"]) if domain_row and domain_row.get("project_id") else None
+        helper_args = ("certificate", domain, project["local_path"], domain_row.get("frontend_entry", "index.html")) if project else ("certificate", domain)
         try:
-            subprocess.run(self.helper_command(helper, "certificate", domain), check=True, timeout=180, capture_output=True, text=True)
+            subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=180, capture_output=True, text=True)
             STORE.set_certificate(domain, "active")
             return self.json(200, {"ok": True, "status": "active"})
         except subprocess.TimeoutExpired:
