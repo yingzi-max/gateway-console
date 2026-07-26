@@ -50,6 +50,7 @@ fi
 
 install -d -o root -g root -m 0755 "$APP_DIR" "$APP_DIR/static" "$APP_DIR/ops" "$APP_DIR/sources"
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 "$DATA_DIR"
+install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 "$DATA_DIR" "$DATA_DIR/projects"
 install -o root -g root -m 0644 "$SOURCE_DIR/app.py" "$APP_DIR/app.py"
 install -o root -g root -m 0644 "$SOURCE_DIR/static/index.html" "$APP_DIR/static/index.html"
 install -o root -g root -m 0644 "$SOURCE_DIR/static/styles.css" "$APP_DIR/static/styles.css"
