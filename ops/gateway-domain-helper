@@ -67,18 +67,21 @@ case "$ACTION" in
       exit 3
     fi
     chmod -R a+rX "$ROOT_PATH"
+    CERT_DIR="/var/lib/gateway-console/letsencrypt"
+    install -d -m 0700 "$CERT_DIR/config" "$CERT_DIR/work" "$CERT_DIR/logs"
+    CERTBOT_ARGS=(certonly --webroot -w "$ROOT_PATH" --config-dir "$CERT_DIR/config" --work-dir "$CERT_DIR/work" --logs-dir "$CERT_DIR/logs" --non-interactive --agree-tos -d "$DOMAIN")
     if [[ -f /etc/gateway-console-certbot.env ]]; then
       # File is created by the installer and only contains CERTBOT_EMAIL.
       source /etc/gateway-console-certbot.env
     fi
     if [[ -n "${CERTBOT_EMAIL:-}" ]]; then
-      certbot certonly --webroot -w "$ROOT_PATH" --non-interactive --agree-tos --email "$CERTBOT_EMAIL" -d "$DOMAIN"
+      certbot "${CERTBOT_ARGS[@]}" --email "$CERTBOT_EMAIL"
     else
-      certbot certonly --webroot -w "$ROOT_PATH" --non-interactive --agree-tos --register-unsafely-without-email -d "$DOMAIN"
+      certbot "${CERTBOT_ARGS[@]}" --register-unsafely-without-email
     fi
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" \
+    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" \
       /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
     install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
     ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
