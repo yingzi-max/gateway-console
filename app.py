@@ -140,7 +140,7 @@ class Store:
         );
         CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL,
-          event_type TEXT NOT NULL CHECK(event_type IN ('visit','click')),
+          event_type TEXT NOT NULL CHECK(event_type IN ('visit','click','rejected')),
           created_at TEXT NOT NULL, ip TEXT NOT NULL, ua TEXT NOT NULL,
           path TEXT NOT NULL DEFAULT ''
         );
@@ -169,6 +169,25 @@ class Store:
         """
         with self.connect() as db:
             db.executescript(schema)
+            event_schema = db.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='events'"
+            ).fetchone()
+            if event_schema and "'rejected'" not in (event_schema["sql"] or ""):
+                db.executescript("""
+                BEGIN IMMEDIATE;
+                CREATE TABLE events_migrated (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL,
+                  event_type TEXT NOT NULL CHECK(event_type IN ('visit','click','rejected')),
+                  created_at TEXT NOT NULL, ip TEXT NOT NULL, ua TEXT NOT NULL,
+                  path TEXT NOT NULL DEFAULT ''
+                );
+                INSERT INTO events_migrated(id,domain,event_type,created_at,ip,ua,path)
+                  SELECT id,domain,event_type,created_at,ip,ua,path FROM events;
+                DROP TABLE events;
+                ALTER TABLE events_migrated RENAME TO events;
+                CREATE INDEX idx_events_domain_time ON events(domain, created_at DESC);
+                COMMIT;
+                """)
             try:
                 db.execute("ALTER TABLE domains ADD COLUMN frontend_entry TEXT NOT NULL DEFAULT 'logo.gif'")
             except sqlite3.OperationalError:
@@ -241,7 +260,7 @@ class Store:
         if domain:
             filters.append("domain=?")
             args.append(domain.lower())
-        if event_type in ("visit", "click"):
+        if event_type in ("visit", "click", "rejected"):
             filters.append("event_type=?")
             args.append(event_type)
         where = " WHERE " + " AND ".join(filters) if filters else ""
@@ -600,7 +619,10 @@ class Handler(BaseHTTPRequestHandler):
         registry = None
         registry_error = ""
         key = str(settings.get("ipregistry_api_key", "")).strip()
-        if settings.get("ipregistry_enabled"):
+        whitelist = {item for item in re.split(r"[\s,]+", str(settings.get("country_whitelist", "")).upper()) if item}
+        blacklist = {item for item in re.split(r"[\s,]+", str(settings.get("country_blacklist", "")).upper()) if item}
+        security_enabled = bool(settings.get("ipregistry_enabled"))
+        if not reasons and (security_enabled or whitelist or blacklist):
             if not key:
                 registry_error = "IPRegistry API Key 未配置"
             else:
@@ -611,22 +633,21 @@ class Handler(BaseHTTPRequestHandler):
                     with urllib.request.urlopen(request, timeout=6) as response:
                         registry = json.loads(response.read().decode("utf-8"))
                     country = str(registry.get("location", {}).get("country", {}).get("code", "")).upper()
-                    whitelist = {item for item in re.split(r"[\s,]+", str(settings.get("country_whitelist", "")).upper()) if item}
-                    blacklist = {item for item in re.split(r"[\s,]+", str(settings.get("country_blacklist", "")).upper()) if item}
                     if whitelist and country not in whitelist:
                         reasons.append("country_not_allowed")
                     if country and country in blacklist:
                         reasons.append("country_blocked")
-                    security = registry.get("security", {}) or {}
-                    type_fields = {"proxy": "is_proxy", "vpn": "is_vpn", "anonymous": "is_anonymous", "relay": "is_relay", "cloud": "is_cloud_provider"}
-                    threat_fields = {"threat": "is_threat", "abuser": "is_abuser", "attacker": "is_attacker", "bogon": "is_bogon", "tor": "is_tor"}
-                    for selected, fields, prefix in (
-                        (settings.get("blocked_ip_types", []), type_fields, "network"),
-                        (settings.get("blocked_threats", []), threat_fields, "threat"),
-                    ):
-                        for name in selected or []:
-                            if security.get(fields.get(name, "")) is True:
-                                reasons.append(f"{prefix}:{name}")
+                    if security_enabled:
+                        security = registry.get("security", {}) or {}
+                        type_fields = {"proxy": "is_proxy", "vpn": "is_vpn", "anonymous": "is_anonymous", "relay": "is_relay", "cloud": "is_cloud_provider"}
+                        threat_fields = {"threat": "is_threat", "abuser": "is_abuser", "attacker": "is_attacker", "bogon": "is_bogon", "tor": "is_tor"}
+                        for selected, fields, prefix in (
+                            (settings.get("blocked_ip_types", []), type_fields, "network"),
+                            (settings.get("blocked_threats", []), threat_fields, "threat"),
+                        ):
+                            for name in selected or []:
+                                if security.get(fields.get(name, "")) is True:
+                                    reasons.append(f"{prefix}:{name}")
                 except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
                     registry_error = str(exc)
 
@@ -714,9 +735,9 @@ class Handler(BaseHTTPRequestHandler):
         if (root not in file_path.parents and file_path != root) or not file_path.is_file():
             return self.send_error(404)
         if is_document:
-            STORE.record_event(domain["domain"], "visit", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
             decision = self.guard_decision()
             if not decision["allowed"]:
+                STORE.record_event(domain["domain"], "rejected", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
                 target = decision["redirect_url"]
                 if target and urlparse(target).scheme in ("http", "https"):
                     self.send_response(302)
@@ -726,6 +747,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self.send_error(403)
                 return
+            STORE.record_event(domain["domain"], "visit", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
         try:
             content = file_path.read_bytes()
         except OSError:

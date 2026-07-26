@@ -1,6 +1,7 @@
 import http.cookiejar
 import json
 import os
+import sqlite3
 import tempfile
 import threading
 import unittest
@@ -151,6 +152,27 @@ class AppTest(unittest.TestCase):
         self.assertIn("COUNTRY_CODES", script)
         self.assertIn("setCountrySelectValue", script)
 
+    def test_existing_event_database_migrates_rejected_type(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "legacy.db"
+            with sqlite3.connect(database, factory=app.ClosingConnection) as db:
+                db.executescript("""
+                CREATE TABLE events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL,
+                  event_type TEXT NOT NULL CHECK(event_type IN ('visit','click')),
+                  created_at TEXT NOT NULL, ip TEXT NOT NULL, ua TEXT NOT NULL,
+                  path TEXT NOT NULL DEFAULT ''
+                );
+                INSERT INTO events(domain,event_type,created_at,ip,ua,path)
+                  VALUES('legacy.example','visit','2026-07-26T23:00:00+08:00','127.0.0.1','Legacy','/');
+                """)
+            store = app.Store(database)
+            store.record_event("legacy.example", "rejected", "203.0.113.5", "Scanner", "/")
+            rejected_total, rejected = store.events("legacy.example", "rejected", 1, 25)
+            self.assertEqual(rejected_total, 1)
+            self.assertEqual(rejected[0]["event_type"], "rejected")
+            self.assertEqual(store.stats()["total"], 1)
+
     def test_domain_helper_and_certificate_commands(self):
         project_root = Path(self.temp.name) / "helper-project"
         project_root.mkdir(parents=True, exist_ok=True)
@@ -198,6 +220,8 @@ class AppTest(unittest.TestCase):
             "block_ios": True,
             "block_android": False,
             "ipregistry_enabled": False,
+            "country_whitelist": "",
+            "country_blacklist": "",
         })
         ios_request = urllib.request.Request(
             self.base + "/guard/check",
@@ -238,6 +262,10 @@ class AppTest(unittest.TestCase):
         app.STORE.add_domain("public.example.com", 80, project_id, "logo.gif")
         app.STORE.save_settings({
             "block_desktop": False,
+            "ipregistry_enabled": False,
+            "ipregistry_api_key": "",
+            "country_whitelist": "",
+            "country_blacklist": "",
             "redirect_links": [
                 {"url": "https://first.example/", "limit": 1},
                 {"url": "https://second.example/", "limit": 0},
@@ -301,7 +329,10 @@ class AppTest(unittest.TestCase):
             click_opener.open(blocked_request)
         self.assertEqual(raised.exception.code, 302)
         self.assertEqual(raised.exception.headers["Location"], "https://blocked.example/")
-        self.assertEqual(app.STORE.stats()["total"], blocked_visits_before + 1)
+        self.assertEqual(app.STORE.stats()["total"], blocked_visits_before)
+        rejected_total, rejected = app.STORE.events("public.example.com", "rejected", 1, 25)
+        self.assertEqual(rejected_total, 1)
+        self.assertIn("Desktop", rejected[0]["ua"])
 
         class RegistryResponse:
             def __enter__(self):
@@ -316,6 +347,24 @@ class AppTest(unittest.TestCase):
                     "location": {"country": {"code": "US"}},
                     "security": {"is_proxy": True, "is_threat": True},
                 }).encode()
+
+        app.STORE.save_settings({
+            "block_desktop": False,
+            "ipregistry_enabled": False,
+            "ipregistry_api_key": "test-key",
+            "country_whitelist": "JP",
+            "country_blacklist": "",
+        })
+        foreign_visits_before = app.STORE.stats()["total"]
+        with mock.patch("app.urllib.request.urlopen", return_value=RegistryResponse()):
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                click_opener.open(request)
+        self.assertEqual(raised.exception.code, 302)
+        self.assertEqual(raised.exception.headers["Location"], "https://blocked.example/")
+        self.assertEqual(app.STORE.stats()["total"], foreign_visits_before)
+        rejected_total, rejected = app.STORE.events("public.example.com", "rejected", 1, 25)
+        self.assertEqual(rejected_total, 2)
+        self.assertEqual(rejected[0]["event_type"], "rejected")
 
         app.STORE.save_settings({
             "block_desktop": False,
@@ -340,6 +389,7 @@ class AppTest(unittest.TestCase):
         app.STORE.save_settings({
             "ipregistry_enabled": False,
             "country_whitelist": "",
+            "country_blacklist": "",
             "blocked_ip_types": [],
             "blocked_threats": [],
             "redirect_links": [],

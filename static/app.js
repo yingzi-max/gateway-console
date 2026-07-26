@@ -78,7 +78,8 @@ async function loadEvents() {
   if (form.get('domain')) query.set('domain', form.get('domain').trim()); if (form.get('type')) query.set('type', form.get('type'));
   try {
     const data = await api(`/api/events?${query}`); state.eventTotal = data.total; $('#eventCount').textContent = `共 ${data.total} 条`; $('#eventPage').textContent = data.page; $('#eventsPrev').disabled = data.page <= 1; $('#eventsNext').disabled = data.page * 25 >= data.total;
-    $('#eventsBody').innerHTML = data.items.length ? data.items.map(item => `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${item.event_type === 'visit' ? '访问' : '点击'}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:35px;color:#92959e">暂无符合条件的访问记录</td></tr>';
+    const eventLabels = { visit: '访问', click: '点击', rejected: '拒绝' };
+    $('#eventsBody').innerHTML = data.items.length ? data.items.map(item => `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${eventLabels[item.event_type] || escapeHtml(item.event_type)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:35px;color:#92959e">暂无符合条件的访问记录</td></tr>';
   } catch (error) { toast(error.message, true); }
 }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17191f">
   <title>Gateway Console</title>
-  <link rel="stylesheet" href="/styles.css?v=5">
+  <link rel="stylesheet" href="/styles.css?v=6">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -73,7 +73,7 @@
         <section class="content-block">
           <form id="eventFilters" class="filterbar">
             <label>域名<input name="domain" placeholder="example.com"></label>
-            <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option></select></label>
+            <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option><option value="rejected">拒绝</option></select></label>
             <button class="primary" type="submit">查询</button>
           </form>
           <div class="table-wrap">
@@ -147,6 +147,6 @@
     </form>
   </dialog>
   <div id="mobileBackdrop" class="backdrop"></div>
-  <script src="/app.js?v=9"></script>
+  <script src="/app.js?v=10"></script>
 </body>
 </html>
