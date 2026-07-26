@@ -78,8 +78,8 @@ async function saveProjectConfig(event) {
   ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled'].forEach(name => values[name] = form.elements[name].checked);
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
-    await api('/api/settings', { method: 'POST', body: JSON.stringify(values) }); const existing = new Set(state.domains.map(item => item.domain));
-    for (const domain of domains) if (!existing.has(domain)) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: values.frontend_entry, project_id: Number(form.elements.project_id.value) }) });
+    await api('/api/settings', { method: 'POST', body: JSON.stringify(values) });
+    for (const domain of domains) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: values.frontend_entry, project_id: Number(form.elements.project_id.value) }) });
     $('#projectConfigDialog').close(); toast('前台配置已保存'); loadFrontend();
   } catch (error) { toast(error.message, true); }
 }
