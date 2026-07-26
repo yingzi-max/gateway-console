@@ -43,9 +43,19 @@ case "$ACTION" in
     ;;
   configure-static)
     ROOT_PATH="${3:-}"
+    ENTRY_PATH="${4:-index.html}"
     if [[ ! "$ROOT_PATH" =~ ^/var/lib/gateway-console/projects/[a-zA-Z0-9._/-]+$ ]] || [[ ! -d "$ROOT_PATH" ]]; then
       echo "invalid static project path" >&2
       exit 2
+    fi
+    if [[ "$ENTRY_PATH" == /* || "$ENTRY_PATH" == *..* || "$ENTRY_PATH" == *\\* ]]; then
+      echo "invalid frontend entry" >&2
+      exit 2
+    fi
+    chmod -R a+rX "$ROOT_PATH"
+    if [[ "$ENTRY_PATH" != "index.html" && ! -e "$ROOT_PATH/$ENTRY_PATH" ]]; then
+      install -d -m 0755 "$(dirname "$ROOT_PATH/$ENTRY_PATH")"
+      ln -sfn index.html "$ROOT_PATH/$ENTRY_PATH"
     fi
     install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
     TEMP_FILE="$(mktemp)"
@@ -95,7 +105,7 @@ case "$ACTION" in
     reload_web_server
     ;;
   *)
-    echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root]" >&2
+    echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root] [entry]" >&2
     exit 2
     ;;
 esac

@@ -577,7 +577,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 project = STORE.project(project_id) if project_id is not None else None
                 static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
-                helper_args = ("configure-static", domain, project["local_path"]) if static_mode else ("configure", domain, str(port))
+                helper_args = ("configure-static", domain, project["local_path"], frontend_entry) if static_mode else ("configure", domain, str(port))
                 result = subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30, capture_output=True, text=True)
                 configured = True
             except (OSError, subprocess.SubprocessError) as exc:
