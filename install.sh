@@ -12,6 +12,11 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+# This installer performs a clean rebuild. Remove the previous application and
+# its data before downloading/installing the new copy.
+systemctl stop gateway-console 2>/dev/null || true
+rm -rf -- "$APP_DIR" "$DATA_DIR"
+
 if [[ ! -f "$SOURCE_DIR/app.py" || ! -d "$SOURCE_DIR/static" || ! -d "$SOURCE_DIR/ops" || ! -d "$SOURCE_DIR/sources" ]]; then
   WORK_DIR="$(mktemp -d)"
   trap 'rm -rf "$WORK_DIR"' EXIT
@@ -43,6 +48,7 @@ install -o root -g root -m 0644 "$SOURCE_DIR/static/index.html" "$APP_DIR/static
 install -o root -g root -m 0644 "$SOURCE_DIR/static/styles.css" "$APP_DIR/static/styles.css"
 install -o root -g root -m 0644 "$SOURCE_DIR/static/app.js" "$APP_DIR/static/app.js"
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-site.conf" "$APP_DIR/ops/nginx-site.conf"
+install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-static-site.conf" "$APP_DIR/ops/nginx-static-site.conf"
 install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page.html" "$APP_DIR/sources/landing-page.html"
 install -o root -g root -m 0755 "$SOURCE_DIR/ops/gateway-domain-helper" /usr/local/sbin/gateway-domain-helper
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-console.service" /etc/systemd/system/gateway-console.service
