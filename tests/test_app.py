@@ -426,10 +426,12 @@ class AppTest(unittest.TestCase):
     def test_certificate_helper_verifies_nginx_and_local_tls(self):
         helper = (app.ROOT / "ops" / "gateway-domain-helper").read_text(encoding="utf-8")
         installer = (app.ROOT / "install.sh").read_text(encoding="utf-8")
+        service = (app.ROOT / "ops" / "gateway-console.service").read_text(encoding="utf-8")
         self.assertIn("nginx -t || return 1", helper)
         self.assertIn("install_site_config", helper)
         self.assertIn("--resolve \"$DOMAIN:443:127.0.0.1\"", helper)
         self.assertIn('ln -sfn "$ROOT_PATH/index.html"', helper)
+        self.assertIn("/var/log/nginx /run", service)
         self.assertIn("gateway-certbot-renew.timer", installer)
         self.assertTrue((app.ROOT / "ops" / "gateway-certbot-renew.service").is_file())
         self.assertTrue((app.ROOT / "ops" / "gateway-certbot-renew.timer").is_file())

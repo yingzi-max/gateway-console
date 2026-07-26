@@ -17,6 +17,7 @@ jobs:
         run: |
           bash -n install.sh
           bash -n ops/gateway-domain-helper
+          systemd-analyze verify ops/gateway-console.service ops/gateway-certbot-renew.service ops/gateway-certbot-renew.timer
 
       - name: Run application tests
         run: python3 -m unittest discover -s tests -v
