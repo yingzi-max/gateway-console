@@ -647,7 +647,18 @@ def main():
     parser = argparse.ArgumentParser(description="Gateway Console")
     parser.add_argument("--host", default=os.environ.get("GATEWAY_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("GATEWAY_PORT", "8787")))
+    parser.add_argument("--reset-password", help="Reset an administrator password and exit")
+    parser.add_argument("--reset-user", default="admin", help="Username to reset")
     args = parser.parse_args()
+    if args.reset_password is not None:
+        if len(args.reset_password) < 10:
+            parser.error("--reset-password must contain at least 10 characters")
+        with STORE.connect() as db:
+            cursor = db.execute("UPDATE users SET password_hash=? WHERE username=?", (hash_password(args.reset_password), args.reset_user))
+            if cursor.rowcount != 1:
+                parser.error(f"user not found: {args.reset_user}")
+        print(f"Password reset for {args.reset_user}")
+        return
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Gateway Console listening on http://{args.host}:{args.port}")
     try:
