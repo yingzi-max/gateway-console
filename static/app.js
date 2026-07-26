@@ -62,8 +62,9 @@ async function saveSettings() {
 function fillProjectConfig(projectId) {
   const form = $('#projectConfigForm'); const domains = state.domains.filter(item => item.project_id === Number(projectId)); const settings = state.settings;
   form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n');
-  form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain)); renderConfigDomains(form);
-  form.elements.frontend_entry.value = settings.frontend_entry || 'logo.gif'; form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
+  form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain));
+  form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
+  renderConfigDomains(form); form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
   form.elements.country_whitelist.value = settings.country_whitelist || ''; form.elements.country_blacklist.value = settings.country_blacklist || ''; form.elements.redirect_url.value = settings.redirect_url || '';
   ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
@@ -71,7 +72,8 @@ function fillProjectConfig(projectId) {
 }
 function renderConfigDomains(form) {
   const domains = JSON.parse(form.dataset.pendingDomains || '[]'); const list = $('.config-domain-list', form);
-  list.innerHTML = domains.length ? domains.map(domain => `<div class="config-domain-row"><span>${escapeHtml(domain)}</span><button type="button" data-domain="${escapeHtml(domain)}">删除</button></div>`).join('') : '<p>保存后配置的域名会显示在这里</p>';
+  const entry = (form.elements.frontend_entry?.value || '').trim().replace(/^\/+/, '');
+  list.innerHTML = domains.length ? domains.map(domain => `<div class="config-domain-row"><span>${escapeHtml(domain + (entry ? '/' + entry : ''))}</span><button type="button" data-domain="${escapeHtml(domain)}">删除</button></div>`).join('') : '<p>保存后配置的域名会显示在这里</p>';
 }
 async function saveProjectConfig(event) {
   event.preventDefault(); const form = event.currentTarget; const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const values = {};
@@ -105,6 +107,8 @@ $('#projectList').addEventListener('click', async event => {
   if (button.classList.contains('danger-link')) { if (!confirm(`确定删除“${project?.name || ''}”吗？服务器源码文件不会被删除。`)) return; try { await api(`/api/projects/${id}`, { method: 'DELETE' }); toast('源码记录已删除'); loadFrontend(); } catch (error) { toast(error.message, true); } }
 });
 $('#addConfigDomain').addEventListener('click', () => { const form = $('#projectConfigForm'); const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const current = JSON.parse(form.dataset.pendingDomains || '[]'); form.dataset.pendingDomains = JSON.stringify([...new Set([...current, ...domains])]); form.elements.domains.value = JSON.parse(form.dataset.pendingDomains).join('\n'); renderConfigDomains(form); });
+$('#projectConfigForm').elements?.frontend_entry?.addEventListener('input', () => renderConfigDomains($('#projectConfigForm')));
+$('#projectConfigForm').elements?.frontend_entry?.addEventListener('input', () => renderConfigDomains($('#projectConfigForm')));
 $('.config-domain-list').addEventListener('click', event => { const button = event.target.closest('button[data-domain]'); if (!button) return; const form = $('#projectConfigForm'); const domains = JSON.parse(form.dataset.pendingDomains || '[]').filter(domain => domain !== button.dataset.domain); form.dataset.pendingDomains = JSON.stringify(domains); form.elements.domains.value = domains.join('\n'); renderConfigDomains(form); });
 $('#projectList').addEventListener('click', async event => {
   const button = event.target.closest('.copy-address'); if (!button) return;
