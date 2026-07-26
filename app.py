@@ -203,13 +203,13 @@ class Store:
                 "country_whitelist": "",
                 "country_blacklist": "",
                 "human_verification": False,
-                "block_desktop": True,
+                "block_desktop": False,
                 "block_ios": False,
                 "block_android": False,
                 "ipregistry_enabled": False,
-                "blocked_ip_types": ["proxy", "anonymous", "relay"],
-                "blocked_threats": ["threat", "abuser", "attacker", "bogon", "tor"],
-                "redirect_url": "https://example.com/",
+                "blocked_ip_types": [],
+                "blocked_threats": [],
+                "redirect_url": "",
                 "redirect_links": [],
                 "frontend_entry": "index.html",
             }
@@ -622,7 +622,10 @@ class Handler(BaseHTTPRequestHandler):
         whitelist = {item for item in re.split(r"[\s,]+", str(settings.get("country_whitelist", "")).upper()) if item}
         blacklist = {item for item in re.split(r"[\s,]+", str(settings.get("country_blacklist", "")).upper()) if item}
         security_enabled = bool(settings.get("ipregistry_enabled"))
-        if not reasons and (security_enabled or whitelist or blacklist):
+        selected_ip_types = set(settings.get("blocked_ip_types", []) or [])
+        selected_threats = set(settings.get("blocked_threats", []) or [])
+        needs_registry = bool(whitelist or blacklist or (security_enabled and (selected_ip_types or selected_threats)))
+        if not reasons and needs_registry:
             if not key:
                 registry_error = "IPRegistry API Key 未配置"
             else:
@@ -642,8 +645,8 @@ class Handler(BaseHTTPRequestHandler):
                         type_fields = {"proxy": "is_proxy", "vpn": "is_vpn", "anonymous": "is_anonymous", "relay": "is_relay", "cloud": "is_cloud_provider"}
                         threat_fields = {"threat": "is_threat", "abuser": "is_abuser", "attacker": "is_attacker", "bogon": "is_bogon", "tor": "is_tor"}
                         for selected, fields, prefix in (
-                            (settings.get("blocked_ip_types", []), type_fields, "network"),
-                            (settings.get("blocked_threats", []), threat_fields, "threat"),
+                            (selected_ip_types, type_fields, "network"),
+                            (selected_threats, threat_fields, "threat"),
                         ):
                             for name in selected or []:
                                 if security.get(fields.get(name, "")) is True:

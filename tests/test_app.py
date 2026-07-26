@@ -246,10 +246,39 @@ class AppTest(unittest.TestCase):
             "block_android": False,
             "ipregistry_enabled": True,
             "ipregistry_api_key": "",
+            "blocked_ip_types": ["proxy"],
         })
         status, missing_key = self.request("/guard/check")
         self.assertEqual(status, 502)
         self.assertIn("IPRegistry", missing_key["error"])
+        app.STORE.save_settings({"ipregistry_enabled": False, "blocked_ip_types": []})
+
+    def test_guard_rules_are_opt_in(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings = app.Store(Path(temp_dir) / "defaults.db").get_settings()
+        self.assertFalse(settings["block_desktop"])
+        self.assertFalse(settings["block_ios"])
+        self.assertFalse(settings["block_android"])
+        self.assertEqual(settings["blocked_ip_types"], [])
+        self.assertEqual(settings["blocked_threats"], [])
+        self.assertEqual(settings["redirect_url"], "")
+
+        app.STORE.save_settings({
+            "block_desktop": False,
+            "block_ios": False,
+            "block_android": False,
+            "ipregistry_enabled": True,
+            "ipregistry_api_key": "",
+            "country_whitelist": "",
+            "country_blacklist": "",
+            "blocked_ip_types": [],
+            "blocked_threats": [],
+        })
+        with mock.patch("app.urllib.request.urlopen") as urlopen:
+            status, decision = self.request("/guard/check")
+        self.assertEqual(status, 200)
+        self.assertTrue(decision["allowed"])
+        urlopen.assert_not_called()
         app.STORE.save_settings({"ipregistry_enabled": False})
 
     def test_public_frontend_records_visits_and_rotates_links(self):
