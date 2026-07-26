@@ -1,0 +1,21 @@
+[Unit]
+Description=Gateway Console administration service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gateway-console
+Group=gateway-console
+WorkingDirectory=/opt/gateway-console
+EnvironmentFile=/etc/gateway-console.env
+ExecStart=/usr/bin/python3 /opt/gateway-console/app.py --host 127.0.0.1 --port 8787
+Restart=on-failure
+RestartSec=3
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/gateway-console /etc/nginx -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt
+
+[Install]
+WantedBy=multi-user.target

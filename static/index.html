@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17191f">
+  <title>Gateway Console</title>
+  <link rel="stylesheet" href="/styles.css?v=2">
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <main id="loginView" class="login-shell">
+    <section class="login-panel">
+      <div class="brand-mark" aria-hidden="true">G</div>
+      <p class="eyebrow">GATEWAY CONSOLE</p>
+      <h1>管理后台</h1>
+      <p class="muted">登录后管理访问数据、前台项目和安全策略。</p>
+      <form id="loginForm" class="login-form">
+        <label>用户名<input name="username" autocomplete="username" value="admin" required></label>
+        <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+        <div class="captcha-row">
+          <label>数字验证码<input name="captcha" inputmode="numeric" autocomplete="off" required></label>
+          <button id="captchaQuestion" class="captcha" type="button" title="换一个验证码">加载中</button>
+        </div>
+        <button class="primary wide" type="submit">登录后台</button>
+        <p id="loginError" class="form-error"></p>
+      </form>
+    </section>
+    <aside class="login-scene" aria-hidden="true">
+      <div class="scene-copy"><span>CONTROL / OBSERVE / PROTECT</span><strong>让每一次访问<br>清晰可见</strong></div>
+      <div class="signal-grid"></div>
+    </aside>
+  </main>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark small">G</span><span><b>Gateway</b><small>CONSOLE</small></span></div>
+      <nav id="mainNav">
+        <p>概览</p>
+        <button data-page="dashboard" class="active"><span class="nav-icon">⌂</span>仪表板</button>
+        <p>数据</p>
+        <button data-page="data"><span class="nav-icon">≡</span>数据中心</button>
+        <p>管理</p>
+        <button data-page="frontend"><span class="nav-icon">◇</span>前台配置</button>
+        <button data-page="settings"><span class="nav-icon">⚙</span>系统设置</button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-avatar">A</div><div><b id="currentUser">admin</b><small>超级管理员</small></div>
+        <button id="logoutBtn" class="icon-button" title="退出登录">↪</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-button mobile-only" title="打开菜单">☰</button>
+        <div><p id="breadcrumb">概览 / 仪表板</p><h2 id="pageTitle">仪表板</h2></div>
+        <div class="status-chip"><i></i>服务运行中</div>
+      </header>
+
+      <div class="page active" data-page-view="dashboard">
+        <div class="page-intro"><div><h3>访问概况</h3><p>当前统计周期从每天 22:00 开始。</p></div><button id="refreshDashboard" class="secondary">刷新数据</button></div>
+        <div class="metric-grid">
+          <article class="metric accent"><span>今日访问</span><strong id="statToday">0</strong><small>22:00 后重新计算</small></article>
+          <article class="metric"><span>总访问</span><strong id="statTotal">0</strong><small>累计访问次数</small></article>
+          <article class="metric"><span>访问 / 点击</span><strong><em id="statVisits">0</em><i>/</i><em id="statClicks">0</em></strong><small>累计事件构成</small></article>
+          <article class="metric"><span>已配置域名</span><strong id="statDomains">0</strong><small>已接入前台</small></article>
+        </div>
+      </div>
+
+      <div class="page" data-page-view="data">
+        <div class="page-intro"><div><h3>访问明细</h3><p>按单个域名和事件类型查询访客记录。</p></div></div>
+        <section class="content-block">
+          <form id="eventFilters" class="filterbar">
+            <label>域名<input name="domain" placeholder="example.com"></label>
+            <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option></select></label>
+            <button class="primary" type="submit">查询</button>
+          </form>
+          <div class="table-wrap">
+            <table><thead><tr><th>编号</th><th>时间</th><th>域名</th><th>类型</th><th>IP</th><th>UA</th></tr></thead><tbody id="eventsBody"></tbody></table>
+          </div>
+          <div class="table-foot"><span id="eventCount">共 0 条</span><button id="eventsPrev" class="secondary small">上一页</button><span id="eventPage">1</span><button id="eventsNext" class="secondary small">下一页</button></div>
+        </section>
+      </div>
+
+      <div class="page" data-page-view="frontend">
+        <div class="page-intro"><div><h3>前台配置</h3><p>管理服务器上的前台源码、域名入口和 HTTPS 证书。</p></div><button id="openImport" class="primary">登记现有源码</button></div>
+        <div class="tabs"><button class="active" data-tab="downloaded">已下载</button><button data-tab="catalog">源码列表</button></div>
+        <div id="downloadedTab" class="tab-panel active">
+          <div id="projectList" class="project-list"></div>
+          <div id="emptyProjects" class="empty-state"><div>◇</div><h4>还没有已下载源码</h4><p>可以先登记服务器已有的源码，源码下载功能将在下一阶段接入。</p></div>
+          <section class="content-block domain-block">
+            <div class="block-heading"><div><h3>域名入口</h3><p>源码卡片中的“配置”用于添加域名和防红策略。</p></div></div>
+            <div id="domainList" class="domain-list"></div>
+          </section>
+        </div>
+        <div id="catalogTab" class="tab-panel">
+          <div class="source-filter"><input id="sourceSearch" placeholder="输入源码名称或官网"><button id="sourceQuery" class="primary small">⌕ 查询</button><button id="sourceReset" class="secondary small">重置</button></div>
+          <div class="source-notice"><span>下载前请测试源码是否正常，如有问题请及时联系，我会第一时间进行修复如果遇到任何错误</span><div><input id="searchCode" placeholder="Search Code"><button id="manualInstall" class="primary small">◇ 手动安装</button></div></div>
+          <div id="catalogList" class="catalog-list"></div>
+          <div id="catalogEmpty" class="empty-state"><div>↓</div><h4>暂无可下载源码</h4><p>源码发布后会出现在这里。</p></div>
+        </div>
+      </div>
+
+      <div class="page" data-page-view="settings">
+        <div class="page-intro"><div><h3>系统设置</h3><p>配置 IPRegistry 风险识别和访问拦截策略。</p></div><button id="saveSettings" class="primary">保存设置</button></div>
+        <div class="settings-layout">
+          <section class="content-block">
+            <div class="block-heading"><div><h3>防红配置</h3><p>IPRegistry API Key 供源码配置中的风险识别使用。</p></div><a href="https://dashboard.ipregistry.co/overview" target="_blank" rel="noreferrer">获取 API Key ↗</a></div>
+            <label class="switch-row"><span><b>启用 IPRegistry 检测</b><small>需要有效的 API Key</small></span><input id="ipregistry_enabled" type="checkbox"><i></i></label>
+            <label class="field">API Key<input id="ipregistry_api_key" type="password" placeholder="输入 IPRegistry API Key" autocomplete="off"></label>
+          </section>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="domainDialog">
+    <form id="domainForm" method="dialog">
+      <div class="dialog-head"><div><p class="eyebrow">DOMAIN ROUTING</p><h3>配置域名入口</h3></div><button type="button" class="icon-button close-dialog">×</button></div>
+      <label class="field">域名<input name="domain" placeholder="app.example.com" required></label>
+      <label class="field">前台入口端口<input name="upstream_port" inputmode="numeric" value="8080" required><small>对应前台项目在本机监听的端口</small></label>
+      <label class="field">关联项目<select name="project_id" id="domainProject"><option value="">不关联项目</option></select></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">取消</button><button class="primary" type="submit">保存并配置 Nginx</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="projectConfigDialog">
+    <form id="projectConfigForm" method="dialog">
+      <div class="wizard-head"><div class="wizard-step active"><b> A|B </b><span>域名管理<small>访问配置</small></span></div><i>›</i><div class="wizard-step"><b>◇</b><span>前台配置<small>自定义前台参数</small></span></div><i>›</i><div class="wizard-step"><b>✓</b><span>提交<small>保存设置</small></span></div><button type="button" class="icon-button close-dialog">×</button></div>
+      <div class="config-heading"><p class="eyebrow">FRONTEND CONFIG</p><h3>配置前台源码</h3><p>域名、访问策略和前台入口统一在这里设置。</p></div>
+      <input name="project_id" type="hidden">
+      <div class="config-grid">
+        <section class="config-panel domain-panel"><h4>域名管理</h4><label class="field">添加域名（如有多个域名，一行一个）<div class="inline-field"><textarea name="domains" placeholder="example.com\nwww.example.com"></textarea><button id="addConfigDomain" type="button" class="secondary">添加</button></div></label><label class="field">前台入口（建议设置）<input name="frontend_entry" placeholder="logo.gif"></label><label class="field">前台端口<input name="upstream_port" inputmode="numeric" value="8080" required></label><div class="domain-list config-domain-list"><p>保存后配置的域名会显示在这里</p></div></section>
+        <section class="config-panel access-panel"><h4>访问配置</h4><div class="field-grid"><label class="field">国家白名单<textarea name="country_whitelist" placeholder="CN, SG"></textarea></label><label class="field">国家黑名单<textarea name="country_blacklist" placeholder="US, GB"></textarea></label></div><div class="check-grid compact-checks"><label><input name="human_verification" type="checkbox">人机验证</label><label><input name="block_desktop" type="checkbox">拦截电脑端</label><label><input name="block_ios" type="checkbox">拦截 iOS</label><label><input name="block_android" type="checkbox">拦截 Android</label></div><label class="check-row"><input name="ipregistry_enabled" type="checkbox">开启 IPRegistry API 防红检测</label><div class="risk-caption">检测以下类型 IP</div><div class="risk-groups"><fieldset><legend>网络类型</legend><label><input type="checkbox" name="blocked_ip_types" value="proxy">代理</label><label><input type="checkbox" name="blocked_ip_types" value="vpn">VPN</label><label><input type="checkbox" name="blocked_ip_types" value="anonymous">匿名</label><label><input type="checkbox" name="blocked_ip_types" value="relay">中继服务器</label><label><input type="checkbox" name="blocked_ip_types" value="cloud">云服务商</label></fieldset><fieldset><legend>威胁类型</legend><label><input type="checkbox" name="blocked_threats" value="threat">威胁</label><label><input type="checkbox" name="blocked_threats" value="abuser">滥用者</label><label><input type="checkbox" name="blocked_threats" value="attacker">攻击者</label><label><input type="checkbox" name="blocked_threats" value="bogon">虚假 IP</label><label><input type="checkbox" name="blocked_threats" value="tor">Tor 网络</label></fieldset></div><label class="field">拦截后跳转地址<input name="redirect_url" type="url" placeholder="https://example.com/"></label></section>
+      </div>
+      <div class="wizard-actions"><button type="button" class="secondary" disabled>← 上一页</button><button class="primary" type="submit">保存配置 →</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="importDialog">
+    <form id="importForm" method="dialog">
+      <div class="dialog-head"><div><p class="eyebrow">EXISTING SOURCE</p><h3>登记服务器源码</h3></div><button type="button" class="icon-button close-dialog">×</button></div>
+      <label class="field">项目名称<input name="name" placeholder="官网 A" required></label>
+      <label class="field">英文标识<input name="slug" placeholder="website-a" required></label>
+      <label class="field">服务器路径<input name="local_path" placeholder="/var/www/website-a" required></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">取消</button><button class="primary" type="submit">登记源码</button></div>
+    </form>
+  </dialog>
+  <div id="mobileBackdrop" class="backdrop"></div>
+  <script src="/app.js?v=6"></script>
+</body>
+</html>

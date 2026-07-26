@@ -1,0 +1,365 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="content-language" content="ja">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<meta name="format-detection" content="telephone=no">
+	<meta name="description" content="完全無料のLINE株式投資オンラインサロン。急騰銘柄情報を今すぐ入手可能！">
+	<!-- 禁用缓存 -->
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
+	<title>常勝!!株LINE 短期急騰銘柄</title>
+	<!-- Meta Pixel Code -->
+	<script>
+		!function(f,b,e,v,n,t,s) {
+			if(f.fbq) return;
+			n=f.fbq=function(){
+				n.callMethod ? n.callMethod.apply(n,arguments) : n.queue.push(arguments)
+			};
+			if(!f._fbq) f._fbq=n;
+			n.push=n;
+			n.loaded=!0;
+			n.version='2.0';
+			n.queue=[];
+			t=b.createElement(e);
+			t.async=!0;
+			t.src=v;
+			s=b.getElementsByTagName(e)[0];
+			s.parentNode.insertBefore(t,s)
+		}(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+		fbq('init', '1532195781422193');
+		fbq('track', 'PageView');
+	</script>
+	<noscript>
+		<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1532195781422193&ev=PageView&noscript=1" alt=""/>
+	</noscript>
+	<!-- End Meta Pixel Code -->
+	<script>
+		// LINE跳转函数（带重试机制）
+		function showline() {
+			// 显示加载状态（可选）
+			console.log('正在获取LINE链接...');
+			
+			// 调用PHP API获取下一个LINE链接
+			fetch('api.php?action=get_next_line', {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					'Cache-Control': 'no-cache'
+				},
+				cache: 'no-cache'
+			})
+			.then(response => {
+				console.log('API响应状态:', response.status);
+				
+				// 检查HTTP状态
+				if (!response.ok) {
+					throw new Error('HTTP Error: ' + response.status);
+				}
+				
+				// 尝试解析JSON
+				return response.json();
+			})
+			.then(data => {
+				console.log('API返回数据:', data);
+				
+				// 检查返回数据
+				if (data.success && data.data && data.data.url) {
+					console.log('跳转到:', data.data.url);
+					window.location.href = data.data.url;
+				} else {
+					// API返回失败
+					console.error('API返回失败:', data.message || '未知错误');
+					
+					// 尝试重试一次
+					retryGetLine();
+				}
+			})
+			.catch(error => {
+				console.error('获取LINE链接失败:', error);
+				
+				// 尝试重试一次
+				retryGetLine();
+			});
+		}
+		
+		// 重试函数
+		function retryGetLine() {
+			console.log('正在重试...');
+			
+			fetch('api.php?action=get_next_line', {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					'Cache-Control': 'no-cache'
+				},
+				cache: 'no-cache'
+			})
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('HTTP Error: ' + response.status);
+				}
+				return response.json();
+			})
+			.then(data => {
+				if (data.success && data.data && data.data.url) {
+					console.log('重试成功，跳转到:', data.data.url);
+					window.location.href = data.data.url;
+				} else {
+					// 重试也失败，显示错误
+					console.error('重试失败:', data.message || '未知错误');
+					alert('リンクの取得に失敗しました。後でもう一度お試しください。\n\nエラー: ' + (data.message || 'サーバーエラー'));
+				}
+			})
+			.catch(error => {
+				console.error('重试失败:', error);
+				alert('ネットワークエラーが発生しました。後でもう一度お試しください。\n\nエラー詳細: ' + error.message);
+			});
+		}
+	</script>
+	<link rel="stylesheet" type="text/css" href="css/normalize.min.css">
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+	<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+	<!-- 这里放入原来index.html的body内容 -->
+	<!-- 为了简洁，这里省略HTML内容，实际使用时需要复制原index.html的body部分 -->
+	<header class="l-header">
+		<h1>「常勝!!株LINE」は完全無料
+			<br class="u-display--sp">LINEの株式投資オンラインサロンです！
+		</h1>
+	</header>
+	<main>
+		<article>
+			<div class="l-fv">
+				<div class="l-fv__inner">
+					<picture>
+						<img src="images/d1.jpg" alt="常勝株LINE メインビジュアル" loading="lazy">
+					</picture>
+				</div>
+			</div>
+			<section class="l-cv">
+				<div class="c-wrapper">
+					<h2>
+						<span>LINE友だち追加で</span>
+						<br>
+						<span>大本命の急騰銘柄を今すぐ入手可能</span>
+					</h2>
+					<div class="p-scroll">
+						<span class="p-scroll__down">
+						</span>
+					</div>
+					<div class="p-btn p-motion">
+						<a href="javascript:showline();">完全無料
+							<br class="u-display--sp">LINE友だち追加する</a>
+					</div>
+					<ul>
+						<li>※ボタンをクリックするとLINE友だち追加画面に進みます。</li>
+						<li>※完全無料0円のLINEサービスのためご料金の発生は一切ありません。</li>
+						<li>※株式投資で遭遇した問題を先生と共有しよう。
+							先着30名様は無料でVIPになれます！！！</li>
+					</ul>
+				</div>
+			</section>
+			<section class="l-line">
+				<div class="p-title">
+					<p>01</p>
+					<h2>今すぐあなたのLINEに
+						<br>急騰銘柄情報が
+						<br class="u-display--sp">
+						<span>完全無料</span>で届きます！
+					</h2>
+				</div>
+				<div class="c-wrapper">
+					<ul class="l-line__shot">
+						<li class="l-line__shot__left">
+							<img src="images/line_talk_bg01.jpg" alt="LINE トーク背景" loading="lazy">
+							<ul>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk01.png" alt="LINEトーク1" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk02.png" alt="LINEトーク2" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk03.png" alt="LINEトーク3" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk04.png" alt="LINEトーク4" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk05.png" alt="LINEトーク5" loading="lazy">
+								</li>
+							</ul>
+						</li>
+						<li class="l-line__shot__right">
+							<img src="images/line_talk_bg01.jpg" alt="LINE トーク背景" loading="lazy">
+							<ul>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk06.png" alt="LINEトーク6" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk07.png" alt="LINEトーク7" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk08.png" alt="LINEトーク8" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk09.png" alt="LINEトーク9" loading="lazy">
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</section>
+			<section class="l-result">
+				<div class="p-title">
+					<p>02</p>
+					<h2>LINE配信される
+						<br class="u-display--sp">株式投資情報をご活用頂くことで
+						<br>
+						<em>1000万円</em>を
+						<em>超える利益</em>を
+						<br>手にされる方も続出しています！
+					</h2>
+					<!-- 图片 -->
+
+					<div class="c-wrapper" style="margin-top:50px;">
+						<ul class="l-line__shot" style="margin-bottom:50px;">
+							<li class="l-line__shot__left">
+								<img src="images/222.png" alt="実績例1" loading="lazy">
+							</li>
+							<li class="l-line__shot__right">
+								<img src="images/333.png" alt="実績例2" loading="lazy">
+							</li>
+						</ul>
+					</div>	
+				</div>
+				<div class="LpgSecInner">
+					<div class="LpgComp3CardCont">
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span class="stylish-title2">
+											<b>アナリスト評価が高い銘柄！</b>
+										</span>
+									</h3>
+									<p class="ql-align-center">&nbsp;</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">アナリストレーティングが高い、直近のPV数が多い、目標株価との乖離幅が大きい銘柄をランキング</span>
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>買い予想・ PVランキング</strong>
+										</span>
+										<strong>はこちら▼</strong>
+									</p>
+								</div>
+								<a data-ga-event="button2" class="LpgComp3CardBtn LpgExSmallBtn" href="javascript:showline();" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>買い予想・PVﾗﾝｷﾝｸﾞ</b>
+								</a>
+							</div>
+						</div>
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span class="stylish-title2">
+											<b>将来性あり！</b>
+										</span>
+									</h3>
+									<p class="ql-align-center">&nbsp;</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">直近の業績が好調で、将来性があり、株価上昇にも期待ができる銘柄を抽出</span>
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>成長期待株はこちら▼</strong>
+										</span>
+									</p>
+								</div>
+								<a data-ga-event="button3" class="LpgComp3CardBtn LpgExSmallBtn" href="javascript:showline();" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>成長期待株 &gt;</b>
+								</a>
+							</div>
+						</div>
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<span class="stylish-title2">
+												<b>出来高の多い上位100銘柄！</b>
+											</span>
+										</span>
+									</h3>
+									<p class="ql-align-center">
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">LINE証券で取扱う銘柄のうち、出来高の多い上位100銘柄を表示</span>
+									</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>出来高ランキング</strong>
+										</span>
+										<strong>はこちら▼</strong>
+									</p>
+								</div>
+								<a data-ga-event="button4" class="LpgComp3CardBtn LpgExSmallBtn" href="javascript:showline();" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>出来高ランキング &gt;</b>
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="c-wrapper">
+					<dl>
+						<dt>
+							<p>株式投資に関するご相談・当LINEサービスへのご質問など、ご不明点がございましたらお気軽にLINEでご連絡ください！</p>
+							<a href="javascript:showline();">お問い合わせはコチラ
+								<br></a>
+						</dt>
+						<dd>
+							<picture>
+								<img src="images/contact.jpg" alt="お問い合わせ" loading="lazy">
+							</picture>
+						</dd>
+					</dl>
+				</div>
+			</section>
+			<div class="l-fv">
+				<div class="l-fv__inner">
+					<picture style="margin:0 auto;">
+						<img src="images/d2.jpg" alt="常勝株LINE サブビジュアル" loading="lazy">
+					</picture>
+				</div>
+			</div>
+			<section class="l-cv">
+				<div class="c-wrapper">
+					<h2>
+						<span>LINE友だち追加で</span>
+						<br>
+						<span>大本命の急騰銘柄を今すぐ入手可能</span>
+					</h2>
+					<div class="p-scroll">
+						<span class="p-scroll__down">
+						</span>
+					</div>
+					<div class="p-btn p-motion">
+						<a href="javascript:showline();">完全無料
+							<br class="u-display--sp">LINE友だち追加する</a>
+					</div>
+					<ul>
+						<li>※ボタンをクリックするとLINE友だち追加画面に進みます。</li>
+						<li>※完全無料0円のLINEサービスのためご料金の発生は一切ありません。</li>
+						<li>※株式投資で遭遇した問題を先生と共有しよう。
+							先着30名様は無料でVIPになれます！！！</li>
+					</ul>
+				</div>
+			</section>
+		</article>
+	</main>
+</body>
+</html>

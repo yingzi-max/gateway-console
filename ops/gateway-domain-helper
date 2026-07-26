@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ACTION="${1:-}"
+DOMAIN="${2:-}"
+PORT="${3:-}"
+SITES_AVAILABLE="/etc/nginx/sites-available"
+SITES_ENABLED="/etc/nginx/sites-enabled"
+
+if [[ ! "$DOMAIN" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$ ]]; then
+  echo "invalid domain" >&2
+  exit 2
+fi
+
+case "$ACTION" in
+  configure)
+    if [[ ! "$PORT" =~ ^[1-9][0-9]{1,4}$ ]] || (( PORT < 10 || PORT > 65535 )); then
+      echo "invalid port" >&2
+      exit 2
+    fi
+    install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
+    TEMP_FILE="$(mktemp)"
+    trap 'rm -f "$TEMP_FILE"' EXIT
+    sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__PORT__/$PORT/g" \
+      /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
+    install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
+    ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
+    nginx -t
+    systemctl reload nginx
+    ;;
+  certificate)
+    if [[ ! -L "$SITES_ENABLED/gateway-$DOMAIN.conf" ]]; then
+      echo "domain is not configured" >&2
+      exit 3
+    fi
+    if [[ -f /etc/gateway-console-certbot.env ]]; then
+      # File is created by the installer and only contains CERTBOT_EMAIL.
+      source /etc/gateway-console-certbot.env
+    fi
+    if [[ -n "${CERTBOT_EMAIL:-}" ]]; then
+      certbot --nginx --non-interactive --agree-tos --redirect --email "$CERTBOT_EMAIL" -d "$DOMAIN"
+    else
+      certbot --nginx --non-interactive --agree-tos --redirect --register-unsafely-without-email -d "$DOMAIN"
+    fi
+    ;;
+  *)
+    echo "usage: $0 {configure|certificate} domain [port]" >&2
+    exit 2
+    ;;
+esac
