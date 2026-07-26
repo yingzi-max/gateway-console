@@ -593,7 +593,7 @@ class Handler(BaseHTTPRequestHandler):
         if not helper:
             return self.json(503, {"error": "request failed"})
         try:
-            subprocess.run(self.helper_command(helper, "certificate", domain), check=True, timeout=180)
+            subprocess.run(self.helper_command(helper, "certificate", domain), check=True, timeout=180, capture_output=True, text=True)
             STORE.set_certificate(domain, "active")
             return self.json(200, {"ok": True, "status": "active"})
         except subprocess.TimeoutExpired:
@@ -601,7 +601,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(504, {"error": "璇佷功鐢宠瓒呮椂锛岃妫€鏌ュ煙鍚?DNS"})
         except (OSError, subprocess.CalledProcessError) as exc:
             STORE.set_certificate(domain, "failed")
-            return self.json(502, {"error": f"certificate request failed: {exc}"})
+            detail = getattr(exc, "stderr", "") or str(exc)
+            return self.json(502, {"error": f"certificate request failed: {detail.strip()}"})
 
     @staticmethod
     def helper_command(helper: str, *args: str):
