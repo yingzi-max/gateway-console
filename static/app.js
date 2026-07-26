@@ -40,7 +40,7 @@ async function loadFrontend() {
     const [projects, domains, settings] = await Promise.all([api('/api/projects'), api('/api/domains'), api('/api/settings')]); state.projects = projects.items; state.domains = domains.items; state.settings = settings;
     state.catalog = projects.catalog;
     $('#projectList').innerHTML = state.projects.map(item => { const itemDomains = state.domains.filter(domain => domain.project_id === item.id); const firstUrl = itemDomains[0] ? `https://${itemDomains[0].domain}/${itemDomains[0].frontend_entry || settings.frontend_entry || 'logo.gif'}` : ''; return `<article class="project-card rich-project-card"><div class="project-brand"><div class="project-logo">e<sup>+</sup></div><div><h4>${escapeHtml(item.name)}</h4><p>官网：<span>待配置官网地址</span></p></div></div><label class="frontend-address">前台地址 <button type="button" class="copy-address" data-address="${escapeHtml(firstUrl)}" title="复制地址">▣</button><textarea readonly placeholder="配置域名后显示前台地址">${escapeHtml(firstUrl)}</textarea></label><div class="project-actions"><button class="link-button project-config" data-project-id="${item.id}">配置</button><button class="link-button project-update" data-project-id="${item.id}">更新前台</button><button class="link-button project-cert" data-project-id="${item.id}">申请证书</button><button class="danger-link" data-project-id="${item.id}">删除</button></div></article>`; }).join('');
-    $('#domainList').innerHTML = state.domains.length ? state.domains.map(item => `<article class="domain-item"><span><b><a href="https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}" target="_blank" rel="noreferrer">https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}</a></b><small>${escapeHtml(item.project_name || '未关联项目')}</small></span><span>端口 ${item.upstream_port}</span><span class="cert-${item.certificate_status}">${item.certificate_status === 'active' ? 'HTTPS 已启用' : item.certificate_status === 'failed' ? '申请失败' : '待申请 HTTPS'}</span></article>`).join('') : '<div class="empty-state" style="padding:30px"><p>还没有配置域名</p></div>';
+    $('#domainList').innerHTML = state.domains.length ? state.domains.map(item => `<article class="domain-item"><span><b><a href="https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || '')}" target="_blank" rel="noreferrer">https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || '')}</a></b><small>${escapeHtml(item.project_name || '未关联项目')}</small></span><span class="cert-${item.certificate_status}">${item.certificate_status === 'active' ? 'HTTPS 已启用' : item.certificate_status === 'failed' ? '申请失败' : '待申请 HTTPS'}</span></article>`).join('') : '<div class="empty-state" style="padding:30px"><p>还没有配置域名</p></div>';
     renderCatalog(state.catalog);
   } catch (error) { toast(error.message, true); }
 }
@@ -61,7 +61,7 @@ async function saveSettings() {
 
 function fillProjectConfig(projectId) {
   const form = $('#projectConfigForm'); const domains = state.domains.filter(item => item.project_id === Number(projectId)); const settings = state.settings;
-  form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n'); form.elements.upstream_port.value = domains[0]?.upstream_port || 8080;
+  form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n');
   form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain)); renderConfigDomains(form);
   form.elements.frontend_entry.value = settings.frontend_entry || 'logo.gif'; form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
   form.elements.country_whitelist.value = settings.country_whitelist || ''; form.elements.country_blacklist.value = settings.country_blacklist || ''; form.elements.redirect_url.value = settings.redirect_url || '';
@@ -79,7 +79,7 @@ async function saveProjectConfig(event) {
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(values) }); const existing = new Set(state.domains.map(item => item.domain));
-    for (const domain of domains) if (!existing.has(domain)) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: values.frontend_entry, upstream_port: form.elements.upstream_port.value, project_id: Number(form.elements.project_id.value) }) });
+    for (const domain of domains) if (!existing.has(domain)) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: values.frontend_entry, project_id: Number(form.elements.project_id.value) }) });
     $('#projectConfigDialog').close(); toast('前台配置已保存'); loadFrontend();
   } catch (error) { toast(error.message, true); }
 }

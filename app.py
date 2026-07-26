@@ -539,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def create_domain(self, data):
         domain = str(data.get("domain", "")).lower().strip().rstrip(".")
-        port_text = str(data.get("upstream_port", ""))
+        port_text = str(data.get("upstream_port", "80") or "80")
         frontend_entry = str(data.get("frontend_entry", "logo.gif")).strip().lstrip("/") or "logo.gif"
         if not DOMAIN_RE.match(domain):
             return self.json(400, {"error": "璇疯緭鍏ユ湁鏁堢殑瀹屾暣鍩熷悕"})
