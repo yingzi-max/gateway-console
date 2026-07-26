@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Lightweight administration server for Gateway Console."""
 
 from __future__ import annotations
@@ -43,10 +43,10 @@ PORT_RE = re.compile(r"^[1-9][0-9]{1,4}$")
 SOURCE_CATALOG = {
     "landing-page": {
         "id": "landing-page",
-        "name": "常胜株LINE 落地页",
+        "name": "Landing page",
         "slug": "landing-page",
         "filename": "landing-page.html",
-        "description": "日文股票投资落地页 HTML，依赖 images、css 和 api.php。",
+        "description": "Static landing page",
     }
 }
 
@@ -322,7 +322,7 @@ class Handler(BaseHTTPRequestHandler):
     def read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
         if length > 1024 * 1024:
-            raise ValueError("请求内容过大")
+            raise ValueError("璇锋眰鍐呭杩囧ぇ")
         if not length:
             return {}
         return json.loads(self.rfile.read(length).decode("utf-8"))
@@ -343,7 +343,7 @@ class Handler(BaseHTTPRequestHandler):
     def require_auth(self):
         session = self.session()
         if not session:
-            self.json(HTTPStatus.UNAUTHORIZED, {"error": "请先登录"})
+            self.json(HTTPStatus.UNAUTHORIZED, {"error": "璇峰厛鐧诲綍"})
             return None
         return session
 
@@ -374,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
                     page = max(1, int(query.get("page", ["1"])[0] or 1))
                     page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
                 except ValueError:
-                    return self.json(400, {"error": "分页参数格式不正确"})
+                    return self.json(400, {"error": "request failed"})
                 total, rows = STORE.events(
                     query.get("domain", [""])[0], query.get("type", [""])[0], page, page_size
                 )
@@ -387,7 +387,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(200, {"items": STORE.projects(), "catalog": catalog})
             if path == "/api/settings":
                 return self.json(200, STORE.get_settings())
-            return self.json(404, {"error": "接口不存在"})
+            return self.json(404, {"error": "request failed"})
         return self.serve_static(path)
 
     def do_OPTIONS(self):
@@ -407,7 +407,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             data = self.read_json()
         except (ValueError, json.JSONDecodeError) as exc:
-            return self.json(400, {"error": str(exc) or "JSON 格式错误"})
+            return self.json(400, {"error": str(exc) or "JSON 鏍煎紡閿欒"})
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
@@ -434,7 +434,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/settings":
             STORE.save_settings(data)
             return self.json(200, {"ok": True})
-        return self.json(404, {"error": "接口不存在"})
+        return self.json(404, {"error": "request failed"})
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
@@ -443,9 +443,9 @@ class Handler(BaseHTTPRequestHandler):
         match = re.fullmatch(r"/api/projects/(\d+)", parsed.path)
         if match:
             if not STORE.delete_project(int(match.group(1))):
-                return self.json(404, {"error": "源码不存在"})
+                return self.json(404, {"error": "request failed"})
             return self.json(200, {"ok": True})
-        self.json(404, {"error": "接口不存在"})
+        self.json(404, {"error": "request failed"})
 
     def get_captcha(self):
         cleanup_memory()
@@ -466,12 +466,12 @@ class Handler(BaseHTTPRequestHandler):
         if not captcha or captcha["expires"] < time.time() or not hmac.compare_digest(
             str(data.get("captcha", "")).strip(), captcha["answer"]
         ):
-            return self.json(400, {"error": "验证码错误或已过期"})
+            return self.json(400, {"error": "request failed"})
         username = str(data.get("username", "")).strip()
         user = STORE.user(username)
         if not user or not verify_password(str(data.get("password", "")), user["password_hash"]):
             time.sleep(0.25)
-            return self.json(401, {"error": "用户名或密码错误"})
+            return self.json(401, {"error": "鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒"})
         token = secrets.token_urlsafe(32)
         with MEMORY_LOCK:
             SESSIONS[token] = {"username": username, "expires": time.time() + SESSION_TTL}
@@ -484,7 +484,7 @@ class Handler(BaseHTTPRequestHandler):
         domain = source.get("domain", [""])[0] if isinstance(source.get("domain"), list) else source.get("domain", "")
         domain = str(domain).lower().strip()
         if not DOMAIN_RE.match(domain):
-            return self.json(400, {"error": "域名格式不正确"})
+            return self.json(400, {"error": "request failed"})
         path = source.get("path", [""])[0] if isinstance(source.get("path"), list) else source.get("path", "")
         event_id = STORE.record_event(domain, event_type, self.client_ip(), self.headers.get("User-Agent", ""), str(path))
         return self.json(201, {"ok": True, "id": event_id}, {"Access-Control-Allow-Origin": "*"})
@@ -527,7 +527,7 @@ class Handler(BaseHTTPRequestHandler):
                         if security.get(fields.get(name, "")):
                             reasons.append(f"{prefix}:{name}")
             except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-                return self.json(502, {"error": "IPRegistry 检测暂时不可用", "detail": str(exc)}, {"Access-Control-Allow-Origin": "*"})
+                return self.json(502, {"error": "IPRegistry 妫€娴嬫殏鏃朵笉鍙敤", "detail": str(exc)}, {"Access-Control-Allow-Origin": "*"})
 
         return self.json(200, {
             "allowed": not reasons,
@@ -542,43 +542,55 @@ class Handler(BaseHTTPRequestHandler):
         port_text = str(data.get("upstream_port", ""))
         frontend_entry = str(data.get("frontend_entry", "logo.gif")).strip().lstrip("/") or "logo.gif"
         if not DOMAIN_RE.match(domain):
-            return self.json(400, {"error": "请输入有效的完整域名"})
+            return self.json(400, {"error": "璇疯緭鍏ユ湁鏁堢殑瀹屾暣鍩熷悕"})
         if ".." in frontend_entry or "\\" in frontend_entry or frontend_entry.startswith("."):
-            return self.json(400, {"error": "前台入口只能填写站点内的文件路径"})
+            return self.json(400, {"error": "鍓嶅彴鍏ュ彛鍙兘濉啓绔欑偣鍐呯殑鏂囦欢璺緞"})
         if not PORT_RE.match(port_text) or int(port_text) > 65535:
-            return self.json(400, {"error": "入口端口必须是 10 到 65535 之间的数字"})
+            return self.json(400, {"error": "request failed"})
         port = int(port_text)
+        project_id = data.get("project_id")
+        if project_id in (None, ""):
+            project_id = None
+        else:
+            try:
+                project_id = int(project_id)
+            except (TypeError, ValueError):
+                return self.json(400, {"error": "invalid project_id"})
         try:
-            domain_id = STORE.add_domain(domain, port, data.get("project_id"), frontend_entry)
+            domain_id = STORE.add_domain(domain, port, project_id, frontend_entry)
         except sqlite3.IntegrityError:
-            return self.json(409, {"error": "该域名已经存在"})
+            return self.json(409, {"error": "已经下载"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         configured = False
+        static_mode = False
         if helper:
             try:
-                subprocess.run(self.helper_command(helper, "configure", domain, str(port)), check=True, timeout=30)
+                project = STORE.project(project_id) if project_id is not None else None
+                static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
+                helper_args = ("configure-static", domain, project["local_path"]) if static_mode else ("configure", domain, str(port))
+                subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30)
                 configured = True
             except (OSError, subprocess.SubprocessError) as exc:
-                return self.json(502, {"error": f"域名已保存，但 Nginx 配置失败：{exc}", "id": domain_id})
-        return self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured})
+                return self.json(502, {"error": f"nginx configuration failed: {exc}", "id": domain_id})
+        return self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
 
     def issue_certificate(self, data):
         domain = str(data.get("domain", "")).lower().strip()
         if not DOMAIN_RE.match(domain) or domain not in {item["domain"] for item in STORE.domains()}:
-            return self.json(400, {"error": "请先添加有效域名"})
+            return self.json(400, {"error": "璇峰厛娣诲姞鏈夋晥鍩熷悕"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         if not helper:
-            return self.json(503, {"error": "当前环境未配置证书助手，部署后可用"})
+            return self.json(503, {"error": "request failed"})
         try:
             subprocess.run(self.helper_command(helper, "certificate", domain), check=True, timeout=180)
             STORE.set_certificate(domain, "active")
             return self.json(200, {"ok": True, "status": "active"})
         except subprocess.TimeoutExpired:
             STORE.set_certificate(domain, "failed")
-            return self.json(504, {"error": "证书申请超时，请检查域名 DNS"})
+            return self.json(504, {"error": "璇佷功鐢宠瓒呮椂锛岃妫€鏌ュ煙鍚?DNS"})
         except (OSError, subprocess.CalledProcessError) as exc:
             STORE.set_certificate(domain, "failed")
-            return self.json(502, {"error": f"证书申请失败：{exc}"})
+            return self.json(502, {"error": f"certificate request failed: {exc}"})
 
     @staticmethod
     def helper_command(helper: str, *args: str):
@@ -592,48 +604,48 @@ class Handler(BaseHTTPRequestHandler):
         slug = re.sub(r"[^a-z0-9-]", "-", str(data.get("slug", "")).lower()).strip("-")
         local_path = str(data.get("local_path", "")).strip()
         if not name or not slug or not local_path.startswith("/"):
-            return self.json(400, {"error": "请填写名称、英文标识和服务器绝对路径"})
+            return self.json(400, {"error": "request failed"})
         try:
             project_id = STORE.add_project(name[:100], slug[:80], local_path[:500])
         except sqlite3.IntegrityError:
-            return self.json(409, {"error": "英文标识已存在"})
+            return self.json(409, {"error": "request failed"})
         return self.json(201, {"ok": True, "id": project_id})
 
     def download_catalog(self, data):
         source_id = str(data.get("source_id", "")).strip()
         source = SOURCE_CATALOG.get(source_id)
         if not source:
-            return self.json(404, {"error": "源码不存在"})
+            return self.json(404, {"error": "request failed"})
         source_file = (SOURCE_DIR / source["filename"]).resolve()
         if SOURCE_DIR.resolve() not in source_file.parents or not source_file.is_file():
-            return self.json(500, {"error": "源码文件未随安装包提供"})
+            return self.json(500, {"error": "request failed"})
         local_path = (DATA_DIR / "projects" / source["slug"]).resolve()
         try:
             local_path.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_file, local_path / "index.html")
             project_id = STORE.add_project(source["name"], source["slug"], str(local_path))
         except sqlite3.IntegrityError:
-            return self.json(409, {"error": "该源码已经下载"})
+            return self.json(409, {"error": "已经下载"})
         except OSError as exc:
-            return self.json(500, {"error": f"源码保存失败：{exc}"})
+            return self.json(500, {"error": f"source save failed: {exc}"})
         return self.json(201, {"ok": True, "id": project_id, "local_path": str(local_path)})
 
     def update_project(self, project_id: int):
         project = STORE.project(project_id)
         if not project:
-            return self.json(404, {"error": "源码记录不存在"})
+            return self.json(404, {"error": "request failed"})
         source = next((item for item in SOURCE_CATALOG.values() if item["slug"] == project["slug"]), None)
         if not source:
-            return self.json(400, {"error": "该项目不是内置源码，不能自动更新"})
+            return self.json(400, {"error": "璇ラ」鐩笉鏄唴缃簮鐮侊紝涓嶈兘鑷姩鏇存柊"})
         source_file = (SOURCE_DIR / source["filename"]).resolve()
         target_dir = Path(project["local_path"]).resolve()
         if SOURCE_DIR.resolve() not in source_file.parents or not source_file.is_file():
-            return self.json(500, {"error": "源码文件未随安装包提供"})
+            return self.json(500, {"error": "request failed"})
         try:
             target_dir.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_file, target_dir / "index.html")
         except OSError as exc:
-            return self.json(500, {"error": f"源码更新失败：{exc}"})
+            return self.json(500, {"error": f"source update failed: {exc}"})
         return self.json(200, {"ok": True, "updated_at": now_text()})
 
     def serve_static(self, path: str):
@@ -683,3 +695,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
