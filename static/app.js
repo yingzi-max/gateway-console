@@ -131,11 +131,23 @@ function ensureRedirectLinksField(form) {
   const grid = $('.config-grid', form);
   const panel = document.createElement('section');
   panel.className = 'config-panel frontend-step-panel hidden';
-  panel.innerHTML = '<div class="frontend-step-heading"><div><h4>前台配置</h4><p>配置模板按钮最终跳转到的链接和每条链接的点击上限。</p></div></div><div class="field redirect-links-field"><span>模板跳转链接</span><small>达到点击上限后自动切换到下一条，0 表示不限</small><div class="redirect-links-editor"></div><button type="button" class="secondary small add-redirect-link">+ 添加链接</button></div>';
+  panel.innerHTML = '<div class="frontend-step-heading"><div><h4>前台配置</h4><p>配置模板按钮最终跳转到的链接和每条链接的点击上限。</p></div></div><div class="field redirect-links-field"><span>模板跳转链接</span><small>达到点击上限后自动切换到下一条，最后一条完成后从第一条继续循环；0 表示不限</small><div class="redirect-batch-toolbar"><button type="button" class="secondary small open-redirect-import">批量导入</button><label><span>批量点击上限</span><input class="redirect-batch-limit" type="number" value="0" min="0" max="999999999" step="1"></label><button type="button" class="secondary small apply-batch-limit">应用到全部</button></div><div class="redirect-import-panel hidden"><textarea class="redirect-import-input" placeholder="每行一条链接，也支持 链接|点击上限"></textarea><div><button type="button" class="secondary small cancel-redirect-import">取消</button><button type="button" class="primary small confirm-redirect-import">导入链接</button></div></div><div class="redirect-links-editor"></div><button type="button" class="secondary small add-redirect-link">+ 添加链接</button></div>';
   const summary = document.createElement('section');
   summary.className = 'config-panel config-summary-panel hidden';
   grid.append(panel, summary);
   panel.addEventListener('click', event => {
+    if (event.target.closest('.open-redirect-import')) { $('.redirect-import-panel', panel).classList.remove('hidden'); $('.redirect-import-input', panel).focus(); return; }
+    if (event.target.closest('.cancel-redirect-import')) { $('.redirect-import-panel', panel).classList.add('hidden'); return; }
+    if (event.target.closest('.confirm-redirect-import')) {
+      const batchLimit = Math.min(999999999, Math.max(0, Math.trunc(Number($('.redirect-batch-limit', panel).value) || 0)));
+      const imported = parseRedirectImport($('.redirect-import-input', panel).value, batchLimit); const current = readRedirectLinks(form); const combined = [...current, ...imported.links];
+      renderRedirectLinks(form, combined.slice(0, 50)); $('.redirect-import-input', panel).value = ''; $('.redirect-import-panel', panel).classList.add('hidden');
+      const ignored = imported.invalid + Math.max(0, combined.length - 50); toast(`已导入 ${Math.min(imported.links.length, Math.max(0, 50 - current.length))} 条${ignored ? `，忽略 ${ignored} 条无效或超出限制的内容` : ''}`); return;
+    }
+    if (event.target.closest('.apply-batch-limit')) {
+      const input = $('.redirect-batch-limit', panel); const raw = input.value.trim(); if (!/^\d{1,9}$/.test(raw)) return toast('请输入 0 到 999999999 的整数', true);
+      const links = readRedirectLinks(form); if (!links.length) return toast('请先添加跳转链接', true); links.forEach(item => { item.limit = Number(raw); }); renderRedirectLinks(form, links); toast('已批量修改点击上限'); return;
+    }
     if (event.target.closest('.add-redirect-link')) return renderRedirectLinks(form, [...readRedirectLinks(form), { url: '', limit: 0 }]);
     const remove = event.target.closest('.remove-redirect-link'); if (!remove) return;
     const links = readRedirectLinks(form); links.splice(Number(remove.dataset.index), 1); renderRedirectLinks(form, links.length ? links : [{ url: '', limit: 0 }]);
@@ -145,12 +157,22 @@ function ensureRedirectLinksField(form) {
   primary.addEventListener('click', event => { const step = Number(form.dataset.configStep || 1); if (step < 3) { event.preventDefault(); setConfigStep(form, step + 1); } });
 }
 
+function parseRedirectImport(text, fallbackLimit) {
+  const links = []; let invalid = 0;
+  text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+    let url = line; let limit = fallbackLimit; const separator = line.lastIndexOf('|'); const inlineLimit = separator >= 0 ? line.slice(separator + 1).trim() : '';
+    if (/^\d{1,9}$/.test(inlineLimit)) { url = line.slice(0, separator).trim(); limit = Number(inlineLimit); }
+    try { const parsed = new URL(url); if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.host) throw new Error('invalid'); links.push({ url, limit }); } catch (_) { invalid++; }
+  });
+  return { links, invalid };
+}
+
 function readRedirectLinks(form) {
-  return $$('.redirect-link-row', form).map(row => ({ url: $('[data-link-url]', row).value.trim(), limit: Math.max(0, Number($('[data-link-limit]', row).value) || 0) })).filter(item => item.url);
+  return $$('.redirect-link-row', form).map(row => ({ url: $('[data-link-url]', row).value.trim(), limit: Math.min(999999999, Math.max(0, Math.trunc(Number($('[data-link-limit]', row).value) || 0))) })).filter(item => item.url);
 }
 
 function renderRedirectLinks(form, links) {
-  $('.redirect-links-editor', form).innerHTML = (links.length ? links : [{ url: '', limit: 0 }]).map((item, index) => `<div class="redirect-link-row"><input data-link-url type="url" value="${escapeHtml(item.url || '')}" placeholder="https://example.com/"><input data-link-limit type="number" value="${Number(item.limit) || 0}" min="0" step="1" title="点击上限"><button type="button" class="icon-button remove-redirect-link" data-index="${index}" title="删除链接">×</button></div>`).join('');
+  $('.redirect-links-editor', form).innerHTML = (links.length ? links : [{ url: '', limit: 0 }]).map((item, index) => `<div class="redirect-link-row"><input data-link-url type="url" value="${escapeHtml(item.url || '')}" placeholder="https://example.com/"><input data-link-limit type="number" value="${Number(item.limit) || 0}" min="0" max="999999999" step="1" title="点击上限"><button type="button" class="icon-button remove-redirect-link" data-index="${index}" title="删除链接">×</button></div>`).join('');
 }
 
 function setConfigStep(form, requestedStep) {

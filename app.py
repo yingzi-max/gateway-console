@@ -367,7 +367,8 @@ class Store:
                     selected = index
                     break
                 if selected is None:
-                    selected = len(links) - 1
+                    db.execute("DELETE FROM redirect_link_stats")
+                    selected = 0
                 db.execute(
                     "INSERT INTO redirect_link_stats(link_index,clicks,updated_at) VALUES(?,?,?) "
                     "ON CONFLICT(link_index) DO UPDATE SET clicks=clicks+1,updated_at=excluded.updated_at",

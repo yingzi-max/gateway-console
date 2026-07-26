@@ -448,6 +448,28 @@ class AppTest(unittest.TestCase):
             "limit": 5,
         }])
 
+    def test_redirect_links_cycle_after_every_link_reaches_its_limit(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = app.Store(Path(temp_dir) / "redirects.db")
+            links = [
+                {"url": "https://first.example/", "limit": 2},
+                {"url": "https://second.example/", "limit": 1},
+            ]
+            actual = [store.next_redirect(links) for _ in range(7)]
+        self.assertEqual(actual, [
+            "https://first.example/", "https://first.example/", "https://second.example/",
+            "https://first.example/", "https://first.example/", "https://second.example/",
+            "https://first.example/",
+        ])
+
+    def test_redirect_batch_controls_are_bundled(self):
+        script = (app.STATIC_DIR / "app.js").read_text(encoding="utf-8")
+        styles = (app.STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("open-redirect-import", script)
+        self.assertIn("apply-batch-limit", script)
+        self.assertIn("parseRedirectImport", script)
+        self.assertIn("redirect-batch-toolbar", styles)
+
     def test_bundled_landing_page_has_no_external_redirector(self):
         source = (app.SOURCE_DIR / "landing-page" / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("link.ccsyshub.com/api/sdk.js", source)
