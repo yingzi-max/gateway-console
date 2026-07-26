@@ -9,15 +9,52 @@ SITES_ENABLED="/etc/nginx/sites-enabled"
 
 reload_web_server() {
   if systemctl is-active --quiet nginx 2>/dev/null; then
-    systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || pkill -HUP -x nginx
+    nginx -t || return 1
+    systemctl reload nginx || nginx -s reload
   elif systemctl is-active --quiet openresty 2>/dev/null; then
-    systemctl reload openresty 2>/dev/null || openresty -s reload 2>/dev/null || pkill -HUP -f '[o]penresty'
+    openresty -t || return 1
+    systemctl reload openresty || openresty -s reload
   elif pgrep -x nginx >/dev/null 2>&1; then
-    nginx -s reload 2>/dev/null || pkill -HUP -x nginx
+    nginx -t || return 1
+    nginx -s reload
   elif pgrep -f '[o]penresty' >/dev/null 2>&1; then
-    openresty -s reload 2>/dev/null || pkill -HUP -f '[o]penresty'
+    openresty -t || return 1
+    openresty -s reload
   else
-    systemctl start nginx 2>/dev/null || systemctl start openresty
+    nginx -t || return 1
+    systemctl start nginx
+  fi
+}
+
+install_site_config() {
+  local source_file="$1"
+  local available_file="$SITES_AVAILABLE/gateway-$DOMAIN.conf"
+  local enabled_file="$SITES_ENABLED/gateway-$DOMAIN.conf"
+  local backup_file=""
+
+  if [[ -f "$available_file" ]]; then
+    backup_file="$(mktemp)"
+    cp -a "$available_file" "$backup_file"
+  fi
+  install -o root -g root -m 0644 "$source_file" "$available_file"
+  ln -sfn "$available_file" "$enabled_file"
+  if ! reload_web_server; then
+    rm -f "$enabled_file"
+    if [[ -n "$backup_file" ]]; then
+      install -o root -g root -m 0644 "$backup_file" "$available_file"
+      ln -sfn "$available_file" "$enabled_file"
+    else
+      rm -f "$available_file"
+    fi
+    reload_web_server >/dev/null 2>&1 || true
+    if [[ -n "$backup_file" ]]; then
+      rm -f "$backup_file"
+    fi
+    echo "nginx rejected the generated domain configuration" >&2
+    return 1
+  fi
+  if [[ -n "$backup_file" ]]; then
+    rm -f "$backup_file"
   fi
 }
 
@@ -37,9 +74,7 @@ case "$ACTION" in
     trap 'rm -f "$TEMP_FILE"' EXIT
     sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__PORT__/$PORT/g" \
       /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
-    install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
-    ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
-    reload_web_server
+    install_site_config "$TEMP_FILE"
     ;;
   configure-static)
     ROOT_PATH="${3:-}"
@@ -48,7 +83,7 @@ case "$ACTION" in
       echo "invalid static project path" >&2
       exit 2
     fi
-    if [[ "$ENTRY_PATH" == /* || "$ENTRY_PATH" == *..* || "$ENTRY_PATH" == *\\* ]]; then
+    if [[ ! "$ENTRY_PATH" =~ ^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,254}$ ]] || [[ "$ENTRY_PATH" == *..* ]]; then
       echo "invalid frontend entry" >&2
       exit 2
     fi
@@ -56,16 +91,14 @@ case "$ACTION" in
     chmod a+rx /var/lib/gateway-console /var/lib/gateway-console/projects
     if [[ "$ENTRY_PATH" != "index.html" && ! -e "$ROOT_PATH/$ENTRY_PATH" ]]; then
       install -d -m 0755 "$(dirname "$ROOT_PATH/$ENTRY_PATH")"
-      ln -sfn index.html "$ROOT_PATH/$ENTRY_PATH"
+      ln -sfn "$ROOT_PATH/index.html" "$ROOT_PATH/$ENTRY_PATH"
     fi
     install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
     sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
       /opt/gateway-console/ops/nginx-static-site.conf > "$TEMP_FILE"
-    install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
-    ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
-    reload_web_server
+    install_site_config "$TEMP_FILE"
     ;;
   certificate)
     if [[ ! -L "$SITES_ENABLED/gateway-$DOMAIN.conf" ]]; then
@@ -80,22 +113,27 @@ case "$ACTION" in
     chmod -R a+rX "$ROOT_PATH"
     chmod a+rx /var/lib/gateway-console /var/lib/gateway-console/projects
     ENTRY_PATH="${4:-index.html}"
-    if [[ "$ENTRY_PATH" == /* || "$ENTRY_PATH" == *..* || "$ENTRY_PATH" == *\\* ]]; then
+    if [[ ! "$ENTRY_PATH" =~ ^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,254}$ ]] || [[ "$ENTRY_PATH" == *..* ]]; then
       echo "invalid frontend entry" >&2
       exit 2
     fi
     if [[ "$ENTRY_PATH" != "index.html" && ! -e "$ROOT_PATH/$ENTRY_PATH" ]]; then
       install -d -m 0755 "$(dirname "$ROOT_PATH/$ENTRY_PATH")"
-      ln -sfn index.html "$ROOT_PATH/$ENTRY_PATH"
+      ln -sfn "$ROOT_PATH/index.html" "$ROOT_PATH/$ENTRY_PATH"
     fi
     CERT_DIR="/var/lib/gateway-console/letsencrypt"
     install -d -m 0700 "$CERT_DIR/config" "$CERT_DIR/work" "$CERT_DIR/logs"
     SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
     DOMAIN_IPS="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
     DOMAIN_IPS="${DOMAIN_IPS%% }"
-    if [[ -n "$SERVER_IP" && -n "$DOMAIN_IPS" && "$DOMAIN_IPS" != "$SERVER_IP" ]]; then
-      echo "DNS for $DOMAIN resolves to [$DOMAIN_IPS], but this server is $SERVER_IP" >&2
-      exit 4
+    if [[ -n "$SERVER_IP" && -n "$DOMAIN_IPS" ]]; then
+      case " $DOMAIN_IPS " in
+        *" $SERVER_IP "*) ;;
+        *)
+          echo "DNS for $DOMAIN resolves to [$DOMAIN_IPS], but this server is $SERVER_IP" >&2
+          exit 4
+          ;;
+      esac
     fi
     CERTBOT_ARGS=(certonly --webroot -w "$ROOT_PATH" --config-dir "$CERT_DIR/config" --work-dir "$CERT_DIR/work" --logs-dir "$CERT_DIR/logs" --non-interactive --agree-tos -d "$DOMAIN")
     if [[ -f /etc/gateway-console-certbot.env ]]; then
@@ -111,9 +149,11 @@ case "$ACTION" in
     trap 'rm -f "$TEMP_FILE"' EXIT
     sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
       /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
-    install -o root -g root -m 0644 "$TEMP_FILE" "$SITES_AVAILABLE/gateway-$DOMAIN.conf"
-    ln -sfn "$SITES_AVAILABLE/gateway-$DOMAIN.conf" "$SITES_ENABLED/gateway-$DOMAIN.conf"
-    reload_web_server
+    install_site_config "$TEMP_FILE"
+    if ! curl -sS --noproxy '*' --max-time 10 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/$ENTRY_PATH" -o /dev/null; then
+      echo "certificate was installed but the local HTTPS verification failed" >&2
+      exit 5
+    fi
     ;;
   *)
     echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root] [entry]" >&2

@@ -1,0 +1,52 @@
+name: Verify gateway console
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: |
+          bash -n install.sh
+          bash -n ops/gateway-domain-helper
+
+      - name: Run application tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Validate Nginx templates
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx
+          sudo rm -f /etc/nginx/sites-enabled/default
+          mkdir -p /tmp/gateway-site /tmp/gateway-certs
+          echo '<html>ok</html>' > /tmp/gateway-site/index.html
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=example.com' \
+            -keyout /tmp/gateway-certs/privkey.pem \
+            -out /tmp/gateway-certs/fullchain.pem >/dev/null 2>&1
+
+          sed -e 's|__DOMAIN__|example.com|g' \
+              -e 's|__ROOT__|/tmp/gateway-site|g' \
+              -e 's|__ENTRY__|dahsio|g' \
+              ops/nginx-static-site.conf > /tmp/gateway-site.conf
+          sudo cp /tmp/gateway-site.conf /etc/nginx/sites-enabled/gateway-test.conf
+          sudo nginx -t
+
+          sed -e 's|__CERT_DIR__/config/live/__DOMAIN__|/tmp/gateway-certs|g' \
+              -e 's|__DOMAIN__|example.com|g' \
+              -e 's|__ROOT__|/tmp/gateway-site|g' \
+              -e 's|__ENTRY__|dahsio|g' \
+              ops/nginx-static-site-ssl.conf > /tmp/gateway-site.conf
+          sudo cp /tmp/gateway-site.conf /etc/nginx/sites-enabled/gateway-test.conf
+          sudo nginx -t
+
+          sudo cp ops/admin-nginx.conf /etc/nginx/sites-enabled/gateway-test.conf
+          sudo nginx -t

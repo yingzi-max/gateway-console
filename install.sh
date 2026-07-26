@@ -63,6 +63,8 @@ install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/index.html" "$
 install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/images/1.jpg" "$APP_DIR/sources/landing-page/images/1.jpg"
 install -o root -g root -m 0755 "$SOURCE_DIR/ops/gateway-domain-helper" /usr/local/sbin/gateway-domain-helper
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-console.service" /etc/systemd/system/gateway-console.service
+install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-certbot-renew.service" /etc/systemd/system/gateway-certbot-renew.service
+install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-certbot-renew.timer" /etc/systemd/system/gateway-certbot-renew.timer
 
 ADMIN_USER="${GATEWAY_ADMIN_USER:-admin}"
 ADMIN_PASSWORD="${GATEWAY_ADMIN_PASSWORD:-$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 18 || true)}"
@@ -107,6 +109,7 @@ nginx -t
 
 systemctl daemon-reload
 systemctl enable --now gateway-console nginx
+systemctl enable --now gateway-certbot-renew.timer
 systemctl reload nginx
 
 SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || curl -4fsS --max-time 5 https://ifconfig.me 2>/dev/null || curl -4fsS --max-time 5 https://api4.my-ip.io/ip 2>/dev/null || true)"

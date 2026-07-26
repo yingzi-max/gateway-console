@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew Gateway Console TLS certificates
+After=network-online.target nginx.service
+Wants=network-online.target
+ConditionPathExists=/var/lib/gateway-console/letsencrypt/config
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/certbot renew --config-dir /var/lib/gateway-console/letsencrypt/config --work-dir /var/lib/gateway-console/letsencrypt/work --logs-dir /var/lib/gateway-console/letsencrypt/logs --quiet
+ExecStartPost=/usr/sbin/nginx -t
+ExecStartPost=/bin/systemctl reload nginx
