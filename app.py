@@ -123,6 +123,7 @@ class Store:
         CREATE TABLE IF NOT EXISTS domains (
           id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER,
           domain TEXT UNIQUE NOT NULL, upstream_port INTEGER NOT NULL,
+          frontend_entry TEXT NOT NULL DEFAULT 'logo.gif',
           certificate_status TEXT NOT NULL DEFAULT 'none',
           created_at TEXT NOT NULL,
           FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE SET NULL
@@ -133,6 +134,10 @@ class Store:
         """
         with self.connect() as db:
             db.executescript(schema)
+            try:
+                db.execute("ALTER TABLE domains ADD COLUMN frontend_entry TEXT NOT NULL DEFAULT 'logo.gif'")
+            except sqlite3.OperationalError:
+                pass
             username = os.environ.get("GATEWAY_ADMIN_USER", "admin")
             password = os.environ.get("GATEWAY_ADMIN_PASSWORD", "admin123456")
             db.execute(
@@ -216,11 +221,11 @@ class Store:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def add_domain(self, domain: str, port: int, project_id=None):
+    def add_domain(self, domain: str, port: int, project_id=None, frontend_entry: str = "logo.gif"):
         with self.connect() as db:
             cursor = db.execute(
-                "INSERT INTO domains(project_id,domain,upstream_port,created_at) VALUES(?,?,?,?)",
-                (project_id, domain.lower(), port, now_text()),
+                "INSERT INTO domains(project_id,domain,upstream_port,frontend_entry,created_at) VALUES(?,?,?,?,?)",
+                (project_id, domain.lower(), port, frontend_entry, now_text()),
             )
             return cursor.lastrowid
 
@@ -531,13 +536,16 @@ class Handler(BaseHTTPRequestHandler):
     def create_domain(self, data):
         domain = str(data.get("domain", "")).lower().strip().rstrip(".")
         port_text = str(data.get("upstream_port", ""))
+        frontend_entry = str(data.get("frontend_entry", "logo.gif")).strip().lstrip("/") or "logo.gif"
         if not DOMAIN_RE.match(domain):
             return self.json(400, {"error": "请输入有效的完整域名"})
+        if ".." in frontend_entry or "\\" in frontend_entry or frontend_entry.startswith("."):
+            return self.json(400, {"error": "前台入口只能填写站点内的文件路径"})
         if not PORT_RE.match(port_text) or int(port_text) > 65535:
             return self.json(400, {"error": "入口端口必须是 10 到 65535 之间的数字"})
         port = int(port_text)
         try:
-            domain_id = STORE.add_domain(domain, port, data.get("project_id"))
+            domain_id = STORE.add_domain(domain, port, data.get("project_id"), frontend_entry)
         except sqlite3.IntegrityError:
             return self.json(409, {"error": "该域名已经存在"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
