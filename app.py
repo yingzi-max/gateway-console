@@ -233,6 +233,14 @@ class Store:
             )
             return cursor.lastrowid
 
+    def update_domain(self, domain: str, port: int, project_id=None, frontend_entry: str = "logo.gif"):
+        with self.connect() as db:
+            row = db.execute("SELECT id,project_id FROM domains WHERE domain=?", (domain.lower(),)).fetchone()
+            if not row or (row["project_id"] not in (None, project_id) and project_id not in (None, row["project_id"])):
+                return None
+            db.execute("UPDATE domains SET project_id=?,upstream_port=?,frontend_entry=? WHERE domain=?", (project_id, port, frontend_entry, domain.lower()))
+            return row["id"]
+
     def set_certificate(self, domain: str, status: str):
         with self.connect() as db:
             db.execute("UPDATE domains SET certificate_status=? WHERE domain=?", (status, domain))
@@ -559,7 +567,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             domain_id = STORE.add_domain(domain, port, project_id, frontend_entry)
         except sqlite3.IntegrityError:
-            return self.json(409, {"error": "已经下载"})
+            domain_id = STORE.update_domain(domain, port, project_id, frontend_entry)
+            if domain_id is None:
+                return self.json(409, {"error": "domain already belongs to another project"})
         helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
         configured = False
         static_mode = False
