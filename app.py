@@ -19,7 +19,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -34,6 +34,8 @@ DATA_DIR = Path(os.environ.get("GATEWAY_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "gateway.db"
 SESSION_TTL = 12 * 60 * 60
 CAPTCHA_TTL = 5 * 60
+REPORT_TIMEZONE = timezone(timedelta(hours=8), "Asia/Shanghai")
+REPORT_RESET_HOUR = 22
 DOMAIN_RE = re.compile(
     r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$",
     re.IGNORECASE,
@@ -145,6 +147,7 @@ class Store:
           path TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_events_domain_time ON events(domain, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_events_type_time_ip ON events(event_type, created_at, ip);
         CREATE TABLE IF NOT EXISTS projects (
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
           slug TEXT UNIQUE NOT NULL, source_url TEXT NOT NULL DEFAULT '',
@@ -227,24 +230,65 @@ class Store:
         with self.connect() as db:
             return db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
 
-    def stats(self):
-        now = datetime.now().astimezone()
-        cutoff = now.replace(hour=22, minute=0, second=0, microsecond=0)
-        if now < cutoff:
+    def stats(self, now: datetime | None = None):
+        local_now = (now or datetime.now(timezone.utc)).astimezone(REPORT_TIMEZONE)
+        cutoff = local_now.replace(hour=REPORT_RESET_HOUR, minute=0, second=0, microsecond=0)
+        if local_now < cutoff:
             cutoff -= timedelta(days=1)
+        next_cutoff = cutoff + timedelta(days=1)
+        now_utc = local_now.astimezone(timezone.utc).isoformat(timespec="seconds")
+        cutoff_utc = cutoff.astimezone(timezone.utc).isoformat(timespec="seconds")
         with self.connect() as db:
-            row = db.execute(
-                "SELECT SUM(CASE WHEN event_type='visit' THEN 1 ELSE 0 END) total, "
-                "SUM(CASE WHEN event_type='visit' AND created_at >= ? THEN 1 ELSE 0 END) today, "
-                "SUM(CASE WHEN event_type='visit' THEN 1 ELSE 0 END) visits, "
-                "SUM(CASE WHEN event_type='click' THEN 1 ELSE 0 END) clicks FROM events",
-                (cutoff.isoformat(timespec="seconds"),),
+            totals = db.execute(
+                "WITH unique_events AS ("
+                "SELECT event_type,ip,date(created_at,'+8 hours','-22 hours') period "
+                "FROM events WHERE event_type IN ('visit','click') AND julianday(created_at)<=julianday(?) "
+                "GROUP BY event_type,ip,period) "
+                "SELECT SUM(CASE WHEN event_type='visit' THEN 1 ELSE 0 END) visits,"
+                "SUM(CASE WHEN event_type='click' THEN 1 ELSE 0 END) clicks FROM unique_events",
+                (now_utc,),
+            ).fetchone()
+            today = db.execute(
+                "SELECT COUNT(DISTINCT CASE WHEN event_type='visit' THEN ip END) visits,"
+                "COUNT(DISTINCT CASE WHEN event_type='click' THEN ip END) clicks "
+                "FROM events WHERE julianday(created_at)>=julianday(?) AND julianday(created_at)<julianday(?)",
+                (cutoff_utc, now_utc),
             ).fetchone()
             domains = db.execute("SELECT COUNT(*) count FROM domains").fetchone()["count"]
+            weekly = []
+            for days_ago in range(6, -1, -1):
+                start = cutoff - timedelta(days=days_ago)
+                end = min(start + timedelta(days=1), local_now)
+                row = db.execute(
+                    "SELECT COUNT(DISTINCT CASE WHEN event_type='visit' THEN ip END) visits,"
+                    "COUNT(DISTINCT CASE WHEN event_type='click' THEN ip END) clicks "
+                    "FROM events WHERE julianday(created_at)>=julianday(?) AND julianday(created_at)<julianday(?)",
+                    (
+                        start.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                        end.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                    ),
+                ).fetchone()
+                display_date = (start + timedelta(days=1)).date()
+                weekly.append({
+                    "date": display_date.isoformat(),
+                    "label": display_date.strftime("%m/%d"),
+                    "visits": row["visits"] or 0,
+                    "clicks": row["clicks"] or 0,
+                })
+        total_visits = totals["visits"] or 0
+        total_clicks = totals["clicks"] or 0
         return {
-            "today": row["today"] or 0, "total": row["total"] or 0,
-            "visits": row["visits"] or 0, "clicks": row["clicks"] or 0,
-            "domains": domains, "reset_at": cutoff.isoformat(timespec="seconds"),
+            "today": today["visits"] or 0,
+            "today_visits": today["visits"] or 0,
+            "today_clicks": today["clicks"] or 0,
+            "total": total_visits,
+            "visits": total_visits,
+            "clicks": total_clicks,
+            "domains": domains,
+            "reset_at": cutoff.isoformat(timespec="seconds"),
+            "next_reset_at": next_cutoff.isoformat(timespec="seconds"),
+            "timezone": "Asia/Shanghai",
+            "weekly": weekly,
         }
 
     def record_event(self, domain: str, event_type: str, ip: str, ua: str, path: str):

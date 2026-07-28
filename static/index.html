@@ -59,13 +59,18 @@
       </header>
 
       <div class="page active" data-page-view="dashboard">
-        <div class="page-intro"><div><h3>访问概况</h3><p>当前统计周期从每天 22:00 开始。</p></div><button id="refreshDashboard" class="secondary">刷新数据</button></div>
+        <div class="page-intro"><div><h3>访问概况</h3><p id="dashboardPeriod">当前统计周期为北京时间每天 22:00 至次日 21:59。</p></div><button id="refreshDashboard" class="secondary">刷新数据</button></div>
         <div class="metric-grid">
-          <article class="metric accent"><span>今日访问</span><strong id="statToday">0</strong><small>22:00 后重新计算</small></article>
-          <article class="metric"><span>总访问</span><strong id="statTotal">0</strong><small>累计访问次数</small></article>
-          <article class="metric"><span>访问 / 点击</span><strong><em id="statVisits">0</em><i>/</i><em id="statClicks">0</em></strong><small>累计事件构成</small></article>
+          <article class="metric accent"><span>今日访问</span><strong id="statToday">0</strong><small>同 IP 本统计日只计 1 次</small></article>
+          <article class="metric"><span>今日点击</span><strong id="statTodayClicks">0</strong><small>同 IP 本统计日只计 1 次</small></article>
+          <article class="metric"><span>总访问</span><strong id="statTotal">0</strong><small>按统计日去重累计</small></article>
+          <article class="metric"><span>总点击</span><strong id="statClicks">0</strong><small>按统计日去重累计</small></article>
           <article class="metric"><span>已配置域名</span><strong id="statDomains">0</strong><small>已接入前台</small></article>
         </div>
+        <section class="content-block weekly-statistics">
+          <div class="block-heading"><div><h3>最近 7 个统计日</h3><p>北京时间 22:00 刷新，同一 IP 每日去重。</p></div><div class="chart-legend"><span><i class="visit"></i>访问</span><span><i class="click"></i>点击</span></div></div>
+          <div class="weekly-chart-scroll"><div id="weeklyChart" class="weekly-chart" aria-label="最近七天访问和点击统计"></div></div>
+        </section>
       </div>
 
       <div class="page" data-page-view="data">

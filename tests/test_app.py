@@ -8,6 +8,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -153,6 +154,17 @@ class AppTest(unittest.TestCase):
         self.assertIn("COUNTRY_CODES", script)
         self.assertIn("setCountrySelectValue", script)
 
+    def test_dashboard_weekly_chart_and_today_clicks_are_bundled(self):
+        html = (app.STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        script = (app.STATIC_DIR / "app.js").read_text(encoding="utf-8")
+        styles = (app.STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+        self.assertIn('id="statTodayClicks"', html)
+        self.assertIn('id="weeklyChart"', html)
+        self.assertIn('id="dashboardPeriod"', html)
+        self.assertIn("renderWeeklyChart", script)
+        self.assertIn("data.today_clicks", script)
+        self.assertIn("weekly-chart", styles)
+
     def test_existing_event_database_migrates_rejected_type(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "legacy.db"
@@ -173,6 +185,40 @@ class AppTest(unittest.TestCase):
             self.assertEqual(rejected_total, 1)
             self.assertEqual(rejected[0]["event_type"], "rejected")
             self.assertEqual(store.stats()["total"], 1)
+
+    def test_dashboard_uses_beijing_22_boundary_and_daily_unique_ips(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = app.Store(Path(temp_dir) / "statistics.db")
+            rows = [
+                ("site.example", "visit", "2026-07-26T14:00:00+00:00", "198.51.100.1"),
+                ("site.example", "visit", "2026-07-27T14:00:00+00:00", "198.51.100.1"),
+                ("site.example", "visit", "2026-07-27T14:05:00+00:00", "198.51.100.1"),
+                ("site.example", "visit", "2026-07-28T03:00:00+00:00", "198.51.100.2"),
+                ("site.example", "click", "2026-07-27T15:00:00+00:00", "198.51.100.1"),
+                ("site.example", "click", "2026-07-27T15:05:00+00:00", "198.51.100.1"),
+                ("site.example", "visit", "2026-07-28T14:00:00+00:00", "198.51.100.3"),
+            ]
+            with store.connect() as db:
+                db.executemany(
+                    "INSERT INTO events(domain,event_type,created_at,ip,ua,path) VALUES(?,?,?,?,?,?)",
+                    [(domain, event_type, created_at, ip, "Test", "/") for domain, event_type, created_at, ip in rows],
+                )
+
+            before_reset = store.stats(datetime(2026, 7, 28, 21, 30, tzinfo=app.REPORT_TIMEZONE))
+            self.assertEqual(before_reset["today_visits"], 2)
+            self.assertEqual(before_reset["today_clicks"], 1)
+            self.assertEqual(before_reset["visits"], 3)
+            self.assertEqual(before_reset["clicks"], 1)
+            self.assertEqual(before_reset["reset_at"], "2026-07-27T22:00:00+08:00")
+            self.assertEqual(before_reset["next_reset_at"], "2026-07-28T22:00:00+08:00")
+            self.assertEqual(len(before_reset["weekly"]), 7)
+            self.assertEqual(before_reset["weekly"][-2], {"date": "2026-07-27", "label": "07/27", "visits": 1, "clicks": 0})
+            self.assertEqual(before_reset["weekly"][-1], {"date": "2026-07-28", "label": "07/28", "visits": 2, "clicks": 1})
+
+            after_reset = store.stats(datetime(2026, 7, 28, 22, 1, tzinfo=app.REPORT_TIMEZONE))
+            self.assertEqual(after_reset["today_visits"], 1)
+            self.assertEqual(after_reset["today_clicks"], 0)
+            self.assertEqual(after_reset["weekly"][-1]["date"], "2026-07-29")
 
     def test_domain_helper_and_certificate_commands(self):
         project_root = Path(self.temp.name) / "helper-project"
@@ -400,7 +446,7 @@ class AppTest(unittest.TestCase):
         })
         request = urllib.request.Request(
             self.base + "/logo.gif",
-            headers={"Host": "public.example.com", "User-Agent": "Mozilla/5.0"},
+            headers={"Host": "public.example.com", "User-Agent": "Mozilla/5.0", "X-Forwarded-For": "203.0.113.10"},
         )
         visits_before = app.STORE.stats()["total"]
         with self.opener.open(request) as response:
@@ -441,7 +487,7 @@ class AppTest(unittest.TestCase):
                 click_opener.open(click_request)
             self.assertEqual(raised.exception.code, 302)
             self.assertEqual(raised.exception.headers["Location"], expected)
-        self.assertEqual(app.STORE.stats()["clicks"], clicks_before + 2)
+        self.assertEqual(app.STORE.stats()["clicks"], clicks_before + 1)
 
         app.STORE.save_settings({
             "block_desktop": True,

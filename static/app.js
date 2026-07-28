@@ -71,7 +71,22 @@ function navigate(page) {
   $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show');
   if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
 }
-async function loadDashboard() { try { const data = await api('/api/dashboard'); $('#statToday').textContent = data.today.toLocaleString(); $('#statTotal').textContent = data.total.toLocaleString(); $('#statVisits').textContent = data.visits.toLocaleString(); $('#statClicks').textContent = data.clicks.toLocaleString(); $('#statDomains').textContent = data.domains.toLocaleString(); } catch (error) { toast(error.message, true); } }
+function renderWeeklyChart(rows) {
+  const items = Array.isArray(rows) ? rows : []; const largest = Math.max(0, ...items.flatMap(item => [Number(item.visits) || 0, Number(item.clicks) || 0])); const step = Math.max(1, Math.ceil(largest / 4)); const ceiling = step * 4;
+  const ticks = Array.from({ length: 5 }, (_, index) => ceiling - step * index);
+  const columns = items.map(item => {
+    const visits = Number(item.visits) || 0; const clicks = Number(item.clicks) || 0; const visitHeight = visits ? Math.max(2, visits / ceiling * 100) : 0; const clickHeight = clicks ? Math.max(2, clicks / ceiling * 100) : 0;
+    return `<div class="chart-day"><div class="chart-bar-area"><div class="chart-bar visit" style="height:${visitHeight}%" aria-label="${escapeHtml(item.label)} 访问 ${visits}"><span>访问：${visits}</span></div><div class="chart-bar click" style="height:${clickHeight}%" aria-label="${escapeHtml(item.label)} 点击 ${clicks}"><span>点击：${clicks}</span></div></div><time datetime="${escapeHtml(item.date)}">${escapeHtml(item.label)}</time></div>`;
+  }).join('');
+  $('#weeklyChart').innerHTML = `<div class="chart-y-axis">${ticks.map(value => `<span>${value}</span>`).join('')}</div><div class="chart-grid-lines">${ticks.map(() => '<i></i>').join('')}</div><div class="chart-columns">${columns}</div>`;
+}
+
+async function loadDashboard() {
+  try {
+    const data = await api('/api/dashboard'); $('#statToday').textContent = data.today_visits.toLocaleString(); $('#statTodayClicks').textContent = data.today_clicks.toLocaleString(); $('#statTotal').textContent = data.total.toLocaleString(); $('#statClicks').textContent = data.clicks.toLocaleString(); $('#statDomains').textContent = data.domains.toLocaleString(); renderWeeklyChart(data.weekly);
+    const nextReset = new Date(data.next_reset_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); $('#dashboardPeriod').textContent = `北京时间每天 22:00 刷新，下一次刷新：${nextReset}`;
+  } catch (error) { toast(error.message, true); }
+}
 
 async function loadEvents() {
   const form = new FormData($('#eventFilters')); const query = new URLSearchParams({ page: state.eventPage, page_size: 25 });
