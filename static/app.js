@@ -169,7 +169,21 @@ function ensureRedirectLinksField(form) {
   });
   const previous = $('.wizard-actions .secondary', form); const primary = $('.wizard-actions .primary', form);
   previous.addEventListener('click', () => setConfigStep(form, Number(form.dataset.configStep || 1) - 1));
-  primary.addEventListener('click', event => { const step = Number(form.dataset.configStep || 1); if (step < 3) { event.preventDefault(); setConfigStep(form, step + 1); } });
+  primary.addEventListener('click', async event => {
+    const step = Number(form.dataset.configStep || 1);
+    if (step === 1) { event.preventDefault(); setConfigStep(form, 2); return; }
+    if (step !== 2) return;
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    primary.disabled = true; primary.textContent = '保存中...';
+    try {
+      await api('/api/settings', { method: 'POST', body: JSON.stringify({ redirect_links: readRedirectLinks(form) }) });
+      state.settings = await api('/api/settings');
+      renderRedirectLinks(form, state.settings.redirect_links || []);
+      setConfigStep(form, 3); toast('跳转链接已保存');
+    } catch (error) { setConfigStep(form, 2); toast(error.message, true); }
+    finally { primary.disabled = false; }
+  });
 }
 
 function parseRedirectImport(text, fallbackLimit) {
@@ -199,7 +213,7 @@ function setConfigStep(form, requestedStep) {
   $$('.wizard-step', form).forEach((item, index) => { item.classList.toggle('active', index === step - 1); item.classList.toggle('complete', index < step - 1); });
   const headings = [['配置前台源码','域名、访问策略和前台入口统一在这里设置。'],['前台配置','设置模板的多个跳转链接和点击切换次数。'],['确认配置','确认域名、访问入口和跳转链接后保存。']];
   $('.config-heading h3', form).textContent = headings[step - 1][0]; $('.config-heading>p:last-child', form).textContent = headings[step - 1][1];
-  const previous = $('.wizard-actions .secondary', form); const primary = $('.wizard-actions .primary', form); previous.disabled = step === 1; primary.textContent = step === 3 ? '保存并完成 →' : '下一步 →';
+  const previous = $('.wizard-actions .secondary', form); const primary = $('.wizard-actions .primary', form); previous.disabled = step === 1; primary.textContent = step === 3 ? '保存并完成 →' : step === 2 ? '保存链接并下一步 →' : '下一步 →';
   if (step === 3) renderConfigSummary(form);
   $('.config-grid', form).scrollTop = 0;
 }

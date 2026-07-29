@@ -616,10 +616,16 @@ class AppTest(unittest.TestCase):
         self.assertIn("originalDomains", script)
         self.assertIn("domainsToConfigure", script)
         self.assertIn("pending = domains.filter", script)
+        self.assertIn("保存链接并下一步", script)
+        self.assertIn("跳转链接已保存", script)
+        self.assertIn("redirect_links: readRedirectLinks(form)", script)
 
     def test_bundled_landing_page_has_no_external_redirector(self):
         source = (app.SOURCE_DIR / "landing-page" / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("link.ccsyshub.com/api/sdk.js", source)
+        self.assertNotIn("api.whatsapp.com", source)
+        self.assertNotIn("123456789", source)
+        self.assertEqual(source.count('href="/__gateway/click"'), 5)
 
     def test_certificate_helper_verifies_nginx_and_local_tls(self):
         helper = (app.ROOT / "ops" / "gateway-domain-helper").read_text(encoding="utf-8")
