@@ -252,6 +252,8 @@ async function saveProjectConfig(event) {
     const original = JSON.parse(form.dataset.originalDomains || '{}'); const entry = values.frontend_entry.replace(/^\/+/, '') || 'logo.gif';
     const domainsToConfigure = domains.filter(domain => !Object.prototype.hasOwnProperty.call(original, domain) || original[domain] !== entry);
     for (const domain of domainsToConfigure) await api('/api/domains', { method: 'POST', body: JSON.stringify({ domain, frontend_entry: entry, project_id: Number(form.elements.project_id.value) }) });
+    const domainsToDelete = Object.keys(original).filter(domain => !domains.includes(domain));
+    for (const domain of domainsToDelete) await api(`/api/domains/${encodeURIComponent(domain)}`, { method: 'DELETE' });
     $('#projectConfigDialog').close(); toast('前台配置已保存'); loadFrontend();
   } catch (error) { toast(error.message, true); }
 }
@@ -281,7 +283,20 @@ $('#projectList').addEventListener('click', async event => {
 });
 $('#addConfigDomain').addEventListener('click', () => { const form = $('#projectConfigForm'); const domains = form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean); const current = JSON.parse(form.dataset.pendingDomains || '[]'); form.dataset.pendingDomains = JSON.stringify([...new Set([...current, ...domains])]); form.elements.domains.value = JSON.parse(form.dataset.pendingDomains).join('\n'); renderConfigDomains(form); });
 $('#projectConfigForm').elements?.frontend_entry?.addEventListener('input', () => renderConfigDomains($('#projectConfigForm')));
-$('.config-domain-list').addEventListener('click', event => { const button = event.target.closest('button[data-domain]'); if (!button) return; const form = $('#projectConfigForm'); const domains = JSON.parse(form.dataset.pendingDomains || '[]').filter(domain => domain !== button.dataset.domain); form.dataset.pendingDomains = JSON.stringify(domains); form.elements.domains.value = domains.join('\n'); renderConfigDomains(form); });
+$('.config-domain-list').addEventListener('click', async event => {
+  const button = event.target.closest('button[data-domain]'); if (!button) return;
+  const form = $('#projectConfigForm'); const domain = button.dataset.domain; const original = JSON.parse(form.dataset.originalDomains || '{}'); const persisted = Object.prototype.hasOwnProperty.call(original, domain);
+  if (persisted) {
+    if (!confirm(`确定删除域名 ${domain} 吗？对应的服务器域名入口也会同步删除。`)) return;
+    button.disabled = true;
+    try {
+      await api(`/api/domains/${encodeURIComponent(domain)}`, { method: 'DELETE' });
+      state.domains = state.domains.filter(item => item.domain !== domain); delete original[domain]; form.dataset.originalDomains = JSON.stringify(original);
+    } catch (error) { button.disabled = false; return toast(error.message, true); }
+  }
+  const domains = JSON.parse(form.dataset.pendingDomains || '[]').filter(item => item !== domain); form.dataset.pendingDomains = JSON.stringify(domains); form.elements.domains.value = domains.join('\n'); renderConfigDomains(form);
+  if (persisted) { await loadFrontend(); toast(`域名 ${domain} 及服务器入口已删除`); }
+});
 $('#projectList').addEventListener('click', async event => {
   const button = event.target.closest('.copy-address'); if (!button) return;
   try { await navigator.clipboard.writeText(button.dataset.address); toast('地址已复制'); } catch (_) { toast('当前浏览器不允许复制地址', true); }

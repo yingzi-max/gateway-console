@@ -91,6 +91,32 @@ if [[ ! "$DOMAIN" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2
 fi
 
 case "$ACTION" in
+  remove)
+    AVAILABLE_FILE="$SITES_AVAILABLE/gateway-$DOMAIN.conf"
+    ENABLED_FILE="$SITES_ENABLED/gateway-$DOMAIN.conf"
+    BACKUP_FILE=""
+    ENABLED_TARGET=""
+    if [[ -f "$AVAILABLE_FILE" ]]; then
+      BACKUP_FILE="$(mktemp)"
+      cp -a "$AVAILABLE_FILE" "$BACKUP_FILE"
+    fi
+    if [[ -L "$ENABLED_FILE" ]]; then
+      ENABLED_TARGET="$(readlink "$ENABLED_FILE")"
+    fi
+    rm -f "$ENABLED_FILE" "$AVAILABLE_FILE"
+    if ! validate_web_server; then
+      if [[ -n "$BACKUP_FILE" ]]; then
+        install -o root -g root -m 0644 "$BACKUP_FILE" "$AVAILABLE_FILE"
+      fi
+      if [[ -n "$ENABLED_TARGET" ]]; then
+        ln -sfn "$ENABLED_TARGET" "$ENABLED_FILE"
+      fi
+      [[ -z "$BACKUP_FILE" ]] || rm -f "$BACKUP_FILE"
+      echo "nginx rejected removal of the domain configuration" >&2
+      exit 1
+    fi
+    [[ -z "$BACKUP_FILE" ]] || rm -f "$BACKUP_FILE"
+    ;;
   configure)
     if [[ ! "$PORT" =~ ^[1-9][0-9]{1,4}$ ]] || (( PORT < 10 || PORT > 65535 )); then
       echo "invalid port" >&2
@@ -185,7 +211,7 @@ case "$ACTION" in
     install_site_config "$TEMP_FILE" defer
     ;;
   *)
-    echo "usage: $0 {configure|configure-static|certificate} domain [port-or-root] [entry]" >&2
+    echo "usage: $0 {remove|configure|configure-static|certificate} domain [port-or-root] [entry]" >&2
     exit 2
     ;;
 esac

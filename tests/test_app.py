@@ -87,6 +87,14 @@ class AppTest(unittest.TestCase):
         self.assertEqual(updated_domain["id"], domain["id"])
         self.assertEqual(app.STORE.domains()[0]["frontend_entry"], "images/logo.gif")
 
+        status, deleted_domain = self.request("/api/domains/site.example.com", "DELETE")
+        self.assertEqual(status, 200)
+        self.assertTrue(deleted_domain["ok"])
+        self.assertIsNone(app.STORE.domain("site.example.com"))
+        status, missing_domain = self.request("/api/domains/site.example.com", "DELETE")
+        self.assertEqual(status, 404)
+        self.assertIn("已经删除", missing_domain["error"])
+
         status, saved = self.request("/api/settings", "POST", {
             "country_blacklist": "US, GB", "block_android": True,
         })
@@ -287,6 +295,19 @@ class AppTest(unittest.TestCase):
             self.assertEqual(schedule_reload.call_count, 4)
             self.assertEqual(schedule_reload.call_args.args[1], ("helper-two.example.com", "logo.gif"))
 
+            status, deleted = self.request("/api/domains/helper-two.example.com", "DELETE")
+            self.assertEqual(status, 200)
+            self.assertTrue(deleted["nginx_removed"])
+            self.assertIsNone(app.STORE.domain("helper-two.example.com"))
+            self.assertEqual(run.call_args.args[0], [
+                "/usr/bin/sudo", "-n", "/usr/local/sbin/gateway-domain-helper",
+                "remove", "helper-two.example.com",
+            ])
+            self.assertEqual(schedule_reload.call_count, 5)
+            self.assertEqual(schedule_reload.call_args.args[0], [
+                "/usr/bin/sudo", "-n", "/usr/local/sbin/gateway-domain-helper", "reload",
+            ])
+
         status, invalid = self.request("/api/domains", "POST", {
             "domain": "badpath.example.com",
             "project_id": project_id,
@@ -307,6 +328,15 @@ class AppTest(unittest.TestCase):
         self.assertEqual(status, 502)
         self.assertIn("failed-helper.example.com", error["error"])
         self.assertIsNone(app.STORE.domain("failed-helper.example.com"))
+
+        app.STORE.add_domain("failed-delete.example.com", 80, project_id, "logo.gif")
+        with mock.patch.dict(os.environ, {
+            "GATEWAY_DOMAIN_HELPER": "/usr/local/sbin/gateway-domain-helper",
+        }, clear=False), mock.patch("app.subprocess.run", side_effect=failed):
+            status, error = self.request("/api/domains/failed-delete.example.com", "DELETE")
+        self.assertEqual(status, 502)
+        self.assertIn("failed-delete.example.com", error["error"])
+        self.assertIsNotNone(app.STORE.domain("failed-delete.example.com"))
 
     def test_guard_device_switches_and_missing_registry_key(self):
         app.STORE.save_settings({
@@ -615,6 +645,9 @@ class AppTest(unittest.TestCase):
         self.assertIn("redirect-batch-toolbar", styles)
         self.assertIn("originalDomains", script)
         self.assertIn("domainsToConfigure", script)
+        self.assertIn("domainsToDelete", script)
+        self.assertIn("/api/domains/${encodeURIComponent(domain)}", script)
+        self.assertIn("对应的服务器域名入口也会同步删除", script)
         self.assertIn("pending = domains.filter", script)
         self.assertIn("保存链接并下一步", script)
         self.assertIn("跳转链接已保存", script)
@@ -634,6 +667,8 @@ class AppTest(unittest.TestCase):
         service = (app.ROOT / "ops" / "gateway-console.service").read_text(encoding="utf-8")
         self.assertIn("nginx -t || return 1", helper)
         self.assertIn("install_site_config", helper)
+        self.assertIn('rm -f "$ENABLED_FILE" "$AVAILABLE_FILE"', helper)
+        self.assertIn("nginx rejected removal of the domain configuration", helper)
         self.assertIn('install_site_config "$TEMP_FILE" defer', helper)
         self.assertIn('ACTION" == "reload', helper)
         self.assertIn('"--resolve", f"{domain}:443:127.0.0.1"', application)

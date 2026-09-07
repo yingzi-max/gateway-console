@@ -346,6 +346,11 @@ class Store:
             db.execute("UPDATE domains SET project_id=?,upstream_port=?,frontend_entry=? WHERE domain=?", (project_id, port, frontend_entry, domain.lower()))
             return row["id"]
 
+    def delete_domain(self, domain: str):
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM domains WHERE domain=?", (domain.lower(),))
+            return cursor.rowcount > 0
+
     def set_certificate(self, domain: str, status: str):
         with self.connect() as db:
             db.execute("UPDATE domains SET certificate_status=? WHERE domain=?", (status, domain))
@@ -645,6 +650,9 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if not self.require_auth():
             return
+        match = re.fullmatch(r"/api/domains/([^/]+)", parsed.path)
+        if match:
+            return self.delete_domain(unquote(match.group(1)))
         match = re.fullmatch(r"/api/projects/(\d+)", parsed.path)
         if match:
             if not STORE.delete_project(int(match.group(1))):
@@ -911,6 +919,30 @@ class Handler(BaseHTTPRequestHandler):
         if domain_id is None:
             return self.json(409, {"error": "domain already belongs to another project"})
         self.json(201, {"ok": True, "id": domain_id, "nginx_configured": configured, "hosting_mode": "static" if static_mode else "proxy"})
+        if configured:
+            schedule_web_server_reload(self.helper_command(helper, "reload"))
+
+    def delete_domain(self, domain: str):
+        domain = str(domain or "").lower().strip().rstrip(".")
+        if not DOMAIN_RE.match(domain):
+            return self.json(400, {"error": "请输入有效的完整域名"})
+        if not STORE.domain(domain):
+            return self.json(404, {"error": "域名不存在或已经删除"})
+        helper = os.environ.get("GATEWAY_DOMAIN_HELPER", "")
+        configured = False
+        if helper:
+            try:
+                subprocess.run(
+                    self.helper_command(helper, "remove", domain),
+                    check=True, timeout=30, capture_output=True, text=True,
+                )
+                configured = True
+            except (OSError, subprocess.SubprocessError) as exc:
+                detail = getattr(exc, "stderr", "") or str(exc)
+                return self.json(502, {"error": f"域名 {domain} 删除失败：{detail.strip()}"})
+        if not STORE.delete_domain(domain):
+            return self.json(404, {"error": "域名不存在或已经删除"})
+        self.json(200, {"ok": True, "domain": domain, "nginx_removed": configured})
         if configured:
             schedule_web_server_reload(self.helper_command(helper, "reload"))
 
