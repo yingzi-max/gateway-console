@@ -427,6 +427,55 @@ class AppTest(unittest.TestCase):
         app.RELOAD_TIMER = None
         app.RELOAD_VERIFICATIONS.clear()
 
+    def test_nested_frontend_entry_loads_root_assets(self):
+        public_root = Path(self.temp.name) / "nested-entry-project"
+        nested_entry = public_root / "instances" / "user" / "login"
+        nested_entry.parent.mkdir(parents=True)
+        nested_entry.write_bytes((app.SOURCE_DIR / "landing-page" / "index.html").read_bytes())
+        (public_root / "css").mkdir()
+        (public_root / "css" / "style.css").write_bytes(
+            (app.SOURCE_DIR / "landing-page" / "css" / "style.css").read_bytes()
+        )
+        (public_root / "images").mkdir()
+        (public_root / "images" / "d1.jpg").write_bytes(
+            (app.SOURCE_DIR / "landing-page" / "images" / "d1.jpg").read_bytes()
+        )
+        project_id = app.STORE.add_project("Nested entry", "nested-entry", str(public_root))
+        app.STORE.add_domain("nested.example.com", 80, project_id, "instances/user/login")
+        app.STORE.save_settings({
+            "block_desktop": False,
+            "block_ios": False,
+            "block_android": False,
+            "ipregistry_enabled": False,
+            "country_whitelist": "",
+            "country_blacklist": "",
+            "redirect_links": [],
+        })
+
+        visits_before, _ = app.STORE.events("nested.example.com", "visit", 1, 25)
+        entry_request = urllib.request.Request(
+            self.base + "/instances/user/login",
+            headers={"Host": "nested.example.com", "User-Agent": "Mozilla/5.0 Mobile"},
+        )
+        with self.opener.open(entry_request) as response:
+            html = response.read()
+            self.assertEqual(response.headers.get_content_type(), "text/html")
+        self.assertIn(b'href="/css/style.css"', html)
+        self.assertIn(b'src="/images/d1.jpg"', html)
+        visits_after_entry, _ = app.STORE.events("nested.example.com", "visit", 1, 25)
+        self.assertEqual(visits_after_entry, visits_before + 1)
+
+        for path, content_type in (("/css/style.css", "text/css"), ("/images/d1.jpg", "image/jpeg")):
+            asset_request = urllib.request.Request(
+                self.base + path,
+                headers={"Host": "nested.example.com", "User-Agent": "Mozilla/5.0 Mobile"},
+            )
+            with self.opener.open(asset_request) as response:
+                self.assertEqual(response.headers.get_content_type(), content_type)
+                self.assertTrue(response.read())
+        visits_after_assets, _ = app.STORE.events("nested.example.com", "visit", 1, 25)
+        self.assertEqual(visits_after_assets, visits_before + 1)
+
     def test_deferred_reload_runs_https_verification(self):
         class FakeTimer:
             def __init__(self, delay, callback):
@@ -683,8 +732,9 @@ class AppTest(unittest.TestCase):
         parser = AssetParser()
         parser.feed(source)
         self.assertGreaterEqual(len(parser.assets), 18)
-        for relative in parser.assets:
-            self.assertTrue((root / relative).is_file(), relative)
+        for public_path in parser.assets:
+            self.assertTrue(public_path.startswith("/"), public_path)
+            self.assertTrue((root / public_path.lstrip("/")).is_file(), public_path)
 
         installer = (app.ROOT / "install.sh").read_text(encoding="utf-8")
         self.assertIn('cp -a "$SOURCE_DIR/sources/landing-page/."', installer)
