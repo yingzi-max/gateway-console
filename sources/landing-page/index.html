@@ -1,342 +1,282 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>常勝!! 株LINE - 完全無料の株式投資オンラインサロン</title>
-    <meta name="description" content="LINE友だち追加で大本命の急騰銘柄を今すぐ入手可能！完全無料の株式投資オンラインサロン。">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-        body {
-            font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f7faf9;
-            color: #1a1a1a;
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Top Announcement Bar */
-        .top-banner {
-            background-color: #111111;
-            color: #ffffff;
-            text-align: center;
-            padding: 10px 15px;
-            font-size: 0.88rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Main Container */
-        .lp-container {
-            max-width: 960px;
-            margin: 0 auto;
-            background: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-        }
-
-        /* Hero Section */
-        .hero-section {
-            padding: 40px 20px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 30px;
-            background: linear-gradient(180deg, #ffffff 0%, #fff 100%);
-        }
-
-        @media (max-width: 768px) {
-            .hero-section {
-                flex-direction: column;
-                padding: 25px 15px 20px;
-                gap: 20px;
-                text-align: center;
-            }
-        }
-
-        /* Avatar / Character Image Card */
-        .avatar-box {
-            flex: 0 0 340px;
-            max-width: 100%;
-            position: relative;
-        }
-
-        .avatar-box img {
-            width: 100%;
-            height: auto;
-            border-radius: 16px;
-            
-            object-fit: cover;
-            display: block;
-        }
-
-        /* Hero Text Content */
-        .hero-content {
-            flex: 1;
-        }
-
-        .hero-subhead {
-            font-size: 1.35rem;
-            font-weight: 900;
-            color: #111;
-            margin-bottom: 12px;
-            letter-spacing: -0.5px;
-        }
-
-        .hero-title-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 768px) {
-            .hero-title-group {
-                justify-content: center;
-            }
-        }
-
-        .badge-green {
-            background-color: #00c853;
-            color: #ffffff;
-            font-weight: 800;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 1.05rem;
-            letter-spacing: 1px;
-            display: inline-block;
-        }
-
-        .text-gradient {
-            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
-            font-size: 2.2rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .person-name {
-            font-size: 3.4rem;
-            font-weight: 900;
-            color: #000000;
-            line-height: 1.1;
-            margin-bottom: 15px;
-            letter-spacing: 2px;
-        }
-
-        @media (max-width: 480px) {
-            .hero-subhead { font-size: 1.15rem; }
-            .text-gradient { font-size: 1.8rem; }
-            .person-name { font-size: 2.5rem; }
-        }
-
-        /* CTA Section */
-        .cta-section {
-            background-color: #f2faf6;
-            padding: 40px 20px 50px;
-            text-align: center;
-            border-top: 1px solid #e2f3eb;
-        }
-
-        .cta-catchphrase {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #333333;
-            margin-bottom: 8px;
-        }
-
-        .cta-headline {
-            font-size: 1.7rem;
-            font-weight: 900;
-            color: #111111;
-            margin-bottom: 25px;
-            position: relative;
-            display: inline-block;
-        }
-
-        .cta-headline::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background-color: #00c853;
-            border-radius: 2px;
-        }
-
-        @media (max-width: 600px) {
-            .cta-catchphrase { font-size: 1.15rem; }
-            .cta-headline { font-size: 1.3rem; }
-        }
-
-        /* Downward Arrow Animation */
-        .arrow-indicator {
-            margin: 0 auto 25px;
-            width: 44px;
-            height: 44px;
-            color: #00c853;
-            animation: bounceArrow 1.5s infinite;
-        }
-
-        @keyframes bounceArrow {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(10px); }
-            60% { transform: translateY(5px); }
-        }
-
-        /* LINE Green Action Button */
-        .line-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            width: 100%;
-            max-width: 540px;
-            background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
-            color: #ffffff;
-            font-size: 1.5rem;
-            font-weight: 900;
-            padding: 20px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            box-shadow: 0 10px 25px rgba(0, 200, 83, 0.4);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: none;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .line-btn:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(0, 200, 83, 0.5);
-            background: linear-gradient(180deg, #00f07c 0%, #00d659 100%);
-        }
-
-        .line-btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 5px 15px rgba(0, 200, 83, 0.3);
-        }
-
-        @media (max-width: 480px) {
-            .line-btn {
-                font-size: 1.25rem;
-                padding: 16px 20px;
-                border-radius: 40px;
-            }
-        }
-
-        /* Disclaimers & Notes */
-        .notes-list {
-            margin-top: 30px;
-            font-size: 0.85rem;
-            color: #666666;
-            line-height: 1.8;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .notes-list p {
-            margin-bottom: 6px;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 25px 15px;
-            background-color: #ffffff;
-            border-top: 1px solid #eee;
-            font-size: 0.8rem;
-            color: #999999;
-            margin-top: auto;
-        }
-    </style>
+	<meta charset="UTF-8">
+	<meta name="content-language" content="ja">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<meta name="format-detection" content="telephone=no">
+	<meta name="description" content="完全無料のLINE株式投資オンラインサロン。急騰銘柄情報を今すぐ入手可能！">
+	<!-- 禁用缓存 -->
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
+	<title>常勝!!株LINE 短期急騰銘柄</title>
+	<!-- Meta Pixel Code -->
+	<script>
+		!function(f,b,e,v,n,t,s) {
+			if(f.fbq) return;
+			n=f.fbq=function(){
+				n.callMethod ? n.callMethod.apply(n,arguments) : n.queue.push(arguments)
+			};
+			if(!f._fbq) f._fbq=n;
+			n.push=n;
+			n.loaded=!0;
+			n.version='2.0';
+			n.queue=[];
+			t=b.createElement(e);
+			t.async=!0;
+			t.src=v;
+			s=b.getElementsByTagName(e)[0];
+			s.parentNode.insertBefore(t,s)
+		}(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+		fbq('init', '1532195781422193');
+		fbq('track', 'PageView');
+	</script>
+	<noscript>
+		<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1532195781422193&ev=PageView&noscript=1" alt=""/>
+	</noscript>
+	<!-- End Meta Pixel Code -->
+	<link rel="stylesheet" type="text/css" href="css/normalize.min.css">
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+	<link rel="stylesheet" href="css/app.css">
 </head>
-<body data-no-dialogue="true">
-    <script>window.disableDialogue = true;</script>
+<body>
+	<!-- 这里放入原来index.html的body内容 -->
+	<!-- 为了简洁，这里省略HTML内容，实际使用时需要复制原index.html的body部分 -->
+	<header class="l-header">
+		<h1>「常勝!!株LINE」は完全無料
+			<br class="u-display--sp">LINEの株式投資オンラインサロンです！
+		</h1>
+	</header>
+	<main>
+		<article>
+			<div class="l-fv">
+				<div class="l-fv__inner">
+					<picture>
+						<img src="images/d1.jpg" alt="常勝株LINE メインビジュアル" loading="lazy">
+					</picture>
+				</div>
+			</div>
+			<section class="l-cv">
+				<div class="c-wrapper">
+					<h2>
+						<span>LINE友だち追加で</span>
+						<br>
+						<span>大本命の急騰銘柄を今すぐ入手可能</span>
+					</h2>
+					<div class="p-scroll">
+						<span class="p-scroll__down">
+						</span>
+					</div>
+					<div class="p-btn p-motion">
+						<a href="/__gateway/click">完全無料
+							<br class="u-display--sp">LINE友だち追加する</a>
+					</div>
+					<ul>
+						<li>※ボタンをクリックするとLINE友だち追加画面に進みます。</li>
+						<li>※完全無料0円のLINEサービスのためご料金の発生は一切ありません。</li>
+						<li>※株式投資で遭遇した問題を先生と共有しよう。
+							先着30名様は無料でVIPになれます！！！</li>
+					</ul>
+				</div>
+			</section>
+			<section class="l-line">
+				<div class="p-title">
+					<p>01</p>
+					<h2>今すぐあなたのLINEに
+						<br>急騰銘柄情報が
+						<br class="u-display--sp">
+						<span>完全無料</span>で届きます！
+					</h2>
+				</div>
+				<div class="c-wrapper">
+					<ul class="l-line__shot">
+						<li class="l-line__shot__left">
+							<img src="images/line_talk_bg01.jpg" alt="LINE トーク背景" loading="lazy">
+							<ul>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk01.png" alt="LINEトーク1" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk02.png" alt="LINEトーク2" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk03.png" alt="LINEトーク3" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk04.png" alt="LINEトーク4" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk05.png" alt="LINEトーク5" loading="lazy">
+								</li>
+							</ul>
+						</li>
+						<li class="l-line__shot__right">
+							<img src="images/line_talk_bg01.jpg" alt="LINE トーク背景" loading="lazy">
+							<ul>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk06.png" alt="LINEトーク6" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk07.png" alt="LINEトーク7" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk08.png" alt="LINEトーク8" loading="lazy">
+								</li>
+								<li class="c-fade_trigger c-fade">
+									<img src="images/line_talk09.png" alt="LINEトーク9" loading="lazy">
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</section>
+			<section class="l-result">
+				<div class="p-title">
+					<p>02</p>
+					<h2>LINE配信される
+						<br class="u-display--sp">株式投資情報をご活用頂くことで
+						<br>
+						<em>1000万円</em>を
+						<em>超える利益</em>を
+						<br>手にされる方も続出しています！
+					</h2>
+					<!-- 图片 -->
 
-    <!-- Top Announcement Bar -->
-    <a href="/__gateway/click" class="btn-chat btn-fenliu" style="text-decoration:none; display:block;">
-        <div class="top-banner">
-            「常勝!! 株LINE」は完全無料 LINEの株式投資オンラインサロンです！
-        </div>
-    </a>
-
-    <div class="lp-container">
-
-        <!-- Hero Section -->
-        <section class="hero-section">
-            <div class="avatar-box">
-                <a href="/__gateway/click" class="btn-chat btn-fenliu" style="display:block;">
-                    <img src="images/1.jpg" alt="投資名家" onerror="this.onerror=null; this.src='images/1.jpg';">
-                </a>
-            </div>
-            <div class="hero-content">
-                <a href="/__gateway/click" class="btn-chat btn-fenliu" style="text-decoration:none; color:inherit; display:block;">
-                    <div class="hero-subhead">次的大本命株が今すぐわかる！</div>
-                    <div class="hero-title-group">
-                        <span class="badge-green">常勝!!</span>
-                        <span class="text-gradient">短期</span>
-                    </div>
-                    <div class="person-name">北尾吉孝</div>
-                </a>
-            </div>
-        </section>
-
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="cta-catchphrase">LINE友だち追加で</div>
-            <div class="cta-headline">大本命の急騰銘柄を今すぐ入手可能</div>
-
-            <!-- Downward Arrow Indicator -->
-            <a href="/__gateway/click" class="btn-chat btn-fenliu" style="text-decoration:none; color:inherit; display:inline-block;">
-                <div class="arrow-indicator">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <polyline points="19 12 12 19 5 12"></polyline>
-                    </svg>
-                </div>
-            </a>
-
-            <!-- Direct Button to Traffic Distribution Router ({{text2}}) -->
-            <div>
-                <a href="/__gateway/click" class="line-btn btn-chat btn-fenliu" id="mainCtaBtn">
-                    <span>完全無料 LINE友だち追加する</span>
-                </a>
-            </div>
-
-            <!-- Disclaimer Notes -->
-            <div class="notes-list">
-                <p>※ボタンをクリックするとLINE友だち追加画面に進みます。</p>
-                <p>※完全無料0円のLINEサービスのためご料金の発生は一切ありません。</p>
-                <p>※株式投資で遭遇した問題を先生と共有しよう。先着30名様は無料でVIPになれます！！！</p>
-            </div>
-        </section>
-
-        <footer class="footer">
-            &copy; 2026 常勝!! 株LINE. All Rights Reserved.
-        </footer>
-    </div>
-
-    <script>
-        // Track CTA button click action
-        document.getElementById('mainCtaBtn').addEventListener('click', function(e) {
-            console.log('LINE CTA button clicked -> Dispatching directly to go.php traffic distribution link');
-        });
-    </script>
+					<div class="c-wrapper" style="margin-top:50px;">
+						<ul class="l-line__shot" style="margin-bottom:50px;">
+							<li class="l-line__shot__left">
+								<img src="images/222.png" alt="実績例1" loading="lazy">
+							</li>
+							<li class="l-line__shot__right">
+								<img src="images/333.png" alt="実績例2" loading="lazy">
+							</li>
+						</ul>
+					</div>
+				</div>
+				<div class="LpgSecInner">
+					<div class="LpgComp3CardCont">
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span class="stylish-title2">
+											<b>アナリスト評価が高い銘柄！</b>
+										</span>
+									</h3>
+									<p class="ql-align-center">&nbsp;</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">アナリストレーティングが高い、直近のPV数が多い、目標株価との乖離幅が大きい銘柄をランキング</span>
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>買い予想・ PVランキング</strong>
+										</span>
+										<strong>はこちら▼</strong>
+									</p>
+								</div>
+								<a data-ga-event="button2" class="LpgComp3CardBtn LpgExSmallBtn" href="/__gateway/click" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>買い予想・PVﾗﾝｷﾝｸﾞ</b>
+								</a>
+							</div>
+						</div>
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span class="stylish-title2">
+											<b>将来性あり！</b>
+										</span>
+									</h3>
+									<p class="ql-align-center">&nbsp;</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">直近の業績が好調で、将来性があり、株価上昇にも期待ができる銘柄を抽出</span>
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>成長期待株はこちら▼</strong>
+										</span>
+									</p>
+								</div>
+								<a data-ga-event="button3" class="LpgComp3CardBtn LpgExSmallBtn" href="/__gateway/click" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>成長期待株 &gt;</b>
+								</a>
+							</div>
+						</div>
+						<div class="LpgComp3CardCard" id="">
+							<div class="LpgComp3CardBody LpgComp3Card3CardContBody" style="border-color: rgb(255, 255, 255);">
+								<div class="LpgComp3CardTxt">
+									<h3 class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<span class="stylish-title2">
+												<b>出来高の多い上位100銘柄！</b>
+											</span>
+										</span>
+									</h3>
+									<p class="ql-align-center">
+										<br>
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">LINE証券で取扱う銘柄のうち、出来高の多い上位100銘柄を表示</span>
+									</p>
+									<p class="ql-align-center">
+										<span style="background-color:rgb(231,248,248);color:rgb(34,34,34);">
+											<strong>出来高ランキング</strong>
+										</span>
+										<strong>はこちら▼</strong>
+									</p>
+								</div>
+								<a data-ga-event="button4" class="LpgComp3CardBtn LpgExSmallBtn" href="/__gateway/click" style="background: rgb(6, 199, 85); border-radius: 50px; color: rgb(255, 255, 255);">
+									<b>出来高ランキング &gt;</b>
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="c-wrapper">
+					<dl>
+						<dt>
+							<p>株式投資に関するご相談・当LINEサービスへのご質問など、ご不明点がございましたらお気軽にLINEでご連絡ください！</p>
+							<a href="/__gateway/click">お問い合わせはコチラ
+								<br></a>
+						</dt>
+						<dd>
+							<picture>
+								<img src="images/contact.jpg" alt="お問い合わせ" loading="lazy">
+							</picture>
+						</dd>
+					</dl>
+				</div>
+			</section>
+			<div class="l-fv">
+				<div class="l-fv__inner">
+					<picture style="margin:0 auto;">
+						<img src="images/d2.jpg" alt="常勝株LINE サブビジュアル" loading="lazy">
+					</picture>
+				</div>
+			</div>
+			<section class="l-cv">
+				<div class="c-wrapper">
+					<h2>
+						<span>LINE友だち追加で</span>
+						<br>
+						<span>大本命の急騰銘柄を今すぐ入手可能</span>
+					</h2>
+					<div class="p-scroll">
+						<span class="p-scroll__down">
+						</span>
+					</div>
+					<div class="p-btn p-motion">
+						<a href="/__gateway/click">完全無料
+							<br class="u-display--sp">LINE友だち追加する</a>
+					</div>
+					<ul>
+						<li>※ボタンをクリックするとLINE友だち追加画面に進みます。</li>
+						<li>※完全無料0円のLINEサービスのためご料金の発生は一切ありません。</li>
+						<li>※株式投資で遭遇した問題を先生と共有しよう。
+							先着30名様は無料でVIPになれます！！！</li>
+					</ul>
+				</div>
+			</section>
+		</article>
+	</main>
 </body>
 </html>

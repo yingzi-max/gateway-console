@@ -9,6 +9,7 @@ import unittest
 import urllib.error
 import urllib.request
 from datetime import datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest import mock
 
@@ -107,6 +108,8 @@ class AppTest(unittest.TestCase):
         status, downloaded = self.request("/api/catalog/download", "POST", {"source_id": "landing-page"})
         self.assertEqual(status, 201)
         self.assertTrue(Path(downloaded["local_path"], "index.html").is_file())
+        self.assertTrue(Path(downloaded["local_path"], "css", "style.css").is_file())
+        self.assertTrue(Path(downloaded["local_path"], "images", "d1.jpg").is_file())
         _, projects = self.request("/api/projects")
         self.assertEqual(len(projects["items"]), 1)
         self.assertTrue(projects["catalog"][0]["downloaded"])
@@ -654,11 +657,37 @@ class AppTest(unittest.TestCase):
         self.assertIn("redirect_links: readRedirectLinks(form)", script)
 
     def test_bundled_landing_page_has_no_external_redirector(self):
-        source = (app.SOURCE_DIR / "landing-page" / "index.html").read_text(encoding="utf-8")
+        root = app.SOURCE_DIR / "landing-page"
+        source = (root / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("link.ccsyshub.com/api/sdk.js", source)
         self.assertNotIn("api.whatsapp.com", source)
         self.assertNotIn("123456789", source)
-        self.assertEqual(source.count('href="/__gateway/click"'), 5)
+        self.assertNotIn("api.php", source)
+        self.assertNotIn("javascript:showline", source)
+        self.assertNotIn("](https://", source)
+        self.assertEqual(source.count('href="/__gateway/click"'), 6)
+        self.assertIn("常勝!!株LINE", source)
+
+        class AssetParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.assets = []
+
+            def handle_starttag(self, tag, attrs):
+                values = dict(attrs)
+                if tag == "link" and values.get("href"):
+                    self.assets.append(values["href"])
+                if tag == "img" and values.get("src") and not values["src"].startswith("http"):
+                    self.assets.append(values["src"])
+
+        parser = AssetParser()
+        parser.feed(source)
+        self.assertGreaterEqual(len(parser.assets), 18)
+        for relative in parser.assets:
+            self.assertTrue((root / relative).is_file(), relative)
+
+        installer = (app.ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('cp -a "$SOURCE_DIR/sources/landing-page/."', installer)
 
     def test_certificate_helper_verifies_nginx_and_local_tls(self):
         helper = (app.ROOT / "ops" / "gateway-domain-helper").read_text(encoding="utf-8")

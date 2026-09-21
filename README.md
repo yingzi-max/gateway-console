@@ -57,7 +57,7 @@ sudo GATEWAY_ADMIN_USER=admin GATEWAY_ADMIN_PASSWORD='StrongPassword2026!' bash 
 
 ## 前台采集与防护
 
-源码列表目前内置一份 `常胜株LINE 落地页` HTML。下载后会复制到数据目录的 `projects/landing-page/index.html` 并登记到“已下载”。该 HTML 还引用 `images/`、`css/` 和 `api.php`，这些配套资源和接口需要后续一起补充。
+源码列表内置完整的 `常胜株LINE 落地页`，下载后会把 HTML、CSS 和图片复制到数据目录的 `projects/landing-page/` 并登记到“已下载”。页面按钮统一通过 `/__gateway/click` 使用后台配置的轮换链接。
 
 访问和点击可以使用 GET，也可以用 JSON POST：
 

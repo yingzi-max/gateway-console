@@ -58,9 +58,11 @@ install -o root -g root -m 0644 "$SOURCE_DIR/static/app.js" "$APP_DIR/static/app
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-site.conf" "$APP_DIR/ops/nginx-site.conf"
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-static-site.conf" "$APP_DIR/ops/nginx-static-site.conf"
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/nginx-static-site-ssl.conf" "$APP_DIR/ops/nginx-static-site-ssl.conf"
-install -d -o root -g root -m 0755 "$APP_DIR/sources/landing-page" "$APP_DIR/sources/landing-page/images"
-install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/index.html" "$APP_DIR/sources/landing-page/index.html"
-install -o root -g root -m 0644 "$SOURCE_DIR/sources/landing-page/images/1.jpg" "$APP_DIR/sources/landing-page/images/1.jpg"
+install -d -o root -g root -m 0755 "$APP_DIR/sources/landing-page"
+cp -a "$SOURCE_DIR/sources/landing-page/." "$APP_DIR/sources/landing-page/"
+chown -R root:root "$APP_DIR/sources/landing-page"
+find "$APP_DIR/sources/landing-page" -type d -exec chmod 0755 {} +
+find "$APP_DIR/sources/landing-page" -type f -exec chmod 0644 {} +
 install -o root -g root -m 0755 "$SOURCE_DIR/ops/gateway-domain-helper" /usr/local/sbin/gateway-domain-helper
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-console.service" /etc/systemd/system/gateway-console.service
 install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-certbot-renew.service" /etc/systemd/system/gateway-certbot-renew.service
