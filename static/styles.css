@@ -29,3 +29,41 @@ dialog form{max-height:90vh;overflow:auto}
 @media(max-width:760px){.country-menu{position:fixed;left:16px;right:16px;top:18%;max-height:64vh}.country-options{max-height:48vh}}
 @media(max-width:600px){.redirect-batch-toolbar{align-items:stretch;flex-wrap:wrap}.redirect-batch-toolbar>label{order:3;width:100%;margin-left:0;justify-content:space-between}.redirect-batch-limit{flex:1}.redirect-link-row{grid-template-columns:minmax(0,1fr) 72px 34px}}
 .metric-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.metric{min-width:0}.weekly-statistics{margin-top:22px}.weekly-statistics .block-heading{align-items:center}.chart-legend{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px}.chart-legend span{display:flex;align-items:center;gap:7px}.chart-legend i{width:9px;height:9px;border-radius:50%;background:var(--accent)}.chart-legend i.click{background:#f39a46}.weekly-chart-scroll{overflow-x:auto}.weekly-chart{position:relative;min-width:680px;height:330px;padding:10px 16px 0 54px;background:#fafafb}.chart-y-axis{position:absolute;left:0;top:8px;bottom:43px;width:42px;display:flex;flex-direction:column;justify-content:space-between;text-align:right;color:#91959e;font-size:10px}.chart-grid-lines{position:absolute;left:54px;right:16px;top:12px;bottom:47px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}.chart-grid-lines i{display:block;border-top:1px dashed #dfe1e6}.chart-columns{position:absolute;left:54px;right:16px;top:12px;bottom:0;display:grid;grid-template-columns:repeat(7,minmax(58px,1fr));gap:10px}.chart-day{min-width:0;display:grid;grid-template-rows:minmax(0,1fr) 42px}.chart-bar-area{min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:7px}.chart-bar{position:relative;width:min(26px,34%);min-height:0;border-radius:5px 5px 2px 2px;background:var(--accent);transition:filter .15s}.chart-bar.click{background:#f39a46}.chart-bar:hover{filter:brightness(.93)}.chart-bar span{position:absolute;left:50%;bottom:calc(100% + 7px);z-index:3;transform:translateX(-50%);width:max-content;max-width:130px;padding:6px 8px;border-radius:4px;background:#242733;color:#fff;font-size:10px;opacity:0;pointer-events:none}.chart-bar:hover span{opacity:1}.chart-day time{align-self:center;text-align:center;color:#777c86;font-size:11px}@media(max-width:1200px){.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.weekly-statistics .block-heading{align-items:flex-start;gap:12px}.chart-legend{flex:0 0 auto}}@media(max-width:430px){.metric-grid{grid-template-columns:1fr}}
+
+/* ===== 客户端分流跳转 / 爬虫防护 ===== */
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.dot-bot{background:#d6455d}.dot-ios{background:#6659e8}.dot-android{background:#1f9d73}.dot-desktop{background:#f39a46}.dot-unknown{background:#9aa0aa}
+.client-rule-editor{display:grid;gap:8px;margin-top:16px}
+.client-rule-row{display:grid;grid-template-columns:150px minmax(0,1fr) 92px auto;gap:10px;align-items:center}
+.client-rule-row input{height:38px;padding:8px 10px}
+.client-rule-name{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#4d515b}
+.client-rule-name small{display:block;font-size:10px;font-weight:400;color:#9aa0aa;text-transform:uppercase;letter-spacing:.4px}
+.client-rule-help{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+.client-test-box{margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:6px;background:#fafafb}
+.client-test-head h4{margin:0 0 6px;font-size:14px}
+.client-test-head p{margin:0 0 14px;color:var(--muted);font-size:12px}
+.client-test-presets{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 12px}
+.preset-chip{height:30px;padding:0 12px;border:1px solid var(--line);border-radius:15px;background:#fff;color:#555a64;font-size:12px}
+.preset-chip:hover{border-color:var(--accent);color:var(--accent)}
+.client-test-actions{display:flex;gap:9px}
+.client-test-result{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:grid;gap:8px}
+.client-result-row{display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px;align-items:baseline;font-size:12px}
+.client-result-row>span:first-child{color:var(--muted)}
+.client-result-row code{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#5b6070;overflow-wrap:anywhere}
+.client-result-row a{color:var(--accent);overflow-wrap:anywhere}
+.client-result-row em{color:var(--red);font-style:normal}
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700}
+.tag-bot{background:#ffeff1;color:#b32f45}.tag-ios{background:#eeeaff;color:#5145c9}.tag-android{background:#eaf7f2;color:#167a59}.tag-desktop{background:#fff2e4;color:#b96d17}.tag-unknown{background:#f1f2f4;color:#6a6f79}
+.client-tag{display:inline-flex;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.client-breakdown-block{margin-top:22px}
+.client-breakdown{display:grid;gap:10px}
+.client-bar-row{display:grid;grid-template-columns:140px minmax(0,1fr) 60px 78px;gap:12px;align-items:center;font-size:12px}
+.client-bar-name{display:flex;align-items:center;gap:8px;color:#4d515b;font-weight:600}
+.client-bar-track{height:10px;border-radius:5px;background:#f0f1f4;overflow:hidden}
+.client-bar-fill{height:100%;border-radius:5px}
+.fill-bot{background:#d6455d}.fill-ios{background:#6659e8}.fill-android{background:#1f9d73}.fill-desktop{background:#f39a46}.fill-unknown{background:#9aa0aa}
+.client-bar-row strong{text-align:right;font-size:13px}
+.client-bar-row small{color:var(--muted);text-align:right;font-size:11px}
+.source-preview img{border-radius:3px}
+@media(max-width:900px){.client-rule-row{grid-template-columns:1fr}.client-rule-name{justify-content:flex-start}.client-bar-row{grid-template-columns:110px minmax(0,1fr) 50px}.client-bar-row small{display:none}}
+@media(max-width:600px){.client-result-row{grid-template-columns:1fr}.client-test-actions{flex-direction:column}.filterbar{grid-template-columns:1fr}}

@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>e-Taxアプリ - Google Play</title>
+<meta name="description" content="国税電子申告・納税システムの e-Tax 公式アプリ。">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/app-icon.png">
+<style>
+/* ==========================================================================
+   版式基准来自「国_静态查看版 - 副本.html」静态模板
+   —— 配色 / 字号 / 圆角 / 间距 / 断点 均按模板 1:1 复刻
+   —— 顶部吸顶栏与底部页脚为本页补充（模板中不存在）
+   —— 图标改用内联 SVG：模板的 Material Symbols 字体为私有子集，
+      无连字表，直接引用会把 arrow_back 等名称当文字显示
+   ========================================================================== */
+:root{
+  --gp-green:#0F9D58;
+  --gp-green-dark:#0B8043;
+  --gp-text:#202124;
+  --gp-text-sec:#5f6368;
+  --gp-border:#dadce0;
+  --gp-bg:#ffffff;
+  --gp-bg-sec:#f8f9fa;
+  --gp-star:#fbbc04;
+
+  --pad:8px;
+  --font:'Roboto','Helvetica Neue','Hiragino Sans','Noto Sans JP',Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;color-scheme:light only}
+body{
+  font-family:var(--font);
+  background:var(--gp-bg);
+  color:var(--gp-text);
+  line-height:1.5;
+  overflow-wrap:break-word;word-break:break-word;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+:focus-visible{outline:2px solid var(--gp-green);outline-offset:2px;border-radius:4px}
+
+/* ---------- 图标（替代模板的 Material Symbols 字体） ---------- */
+.mi{
+  width:24px;height:24px;flex:none;display:inline-block;
+  vertical-align:middle;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+}
+.mi--fill{fill:currentColor;stroke:none}
+.mi--xs{width:18px;height:18px}
+.mi--sm{width:16px;height:16px}
+
+/* ================= 顶部吸顶栏（保留） ================= */
+.topbar{
+  position:sticky;top:0;z-index:60;height:56px;
+  display:flex;align-items:center;gap:8px;padding:0 8px;
+  background:var(--gp-bg);
+  border-bottom:1px solid var(--gp-border);
+}
+.topbar__btn{
+  width:40px;height:40px;border-radius:50%;
+  display:grid;place-items:center;color:var(--gp-text-sec);
+  transition:background-color .15s ease,color .15s ease;
+}
+.topbar__btn:hover{background:rgba(60,64,67,.08);color:var(--gp-text)}
+.topbar__brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.topbar__brand img{width:30px;height:30px;border-radius:7px;object-fit:contain}
+.topbar__name{
+  font-size:17px;font-weight:500;color:var(--gp-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ================= 页面容器（模板 .c92dffe19） ================= */
+.page{max-width:820px;margin:0 auto;padding:16px var(--pad);overflow-x:hidden}
+
+/* ================= 应用头部（模板 .cca496cdc） ================= */
+.apphead{display:flex;gap:16px;align-items:flex-start;margin-bottom:24px}
+.apphead__icon{
+  width:120px;height:120px;border-radius:28px;
+  object-fit:contain;flex-shrink:0;background:#fff;
+}
+.apphead__main{flex:1;min-width:0}
+.apphead__title{font-size:28px;font-weight:500;margin-bottom:4px}
+.apphead__badge{
+  display:inline-block;background:var(--gp-bg-sec);color:var(--gp-text-sec);
+  font-size:12px;padding:2px 8px;border-radius:4px;margin-bottom:12px;
+}
+.apphead__stats{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px}
+.stat{text-align:center}
+.stat__v{font-size:14px;font-weight:500;display:block;white-space:nowrap}
+.stat__star{color:var(--gp-star);font-size:13px;vertical-align:-1px}
+.stat__l{font-size:12px;color:var(--gp-text-sec);white-space:nowrap}
+
+/* 安装按钮（模板 .c734b1dca） */
+.btn-install{
+  display:inline-block;background:var(--gp-green);color:#fff;border:none;
+  padding:10px 32px;border-radius:24px;font-size:14px;font-weight:500;
+  cursor:pointer;text-align:center;transition:background .2s;width:100%;
+}
+.btn-install:hover{background:var(--gp-green-dark)}
+.btn-install.is-busy{background:#5f6368;pointer-events:none}
+.btn-install.is-done{background:#188038}
+.btn-install__spin{
+  display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:8px;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================= 截图轮播（模板 .cf5c66b4c） ================= */
+.shots{
+  display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:32px;
+  scrollbar-width:thin;
+}
+.shots::-webkit-scrollbar{height:4px}
+.shots::-webkit-scrollbar-thumb{background:var(--gp-border);border-radius:2px}
+.shot{
+  height:320px;width:auto;max-width:none;border-radius:8px;
+  flex-shrink:0;object-fit:cover;cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.shot:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+
+/* ================= 区块标题（模板 .c6d3be81f） ================= */
+.sec{margin-top:8px}
+.sec__title{
+  font-size:18px;font-weight:500;margin-bottom:16px;
+  display:flex;align-items:center;gap:4px;
+}
+.sec__title .mi{color:var(--gp-text-sec)}
+.sec__desc{font-size:14px;color:var(--gp-text-sec);margin-bottom:16px;line-height:1.6}
+
+/* ================= 数据安全卡片（模板 .c51222b4c / .c294b404e） ================= */
+.safety{border:1px solid var(--gp-border);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.safety__row{
+  display:flex;gap:16px;padding:16px;
+  border-bottom:1px solid var(--gp-border);align-items:flex-start;
+}
+.safety__row:last-child{border-bottom:none}
+.safety__ico{color:var(--gp-text-sec);margin-top:2px}
+.safety__body h4{font-size:14px;font-weight:500;margin-bottom:4px}
+.safety__body a{font-size:13px;color:var(--gp-green)}
+.link-more{
+  display:inline-block;color:var(--gp-green);font-size:14px;font-weight:500;
+  margin:8px 0 24px;
+}
+
+/* ================= 评价标签页 ================= */
+.tabs{display:flex;gap:16px;margin-bottom:24px}
+.tab{
+  display:flex;align-items:center;gap:8px;
+  font-size:14px;font-weight:500;padding:6px 16px;border-radius:16px;
+  color:var(--gp-text-sec);border:1px solid var(--gp-border);
+  transition:background-color .18s ease,color .18s ease,border-color .18s ease;
+}
+.tab[aria-selected="true"]{background:#e6f4ea;color:var(--gp-green);border-color:transparent}
+
+/* ================= 评分汇总（模板 .ce3e9b300） ================= */
+.rating{display:flex;gap:32px;margin-bottom:24px;align-items:center}
+.rating__left{text-align:center;min-width:100px}
+.rating__num{font-size:48px;font-weight:300;line-height:1}
+.rating__stars{font-size:16px;color:var(--gp-star);margin:4px 0;letter-spacing:1px}
+.rating__count{font-size:12px;color:var(--gp-text-sec)}
+.rating__bars{flex:1}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:2px;font-size:12px;color:var(--gp-text-sec)}
+.bar span{width:12px;text-align:right;flex:none}
+.bar__track{flex:1;height:8px;background:var(--gp-bg-sec);border-radius:4px;overflow:hidden}
+.bar__fill{
+  height:100%;background:var(--gp-green);border-radius:4px;min-width:3px;
+  transform-origin:left center;animation:grow .7s cubic-bezier(.22,.9,.28,1) both;
+}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ================= 评论（模板 .cce7c9d14） ================= */
+.review{padding:16px 0;border-bottom:1px solid var(--gp-border)}
+.review__top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.review__who{display:flex;align-items:center;gap:12px}
+.review__avatar{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:14px;font-weight:500;background:#ccc;flex:none;
+}
+.review__name{font-size:14px;font-weight:500}
+.review__more{color:var(--gp-text-sec);cursor:pointer;transition:color .15s ease}
+.review__more:hover{color:var(--gp-text)}
+.review__meta{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.review__stars{color:var(--gp-star);font-size:12px;letter-spacing:.5px}
+.review__date{font-size:12px;color:var(--gp-text-sec)}
+.review__text{font-size:14px;line-height:1.6;margin-bottom:8px}
+.review__foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--gp-text-sec)}
+.review__votes{display:flex;gap:16px}
+.vote{
+  color:var(--gp-text-sec);cursor:pointer;display:inline-flex;
+  transition:color .15s ease,transform .12s ease;
+}
+.vote:hover{color:var(--gp-text)}
+.vote:active{transform:scale(.9)}
+.vote.is-on{color:var(--gp-green)}
+.vote.is-on.is-down{color:#D93025}
+
+/* 评论菜单 */
+.menu{
+  position:absolute;z-index:80;min-width:190px;padding:6px 0;
+  background:#fff;border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.16),0 4px 16px rgba(0,0,0,.14);
+  opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity .15s ease,transform .15s ease,visibility .15s;
+}
+.menu.is-open{opacity:1;visibility:visible;transform:translateY(0)}
+.menu__i{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:9px 16px;font-size:14px;color:var(--gp-text);text-align:left;
+  transition:background-color .12s ease;
+}
+.menu__i:hover{background:var(--gp-bg-sec)}
+.menu__i .mi{color:var(--gp-text-sec)}
+
+/* ================= 新機能（模板 .cb196c595） ================= */
+.bullets li{font-size:14px;padding:4px 0;padding-left:16px;position:relative}
+.bullets li::before{content:'•';position:absolute;left:0;color:var(--gp-text-sec)}
+
+/* ================= 類似アプリ（模板 .c440ef8a0 / .c724be6ea） ================= */
+.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.app{
+  display:flex;gap:12px;align-items:center;cursor:pointer;min-width:0;
+  border-radius:8px;padding:4px;transition:background-color .15s ease;
+}
+.app:hover{background:var(--gp-bg-sec)}
+.app__ico{
+  width:48px;height:48px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+}
+.app__ico .mi{width:26px;height:26px;stroke-width:1.7}
+.app__body{min-width:0;flex:1}
+.app__body h4{
+  font-size:13px;font-weight:500;margin-bottom:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.app__body p{
+  font-size:11px;color:var(--gp-text-sec);margin-bottom:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.app__rate{font-size:11px;color:var(--gp-text-sec)}
+
+/* ================= 举报（模板 .ca6b36693） ================= */
+.report{
+  display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gp-text-sec);
+  padding:24px 0;cursor:pointer;
+}
+.report:hover{color:var(--gp-text)}
+
+/* ================= 页脚（保留） ================= */
+.footer{
+  margin-top:8px;padding:20px var(--pad) 32px;
+  background:var(--gp-bg-sec);border-top:1px solid var(--gp-border);
+}
+.footer__inner{max-width:820px;margin:0 auto}
+.footer__links{display:flex;flex-wrap:wrap;gap:8px 18px}
+.footer__links a{font-size:13px;color:var(--gp-text-sec)}
+.footer__links a:hover{text-decoration:underline}
+.footer__copy{margin-top:14px;font-size:12px;color:var(--gp-text-sec)}
+
+/* ================= 灯箱 ================= */
+.lightbox{
+  position:fixed;inset:0;z-index:100;display:grid;place-items:center;
+  background:rgba(0,0,0,.92);opacity:0;visibility:hidden;padding:16px;
+  transition:opacity .2s ease,visibility .2s;
+}
+.lightbox.is-open{opacity:1;visibility:visible}
+.lightbox__img{
+  max-width:min(92vw,420px);max-height:82vh;width:auto;border-radius:8px;
+  transform:scale(.94);transition:transform .22s cubic-bezier(.22,.9,.28,1);
+}
+.lightbox.is-open .lightbox__img{transform:scale(1)}
+.lightbox__btn{
+  position:absolute;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.14);
+  transition:background-color .15s ease,transform .12s ease;
+}
+.lightbox__btn:hover{background:rgba(255,255,255,.26)}
+.lightbox__btn:active{transform:scale(.92)}
+.lightbox__close{top:14px;right:14px}
+.lightbox__prev{left:12px;top:50%;margin-top:-22px}
+.lightbox__next{right:12px;top:50%;margin-top:-22px}
+.lightbox__count{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  color:rgba(255,255,255,.82);font-size:13px;
+}
+
+/* ================= 提示条 ================= */
+.snackbar{
+  position:fixed;left:50%;bottom:22px;z-index:90;
+  transform:translate(-50%,20px);display:flex;align-items:center;gap:10px;
+  max-width:calc(100vw - 32px);padding:13px 18px;border-radius:8px;
+  background:#323232;color:#fff;font-size:14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.24);
+  opacity:0;visibility:hidden;transition:opacity .2s,transform .2s,visibility .2s;
+}
+.snackbar.is-show{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.snackbar .mi{color:#81C995}
+
+/* ================= 响应式（对齐模板断点） ================= */
+@media (max-width:900px){
+  .page{padding:12px var(--pad)}
+  .apps{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:600px){
+  .apphead{gap:12px}
+  .apphead__icon{width:96px;height:96px;border-radius:22px}
+  .apphead__title{font-size:22px}
+  .apphead__stats{gap:16px}
+  .shot{height:240px}
+  .rating{flex-direction:column;gap:16px;align-items:flex-start}
+  .rating__bars{width:100%}
+  .apps{grid-template-columns:1fr}
+  .safety__row{padding:12px;gap:12px}
+  .sec__title{font-size:16px}
+}
+@media (max-width:380px){
+  .apphead__icon{width:80px;height:80px}
+  .apphead__title{font-size:20px}
+  .apphead__stats{gap:12px}
+  .stat__v{font-size:13px}
+  .shot{height:200px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;transition-duration:.001ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SVG 图标精灵（替代模板的私有图标字体） ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-arrow_back" viewBox="0 0 24 24"><path d="M20 12H5"/><path d="M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-arrow_forward" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.7"/><circle cx="6" cy="12" r="2.7"/><circle cx="18" cy="19" r="2.7"/><path d="M8.4 10.7 15.6 6.3M8.4 13.3l7.2 4.4"/></symbol>
+  <symbol id="i-cloud_upload" viewBox="0 0 24 24"><path d="M7 18.5h10.2a3.8 3.8 0 0 0 .3-7.6 5.6 5.6 0 0 0-10.7-1.3A4.3 4.3 0 0 0 7 18.5Z"/><path d="M12 21v-8.5M12 12.5 9.2 15.3M12 12.5l2.8 2.8"/></symbol>
+  <symbol id="i-no_encryption" viewBox="0 0 24 24"><path d="M7.6 10.4V7.9a4.4 4.4 0 0 1 8.5-1.6"/><rect x="4.9" y="10.4" width="14.2" height="9.6" rx="1.6"/><path d="M3.4 2.9 20.6 20.3"/></symbol>
+  <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4.5 6.6h15"/><path d="M9.4 6.6V4.9c0-.8.6-1.4 1.4-1.4h2.4c.8 0 1.4.6 1.4 1.4v1.7"/><path d="M6.4 6.6l.8 12.3c0 1 .8 1.8 1.8 1.8h6c1 0 1.8-.8 1.8-1.8l.8-12.3"/><path d="M10.3 10.4v6.4M13.7 10.4v6.4"/></symbol>
+  <symbol id="i-smartphone" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.5 18.6h3"/></symbol>
+  <symbol id="i-tablet" viewBox="0 0 24 24"><rect x="4.5" y="2.5" width="15" height="19" rx="2.4"/><path d="M10.5 18.6h3"/></symbol>
+  <symbol id="i-more_vert" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></symbol>
+  <symbol id="i-thumb_up" viewBox="0 0 24 24"><path d="M2.4 10.6h3.4v9.8H2.4z"/><path d="M7.4 20.4V10.6l4.1-4.3a1.7 1.7 0 0 1 2.7 2.1l-.7 2.2h3.9a2.2 2.2 0 0 1 2.2 2.2v4.2a3.4 3.4 0 0 1-3.4 3.4z"/></symbol>
+  <symbol id="i-thumb_down" viewBox="0 0 24 24"><path d="M2.4 13.4h3.4v-9.8H2.4z"/><path d="M7.4 3.6v9.8l4.1 4.3a1.7 1.7 0 0 0 2.7-2.1l-.7-2.2h3.9a2.2 2.2 0 0 0 2.2-2.2V6.9a3.4 3.4 0 0 0-3.4-3.4z"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4.2"/><path d="M5 5h13l-2.6 4.2L18 13.4H5z"/></symbol>
+  <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3.5 6.5h8.5M7.5 4.5v2c0 3.3-1.7 6.2-4.2 7.6"/><path d="M5 10.6c1.1 2.3 3 3.9 5.2 4.5"/><path d="M12.5 20.5l4-9 4 9M14.2 17.4h4.6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-chevron_left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chevron_right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-check_circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.6 2.6L16.2 9.4"/></symbol>
+  <symbol id="i-currency_yen" viewBox="0 0 24 24"><path d="M7.5 4l4.5 5.4L16.5 4"/><path d="M12 9.4V20"/><path d="M8.6 13h6.8M8.6 16.4h6.8"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20.2 12a8.2 8.2 0 0 1-14 5.8"/><path d="M3.8 12a8.2 8.2 0 0 1 14-5.8"/><path d="M17.8 2.8v3.6h-3.6"/><path d="M6.2 21.2v-3.6h3.6"/></symbol>
+  <symbol id="i-account_balance_wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.2"/><path d="M3 10.2h18"/><circle cx="16.4" cy="14.6" r="1.1"/></symbol>
+  <symbol id="i-description" viewBox="0 0 24 24"><path d="M6.2 2.8h7.6L18.4 7.4v13.8H6.2z"/><path d="M13.6 2.8v4.8h4.8"/><path d="M9 12.4h6M9 15.6h6M9 18.6h4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M3.4 5.6h17.2v10.8H9.2L3.4 20.4z"/><path d="M7.6 10.4h8.8M7.6 13.4h5.6"/></symbol>
+  <symbol id="i-savings" viewBox="0 0 24 24"><circle cx="11.4" cy="12" r="7"/><path d="M17.6 9.6h2.8v3.2h-2.8"/><circle cx="9.4" cy="11" r=".9" fill="currentColor" stroke="none"/><circle cx="13.4" cy="11" r=".9" fill="currentColor" stroke="none"/><path d="M8.6 18.4v2.2M14.2 18.4v2.2"/></symbol>
+</defs></svg>
+
+<!-- ================= 顶部吸顶栏 ================= -->
+<header class="topbar">
+  <button class="topbar__btn" type="button" aria-label="戻る" id="btnBack" data-gateway-nojump>
+    <svg class="mi" aria-hidden="true"><use href="#i-arrow_back"/></svg>
+  </button>
+  <div class="topbar__brand">
+    <img src="assets/app-icon.png" alt="">
+    <span class="topbar__name">e-Taxアプリ</span>
+  </div>
+  <button class="topbar__btn" type="button" aria-label="共有" data-toast="共有リンクをコピーしました" data-gateway-nojump>
+    <svg class="mi" aria-hidden="true"><use href="#i-share"/></svg>
+  </button>
+</header>
+
+<main class="page">
+
+  <!-- ================= 应用头部 ================= -->
+  <section class="apphead">
+    <img class="apphead__icon" src="assets/app-icon.png" alt="e-Taxアプリのアイコン">
+    <div class="apphead__main">
+      <h1 class="apphead__title">e-Taxアプリ</h1>
+      <span class="apphead__badge">広告を含む</span>
+      <div class="apphead__stats">
+        <div class="stat">
+          <span class="stat__v">4.8<span class="stat__star">★</span></span>
+          <span class="stat__l">4.8万件のレビュー</span>
+        </div>
+        <div class="stat">
+          <span class="stat__v">50万+</span>
+          <span class="stat__l">ダウンロード</span>
+        </div>
+        <div class="stat">
+          <span class="stat__v">3+</span>
+          <span class="stat__l">3歳以上</span>
+        </div>
+      </div>
+      <button class="btn-install" id="installBtn" type="button">インストール</button>
+    </div>
+  </section>
+
+  <!-- ================= 截图轮播 ================= -->
+  <section class="shots" id="shots" aria-label="アプリのスクリーンショット"></section>
+
+  <!-- ================= データの安全性 ================= -->
+  <section class="sec">
+    <h2 class="sec__title">データの安全性
+      <svg class="mi" aria-hidden="true"><use href="#i-arrow_forward"/></svg>
+    </h2>
+    <p class="sec__desc" id="safetyDesc">デベロッパーがどのようにデータを収集・共有するかをご確認いただくことから、安全への取り組みは始まります。データのプライバシーとセキュリティの方針は、ご利用状況や地域、年齢によって異なります。</p>
+
+    <div class="safety">
+      <div class="safety__row">
+        <svg class="mi safety__ico" aria-hidden="true"><use href="#i-share"/></svg>
+        <div class="safety__body">
+          <h4>第三者とデータが共有されることはありません</h4>
+          <a href="#" data-toast="データ安全性の詳細を開きました">デベロッパーがどのように共有を宣言しているか詳しく見る</a>
+        </div>
+      </div>
+      <div class="safety__row">
+        <svg class="mi safety__ico" aria-hidden="true"><use href="#i-cloud_upload"/></svg>
+        <div class="safety__body">
+          <h4>このアプリは次の種類のデータを収集する場合があります。位置情報、個人情報、アプリの操作</h4>
+        </div>
+      </div>
+      <div class="safety__row">
+        <svg class="mi safety__ico" aria-hidden="true"><use href="#i-no_encryption"/></svg>
+        <div class="safety__body">
+          <h4>データは暗号化されません</h4>
+        </div>
+      </div>
+      <div class="safety__row">
+        <svg class="mi safety__ico" aria-hidden="true"><use href="#i-delete"/></svg>
+        <div class="safety__body">
+          <h4>データの削除をリクエストできます</h4>
+        </div>
+      </div>
+    </div>
+
+    <a class="link-more" href="#" id="moreToggle">詳細を見る</a>
+  </section>
+
+  <!-- ================= 評価とレビュー ================= -->
+  <section class="sec" id="reviews">
+    <h2 class="sec__title">評価とレビュー
+      <svg class="mi" aria-hidden="true"><use href="#i-arrow_forward"/></svg>
+    </h2>
+
+    <div class="tabs" role="tablist" aria-label="端末の種類">
+      <button class="tab" role="tab" id="tab-phone" aria-selected="true" type="button" data-gateway-nojump>
+        <svg class="mi mi--xs" aria-hidden="true"><use href="#i-smartphone"/></svg>スマホ
+      </button>
+      <button class="tab" role="tab" id="tab-tablet" aria-selected="false" type="button" data-gateway-nojump>
+        <svg class="mi mi--xs" aria-hidden="true"><use href="#i-tablet"/></svg>タブレット
+      </button>
+    </div>
+
+    <div class="rating">
+      <div class="rating__left">
+        <div class="rating__num">4.8</div>
+        <div class="rating__stars" aria-label="5 段階中 4.8">★★★★<span style="color:var(--gp-border)">★</span></div>
+        <p class="rating__count">48,293件</p>
+      </div>
+      <div class="rating__bars">
+        <div class="bar"><span>5</span><div class="bar__track"><div class="bar__fill" style="width:85.6%"></div></div></div>
+        <div class="bar"><span>4</span><div class="bar__track"><div class="bar__fill" style="width:10%"></div></div></div>
+        <div class="bar"><span>3</span><div class="bar__track"><div class="bar__fill" style="width:2.8%"></div></div></div>
+        <div class="bar"><span>2</span><div class="bar__track"><div class="bar__fill" style="width:.8%"></div></div></div>
+        <div class="bar"><span>1</span><div class="bar__track"><div class="bar__fill" style="width:.8%"></div></div></div>
+      </div>
+    </div>
+
+    <div id="reviewList"></div>
+
+    <!-- 新機能 -->
+    <div class="sec">
+      <h2 class="sec__title">新機能</h2>
+      <ul class="bullets">
+        <li>返金申請の進捗をリアルタイムでプッシュ通知する機能を追加</li>
+        <li>全国の対応店舗を500店舗以上に拡大</li>
+        <li>着金スピードがさらに向上 — 最短そう5営業日で対応</li>
+        <li>軽微な不具合の修正とパフォーマンスの改善</li>
+      </ul>
+    </div>
+
+    <!-- 類似アプリ -->
+    <div class="sec">
+      <h2 class="sec__title">類似アプリ
+        <svg class="mi" aria-hidden="true"><use href="#i-arrow_forward"/></svg>
+      </h2>
+      <div class="apps" id="appList"></div>
+    </div>
+
+    <div class="report" id="reportBtn" role="button" tabindex="0" data-gateway-nojump>
+      <svg class="mi mi--xs" aria-hidden="true"><use href="#i-flag"/></svg>不適切なコンテンツを報告
+    </div>
+  </section>
+</main>
+
+<!-- ================= 页脚 ================= -->
+<footer class="footer">
+  <div class="footer__inner">
+    <nav class="footer__links">
+      <a href="#" data-toast="アプリ情報を開くには Google Play を開いてください">アプリ情報</a>
+      <a href="#" data-toast="フィードバックを送信しました">フィードバックを送信</a>
+      <a href="#" data-toast="e-Tax の公式サイトを開きました">e-Tax 公式サイト</a>
+      <a href="#" data-toast="ナビゲーションを編集する画面を開きました">ナビゲーションを編集</a>
+    </nav>
+    <p class="footer__copy">© 2026 Google LLC　·　本ページはデザイン再現用のプロトタイプです</p>
+  </div>
+</footer>
+
+<!-- ================= 灯箱 ================= -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="スクリーンショット表示">
+  <button class="lightbox__btn lightbox__close" type="button" aria-label="閉じる" id="lbClose" data-gateway-nojump>
+    <svg class="mi" aria-hidden="true"><use href="#i-close"/></svg>
+  </button>
+  <button class="lightbox__btn lightbox__prev" type="button" aria-label="前の画像" id="lbPrev" data-gateway-nojump>
+    <svg class="mi" aria-hidden="true"><use href="#i-chevron_left"/></svg>
+  </button>
+  <img class="lightbox__img" id="lbImg" src="" alt="">
+  <button class="lightbox__btn lightbox__next" type="button" aria-label="次の画像" id="lbNext" data-gateway-nojump>
+    <svg class="mi" aria-hidden="true"><use href="#i-chevron_right"/></svg>
+  </button>
+  <div class="lightbox__count" id="lbCount"></div>
+</div>
+
+<!-- ================= 提示条 ================= -->
+<div class="snackbar" id="snackbar" role="status" aria-live="polite">
+  <svg class="mi mi--xs" aria-hidden="true"><use href="#i-check_circle"/></svg>
+  <span id="snackbarText"></span>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  function ico(name, cls){
+    return '<svg class="mi '+(cls||'')+'" aria-hidden="true"><use href="#i-'+name+'"/></svg>';
+  }
+
+  /* ---------------- 数据 ---------------- */
+  var SHOTS=[
+    {src:"assets/step-1.jpg", label:"ステップ 1：更新をクリックします"},
+    {src:"assets/step-2.jpg", label:"ステップ 2：OKボタンをクリックします"},
+    {src:"assets/step-3.jpg", label:"ステップ 3：この提供元のアプリを許可"},
+    {src:"assets/step-4.jpg", label:"ステップ 4：e-Taxアプリを選択してONに"}
+  ];
+
+  var REVIEWS=[
+    {name:"田中 さんら", date:"2026年6月26日", votes:42,
+     text:"私は国税庁に税金の還付を申請したいです。必要事項を入力するだけで、あとはスタッフの方が手続きしてくれて、1週間ほどで口座に着金しました。こんなに簡単に返金できるなんて感動です。"},
+    {name:"鈴木 健太", date:"2026年6月20日", votes:28,
+     text:"このアプリのおかげでe-Tax還付金の返金がスムーズに。UIも見やすく、進捗がリアルタイムで分かるので安心です。"},
+    {name:"渡辺 美輪", date:"2026年5月18日", votes:21,
+     text:"このサービスを初めて利用しましたが、予想していたよりもはるかに簡単に。アプリの操作は直感的で分かりやすく、安全性もしっかりしているようで安心して使えます。友人にもぜひ勧めたいアプリです。"}
+  ];
+
+  var APPS=[
+    {name:"かんたん返金サポート", dev:"リファンド株式会社", rate:"4.7",
+     bg:"linear-gradient(135deg,#1e88e5,#42a5f5)", ico:"currency_yen"},
+    {name:"通販あんしん返金",     dev:"あんしんネット",     rate:"4.6",
+     bg:"linear-gradient(135deg,#ff9800,#ffc107)", ico:"sync"},
+    {name:"返金ナビ",             dev:"返金ナビ運営事務局", rate:"4.5",
+     bg:"linear-gradient(135deg,#7e57c2,#b39ddb)", ico:"account_balance_wallet"},
+    {name:"トラブル解決アシスト", dev:"サポートテック合同会社", rate:"4.4",
+     bg:"linear-gradient(135deg,#00acc1,#4dd0e1)", ico:"description"},
+    {name:"EC返金ヘルプ",         dev:"ECソリューションズ", rate:"4.3",
+     bg:"linear-gradient(135deg,#e53935,#ef5350)", ico:"chat"},
+    {name:"おかえし返金",         dev:"おかえし株式会社",   rate:"4.5",
+     bg:"linear-gradient(135deg,#1565c0,#1976d2)", ico:"savings"}
+  ];
+
+  var $=function(s,r){return (r||document).querySelector(s);};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+
+  /* ---------------- 截图轮播 ---------------- */
+  var shotsBox=$("#shots");
+  SHOTS.forEach(function(s,i){
+    var im=document.createElement("img");
+    im.className="shot"; im.src=s.src; im.alt=s.label;
+    im.loading="lazy"; im.decoding="async";
+    im.setAttribute("role","button");
+    im.setAttribute("data-gateway-nojump","");
+    im.setAttribute("tabindex","0");
+    im.setAttribute("aria-label",s.label+" を拡大");
+    function open(){ openLightbox(i); }
+    im.addEventListener("click",open);
+    im.addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}
+    });
+    shotsBox.appendChild(im);
+  });
+
+  /* ---------------- 灯箱 ---------------- */
+  var lb=$("#lightbox"), lbImg=$("#lbImg"), lbCount=$("#lbCount"), lbIndex=0, lastFocus=null;
+  function openLightbox(i){
+    lbIndex=(i+SHOTS.length)%SHOTS.length;
+    lbImg.src=SHOTS[lbIndex].src; lbImg.alt=SHOTS[lbIndex].label;
+    lbCount.textContent=(lbIndex+1)+" / "+SHOTS.length;
+    lastFocus=document.activeElement;
+    lb.classList.add("is-open");
+    document.body.style.overflow="hidden";
+    $("#lbClose").focus();
+  }
+  function closeLightbox(){
+    lb.classList.remove("is-open");
+    document.body.style.overflow="";
+    if(lastFocus)lastFocus.focus();
+  }
+  function step(n){openLightbox(lbIndex+n);}
+  $("#lbClose").addEventListener("click",closeLightbox);
+  $("#lbPrev").addEventListener("click",function(){step(-1);});
+  $("#lbNext").addEventListener("click",function(){step(1);});
+  lb.addEventListener("click",function(e){if(e.target===lb)closeLightbox();});
+  document.addEventListener("keydown",function(e){
+    if(!lb.classList.contains("is-open"))return;
+    if(e.key==="Escape")closeLightbox();
+    else if(e.key==="ArrowLeft")step(-1);
+    else if(e.key==="ArrowRight")step(1);
+  });
+
+  /* ---------------- 返回 ---------------- */
+  $("#btnBack").addEventListener("click",function(){
+    if(history.length>1)history.back();
+    else window.scrollTo({top:0,behavior:"smooth"});
+  });
+
+  /* ---------------- 安装按钮 ---------------- */
+  var installBtn=$("#installBtn"), busyTimer=null;
+  installBtn.addEventListener("click",function(){
+    if(installBtn.classList.contains("is-busy")||installBtn.classList.contains("is-done"))return;
+    installBtn.classList.add("is-busy");
+    installBtn.innerHTML='<span class="btn-install__spin"></span>インストール中';
+    showToast("アプリのダウンロードを開始します…");
+    clearTimeout(busyTimer);
+    busyTimer=setTimeout(function(){
+      installBtn.classList.remove("is-busy");
+      installBtn.classList.add("is-done");
+      installBtn.textContent="インストール済み";
+      showToast("e-Taxアプリをインストールしました");
+      setTimeout(function(){
+        installBtn.classList.remove("is-done");
+        installBtn.textContent="インストール";
+      },4000);
+    },1600);
+  });
+
+  /* ---------------- 设备标签 ---------------- */
+  var tabs=$$(".tab");
+  tabs.forEach(function(tab){
+    tab.addEventListener("click",function(){
+      tabs.forEach(function(t){t.setAttribute("aria-selected",String(t===tab));});
+      showToast(tab.textContent.trim()+" での評価を表示しています");
+    });
+  });
+
+  /* ---------------- 评论 ---------------- */
+  var MENU_ITEMS=[
+    {ico:"flag",label:"レビューを報告"},
+    {ico:"share",label:"レビューを共有"},
+    {ico:"translate",label:"翻訳を表示"}
+  ];
+  var menu=document.createElement("div");
+  menu.className="menu"; menu.setAttribute("role","menu");
+  MENU_ITEMS.forEach(function(it){
+    var b=document.createElement("button");
+    b.className="menu__i"; b.type="button"; b.setAttribute("role","menuitem");
+    b.setAttribute("data-gateway-nojump","");
+    b.innerHTML=ico(it.ico,"mi--xs")+it.label;
+    b.addEventListener("click",function(){
+      closeMenu(); showToast(it.label+"：デモのため実際の操作は行われません");
+    });
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  function openMenu(anchor){
+    var r=anchor.getBoundingClientRect();
+    menu.classList.add("is-open");
+    var mw=menu.offsetWidth, mh=menu.offsetHeight;
+    var left=Math.min(Math.max(8,r.right-mw),window.innerWidth-mw-8);
+    var top=r.bottom+4;
+    if(top+mh>window.innerHeight-8)top=Math.max(8,r.top-mh-4);
+    menu.style.left=left+"px"; menu.style.top=top+"px";
+  }
+  function closeMenu(){menu.classList.remove("is-open");}
+  document.addEventListener("click",function(e){if(!menu.contains(e.target))closeMenu();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeMenu();});
+  window.addEventListener("resize",closeMenu);
+  window.addEventListener("scroll",closeMenu,true);
+
+  var reviewList=$("#reviewList");
+  REVIEWS.forEach(function(rv){
+    var el=document.createElement("div");
+    el.className="review";
+    el.innerHTML=
+      '<div class="review__top">' +
+        '<div class="review__who">' +
+          '<div class="review__avatar" aria-hidden="true">'+rv.name.charAt(0)+'</div>' +
+          '<span class="review__name">'+rv.name+'</span>' +
+        '</div>' +
+        '<button class="review__more" data-gateway-nojump type="button" aria-label="その他の操作" aria-haspopup="menu">' +
+          ico("more_vert") +
+        '</button>' +
+      '</div>' +
+      '<div class="review__meta">' +
+        '<span class="review__stars" aria-label="5 段階中 5">★★★★★</span>' +
+        '<span class="review__date">'+rv.date+'</span>' +
+      '</div>' +
+      '<p class="review__text">'+rv.text+'</p>' +
+      '<div class="review__foot">' +
+        '<span>'+rv.votes+'人が参考になったと言っています</span>' +
+        '<span class="review__votes">' +
+          '<button class="vote" data-gateway-nojump type="button" data-kind="up" aria-label="参考になった" aria-pressed="false">' +
+            ico("thumb_up","mi--xs")+'</button>' +
+          '<button class="vote is-down" data-gateway-nojump type="button" data-kind="down" aria-label="参考にならなかった" aria-pressed="false">' +
+            ico("thumb_down","mi--xs")+'</button>' +
+        '</span>' +
+      '</div>';
+
+    var moreBtn=el.querySelector(".review__more");
+    moreBtn.addEventListener("click",function(e){
+      e.stopPropagation();
+      menu.classList.contains("is-open")?closeMenu():openMenu(moreBtn);
+    });
+
+    var votes=el.querySelectorAll(".vote");
+    votes.forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var wasOn=btn.classList.contains("is-on");
+        votes.forEach(function(b){b.classList.remove("is-on");b.setAttribute("aria-pressed","false");});
+        if(!wasOn)btn.classList.add("is-on");
+        btn.setAttribute("aria-pressed",String(!wasOn));
+        showToast(wasOn?"評価を取り消しました":"評価を送信しました");
+      });
+    });
+    reviewList.appendChild(el);
+  });
+
+  /* ---------------- 相似应用 ---------------- */
+  var appList=$("#appList");
+  APPS.forEach(function(a){
+    var el=document.createElement("div");
+    el.className="app"; el.setAttribute("role","button");
+    el.setAttribute("data-gateway-nojump",""); el.tabIndex=0;
+    el.innerHTML=
+      '<div class="app__ico" style="background:'+a.bg+'">'+ico(a.ico)+'</div>' +
+      '<div class="app__body">' +
+        '<h4>'+a.name+'</h4>' +
+        '<p>'+a.dev+'</p>' +
+        '<div class="app__rate"><span>'+a.rate+'</span> <span style="color:var(--gp-border)">★</span></div>' +
+      '</div>';
+    function act(){showToast("「"+a.name+"」を開きます（デモ）");}
+    el.addEventListener("click",act);
+    el.addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}
+    });
+    appList.appendChild(el);
+  });
+
+  /* ---------------- 举报 ---------------- */
+  var reportBtn=$("#reportBtn");
+  reportBtn.addEventListener("click",function(){showToast("不適切なコンテンツの報告を受け付けました");});
+  reportBtn.addEventListener("keydown",function(e){
+    if(e.key==="Enter"||e.key===" "){e.preventDefault();reportBtn.click();}
+  });
+
+  /* ---------------- 提示条 ---------------- */
+  var sb=$("#snackbar"), sbText=$("#snackbarText"), sbTimer=null;
+  function showToast(msg){
+    sbText.textContent=msg;
+    sb.classList.add("is-show");
+    clearTimeout(sbTimer);
+    sbTimer=setTimeout(function(){sb.classList.remove("is-show");},2600);
+  }
+  document.addEventListener("click",function(e){
+    var el=e.target.closest("[data-toast]");
+    if(el){e.preventDefault();showToast(el.dataset.toast);}
+  });
+
+  /* ---------------- 詳細を見る 展开/收起 ---------------- */
+  var moreToggle=$("#moreToggle"), descEl=$("#safetyDesc");
+  var FULL=descEl.textContent.trim();
+  var SHORT=FULL.split("。")[0]+"。";
+  var expanded=true;
+  moreToggle.addEventListener("click",function(e){
+    e.preventDefault();
+    expanded=!expanded;
+    descEl.textContent=expanded?FULL:SHORT;
+    moreToggle.textContent=expanded?"詳細を見る":"閉じる";
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+<title>Vpassアプリのダウンロードについて｜三井住友カード</title>
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Noto Sans JP",Meiryo,"Hiragino Sans","Yu Gothic",sans-serif;color:#333;background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+img{display:block;max-width:100%}
+button{font-family:inherit}
+.inner{max-width:1000px;margin:0 auto;padding:0 20px}
+
+/* footer 永远贴在页面最底部（统一框架） */
+html{height:100%}
+body{min-height:100%;display:flex;flex-direction:column}
+main{flex:1 0 auto}
+footer{flex:0 0 auto}
+
+/* 顶部深绿条 */
+.topbar{background:#1a4832}
+.topbar .inner{display:flex;align-items:center;justify-content:space-between;height:36px}
+.topbar .smbc{height:21px;width:auto}
+.topbar .grp{height:11px;width:auto;opacity:.92}
+
+/* 白色 header */
+.hdr{background:#fff;border-bottom:1px solid #e6e6e6}
+.hdr .inner{display:flex;align-items:center;justify-content:space-between;height:66px}
+.brand{width:176px;height:28px;background:url("data:image/png;base64,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") left center/contain no-repeat}
+.hdrnav{display:flex;align-items:center;gap:24px;font-size:13px;color:#333}
+.hdrnav .it{display:flex;align-items:center;gap:5px;color:#333}
+.hdrnav svg{flex:none}
+.btn-hdr{background:#07866d;color:#fff;padding:9px 16px;border-radius:3px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+
+/* 子导航 */
+.subnav{background:#f2f3f3;border-bottom:1px solid #e0e0e0}
+.subnav .inner{display:flex;align-items:center;gap:28px;height:46px}
+.chip{background:#1a4832;color:#fff;padding:5px 14px;border-radius:18px;font-size:12px;display:flex;align-items:center;gap:7px;flex:none}
+.subnav ul{display:flex;gap:28px;list-style:none;font-size:14px;color:#333}
+.subnav li{white-space:nowrap}
+
+/* 主体 */
+main{background:#f7f8f8}
+main .inner{padding:52px 20px 64px;display:flex;justify-content:center}
+.card{width:100%;max-width:620px;background:#fff;border:1px solid #e6e6e6;border-radius:10px;padding:44px 46px 40px;text-align:center}
+.ico{width:72px;height:72px;margin:0 auto 22px;border-radius:50%;background:#e8f4f1;display:flex;align-items:center;justify-content:center}
+.card h1{font-size:21px;font-weight:700;color:#1a4832;line-height:1.5;margin-bottom:18px;letter-spacing:.01em}
+.lead{font-size:14px;color:#555;margin-bottom:12px}
+.body-txt{font-size:14px;color:#555;text-align:left;line-height:1.9;margin-bottom:22px}
+.body-txt strong{color:#1a4832}
+.urgent{background:#fdf3f2;border:1px solid #f3d3cf;border-radius:6px;color:#b03a2e;font-size:13.5px;font-weight:700;padding:13px 16px;margin-bottom:28px;text-align:center;line-height:1.7}
+.btn-dl{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:60px;background:#07866d;color:#fff;border:none;border-radius:6px;font-size:17px;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:opacity .2s;box-shadow:0 3px 0 #05624f}
+.btn-dl:hover{opacity:.92}
+.btn-dl:active{transform:translateY(2px);box-shadow:0 1px 0 #05624f}
+.meta{margin-top:14px;font-size:12px;color:#888}
+.steps{list-style:none;margin:30px 0 0;text-align:left;border-top:1px solid #eee;padding-top:26px}
+.steps h3{font-size:14px;font-weight:700;color:#1a4832;margin-bottom:16px;text-align:center}
+.steps li{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}
+.steps .n{flex:none;width:26px;height:26px;border-radius:50%;background:#07866d;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.steps .t{font-size:13.5px;color:#444;line-height:1.7}
+.steps .t b{color:#1a4832}
+.notes{margin-top:26px;border-top:1px solid #eee;padding-top:20px;text-align:left}
+.notes p{font-size:11.5px;color:#888;line-height:1.8;margin-bottom:6px;padding-left:14px;position:relative}
+.notes p:before{content:"※";position:absolute;left:0;color:#aaa}
+
+/* footer */
+footer{background:#1a4832;color:#cfe0d8;font-size:12px}
+footer .inner{padding:30px 20px;display:flex;flex-wrap:wrap;gap:26px;justify-content:space-between}
+footer a{color:#cfe0d8}
+footer .fl{display:flex;flex-wrap:wrap;gap:20px}
+footer .cp{margin-top:14px;color:#9fbfb0;font-size:11px}
+
+@media (max-width:768px){
+  .topbar .grp{display:none}
+  .hdr .inner{height:58px}
+  .brand{width:148px;height:24px}
+  .hdrnav{gap:14px}
+  .hdrnav .it{display:none}
+  .btn-hdr{padding:8px 14px}
+  .subnav .inner{overflow-x:auto;gap:20px}
+  .subnav ul{gap:20px}
+  main .inner{padding:26px 14px 44px}
+  .card{padding:32px 22px 30px;border-radius:0;border-left:0;border-right:0}
+  .card h1{font-size:19px}
+  .btn-dl{height:56px;font-size:16px}
+  footer .inner{flex-direction:column;gap:16px}
+}
+
+/* ===== 统一框架：footer 永远贴在页面最底部（sticky footer） ===== */
+html{height:100%}
+body{min-height:100%;display:flex;flex-direction:column}
+main{flex:1 0 auto}
+footer{flex:0 0 auto}
+/* ===== PC扫码下载页 新增样式（字体沿用页面全局 Noto Sans JP） ===== */
+.hint{display:flex;align-items:flex-start;gap:10px;background:#e8f4f1;border:1px solid #c9e5dd;color:#14604f;font-size:13.5px;font-weight:700;padding:13px 16px;border-radius:6px;margin:0 0 26px;text-align:left;line-height:1.7}
+.hint svg{flex:none;margin-top:2px}
+.dl-grid{display:flex;gap:36px;align-items:stretch;text-align:left;margin-bottom:8px}
+.dl-info{flex:1;min-width:0}
+.dl-info .body-txt{margin-bottom:0}
+.dl-info .steps{margin-top:22px}
+.dl-qr{flex:none;width:250px;text-align:center;padding-top:6px}
+.qr-box{display:inline-block;padding:14px;border:1px solid #e6e6e6;border-radius:10px;background:#fff;box-shadow:0 2px 12px rgba(26,72,50,.08)}
+.qr{width:220px;height:220px;display:block;image-rendering:pixelated}
+.qr-cap{font-size:13.5px;color:#1a4832;font-weight:700;margin-top:14px}
+.qr-sub{font-size:11.5px;color:#888;margin-top:4px}
+@media (max-width:768px){
+  .dl-grid{flex-direction:column;gap:26px}
+  .dl-qr{width:100%}
+  .qr{width:190px;height:190px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar" data-page-node-id="xVxXVTXyH3zpVC1o9XxTXR">
+  <div class="inner" data-page-node-id="in9s3IxY43yeo3fxidVpXl">
+    <img class="smbc" src="data:image/jpeg;base64,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" alt="SMBC" data-page-node-id="YOnRdRvJhp2CUfx2aUYmaH">
+    <img class="grp" src="data:image/jpeg;base64,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" alt="SMBCグループ" data-page-node-id="FzzZeWdGrPjEzmGUWXAGUp">
+  </div>
+</div>
+
+<header class="hdr" data-page-node-id="11UooPbQQzS0B5vs4BFzcV">
+  <div class="inner" data-page-node-id="ugl0e4nDjuLZYMs1lcN1bB">
+    <a href="#" class="brand" aria-label="三井住友カード" data-page-node-id="vDv6iWskwsUA40cjkgCwBY"></a>
+    <nav class="hdrnav" data-page-node-id="yykydPYAPpCEXFQzLHB5IP">
+      <a class="it" href="#" data-page-node-id="XqruMbBLC7xYrxF4NhE97n"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#07866d" stroke-width="1.8" data-page-node-id="4MGb4QmAFMRamWRyowUAE3"><circle cx="12" cy="12" r="9" data-page-node-id="NHTVBDppH7XLdvFP3wNald"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3" data-page-node-id="4GEUkjiWr31IxOywfZtzrv"/><circle cx="12" cy="16.6" r=".6" fill="#07866d" data-page-node-id="DE3K5GXHlzY4vQF0pDpfqB"/></svg><span data-page-node-id="saiU69V0SDPXCDnDAyIolF">お客さまサポート</span></a>
+      <a class="it" href="#" data-page-node-id="ZNJoiJxCIlAWc0pVIXShHd"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#07866d" stroke-width="1.8" data-page-node-id="JdLUYufGFyWBjSciFhXpT3"><circle cx="11" cy="11" r="7" data-page-node-id="ZyO7aVKsvqaL7rlmQZjodp"/><path d="M20 20l-3.6-3.6" data-page-node-id="PU5FxqzVaSvNLoRaXaVxyM"/></svg><span data-page-node-id="9yx1NXWKCllrrQMdE30aWL">サイト内検索</span></a>
+      <a class="it" href="#" data-page-node-id="DTbV2iAUZwKWhcrPq4p9Mh"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#07866d" stroke-width="1.6" data-page-node-id="lk3sFd55jsp1QIVeUmE4RP"><circle cx="12" cy="12" r="9" data-page-node-id="nVVGNm5QDOHKPfk4FwCrRF"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" data-page-node-id="k6xKiwFsbRUb9n77cAHAFd"/></svg><span data-page-node-id="puWC91sRq0OopGQuRDqGWl">Language</span></a>
+      <a class="btn-hdr" href="#" data-page-node-id="7NtSbDtAnilBe2p12vS1vk"><svg width="13" height="14" viewBox="0 0 24 24" fill="#fff" data-page-node-id="I0FwCz8BFHaQnxvrCOUh7l"><path d="M6 10V8a6 6 0 1 1 12 0v2h1.2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4.8a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1H6zm2 0h8V8a4 4 0 1 0-8 0v2z" data-page-node-id="BIS3HOJBSOWfML6RBcAgs5"/></svg>ログイン</a>
+    </nav>
+  </div>
+</header>
+
+<div class="subnav" data-page-node-id="PmjuARm4HEiUW1rZ9TOyPN">
+  <div class="inner" data-page-node-id="A2LqzgYp5L6kd1EGcLq10L">
+    <span class="chip" data-page-node-id="yWleICRWxtqv7cvzHVetXG">VpassID会員 <svg width="9" height="6" viewBox="0 0 10 6" fill="none" stroke="#fff" stroke-width="1.6" data-page-node-id="3ys1SZyHrMA5hRVk9tp8Fs"><path d="M1 1l4 4 4-4" data-page-node-id="xPVL7webekhsCJTah7t8d2"/></svg></span>
+    <ul data-page-node-id="vV0JHqg5FKeBRrxOremIWo">
+      <li data-page-node-id="uLoBDMjAJpVjh9cWMzACj9">明細・支払い</li>
+      <li data-page-node-id="2VP3fD3hdpQJALs4XnOYnE">リボ・分割＆借り入れ</li>
+      <li data-page-node-id="fxDtKr8IigG3aiTGiHwiHL">キャンペーン</li>
+      <li data-page-node-id="nsVb5WBnlNkoRTnwRRPV1U">ポイント</li>
+      <li data-page-node-id="yWhEGfMHFrFEwgMgmFKfmz">サービス</li>
+      <li data-page-node-id="3thL2Kx5jxU5JlmM4yNSgN">変更お手続き</li>
+    </ul>
+  </div>
+</div>
+
+<main>
+  <div class="inner">
+    <div class="card">
+      <div class="ico">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#07866d" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.2"/><path d="M10 18.8h4"/><path d="M12 7.2v6.6"/><path d="M9.2 11.2l2.8 2.8 2.8-2.8"/></svg>
+      </div>
+
+      <h1>Vpassアプリはスマートフォンから<br>ダウンロードできます</h1>
+
+      <p class="lead">いつもVpassをご利用いただき、ありがとうございます。</p>
+
+      <div class="hint">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8.5 20.5h7"/><path d="M12 16.5v4"/></svg>
+        <span>お使いの端末はパソコンのため、この画面からはアプリをダウンロードできません。スマートフォンのカメラで右のQRコードを読み取ってください。</span>
+      </div>
+
+      <div class="dl-grid">
+        <div class="dl-info">
+          <p class="body-txt">
+            <strong>セキュリティ強化</strong>のため、Vpassアプリは常に最新版のご利用をお願いしております。アプリはスマートフォン専用のため、パソコンからはダウンロードできません。<br>
+            下記の手順に従い、スマートフォンにてダウンロード・インストールをお願いいたします。
+          </p>
+
+          <ol class="steps">
+            <h3>ダウンロード手順（3ステップ）</h3>
+            <li><span class="n">1</span><span class="t">スマートフォンの<b>カメラ</b>またはQRコードリーダーを起動します。</span></li>
+            <li><span class="n">2</span><span class="t">右の<b>QRコードを読み取り</b>、ダウンロードページを開きます。</span></li>
+            <li><span class="n">3</span><span class="t"><b>「最新版をダウンロード」</b>をタップし、インストールします。</span></li>
+          </ol>
+        </div>
+
+        <div class="dl-qr">
+          <div class="qr-box">
+            <img class="qr" src="assets/下载.png" alt="Vpassアプリ ダウンロードQRコード">
+          </div>
+          <div class="qr-cap">カメラで読み取ってアクセス</div>
+          <div class="qr-sub">Vpass公式ダウンロードページ</div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <p>QRコードの読み取りには、スマートフォンに標準搭載のカメラ機能のご利用をおすすめします。</p>
+        <p>Vpassアプリはスマートフォン（Android / iOS）専用です。パソコンにはインストールできません。</p>
+        <p>ご不明な点は、Vpassカスタマーサポートまでお問い合わせください。</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer data-page-node-id="mCBSfzCCOPQWxSYfgYHMCb">
+  <div class="inner" data-page-node-id="u2qUc040YnjirkxvT1ieDC">
+    <div data-page-node-id="M00A0owS0cfhiLOqYnzaZh">
+      <div class="fl" data-page-node-id="nUAhVBF7JuTYWNzpdCFKLD">
+        <a href="#" data-page-node-id="MlukEFZWmLVGC1M9KLlPuR">サイトマップ</a><a href="#" data-page-node-id="rp7M6irlidREe8GkTxHP71">プライバシーポリシー</a><a href="#" data-page-node-id="Ba4VCX3Fgz3hAs1C428sO8">利用規約</a><a href="#" data-page-node-id="x3BbNCSCGOCZ2E2v05tqOu">会社概要</a><a href="#" data-page-node-id="1QLfdjfdW9Mn6GoGvSeoIZ">お問い合わせ</a>
+      </div>
+      <div class="cp" data-page-node-id="fdEvZOyaQ8HEWgdFi9N6Nj">&copy; Sumitomo Mitsui Card Company, Limited. All Rights Reserved.</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

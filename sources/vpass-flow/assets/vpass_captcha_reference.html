@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja" data-page-node-id="mDRxCAWIlB8p6HQyFKFDwk"><head data-page-node-id="M8FHC89aw5kBFekgfgQLsM">
+<meta charset="utf-8" data-page-node-id="xDfOqEPCI6GDjdHNBWCiGl">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="9DHt49rQ5LENqClgJWO0nL">
+<meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" data-page-node-id="jqjn0aPEjHZ1iljRGPSFiI">
+<meta name="robots" content="noindex, nofollow" data-page-node-id="FVRWBxkYMYtA1FzecuhSHr">
+<title data-page-node-id="vOd4UEFZ3i1eA26UIUIiZl">セキュリティ確認｜Vpass</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="JJHjf0q9jKqhggKrEVaKPe">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" data-page-node-id="4eWPgHAaQ9pWuG5PFcHHz9">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet" data-page-node-id="oV51d21Bbub7E3RDlDJYkL">
+<style data-page-node-id="U7hcjjL8YRe0ntxA6ld6qt">
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"Noto Sans JP",Meiryo,"Hiragino Sans","Yu Gothic",sans-serif;
+  color:#333;background:#f4f7f6;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;flex-direction:column;
+}
+
+/* 顶部品牌区：白底 + 细绿条，居中 Vpass logo */
+.brand{
+  background:#fff;border-bottom:1px solid #e8eceb;position:relative;
+  padding:18px 20px;text-align:center;flex:none;
+}
+.brand::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#0a5c48,#07866d 55%,#0aa07f)}
+.brand img{width:104px;height:auto;display:inline-block}
+
+/* 主卡片 */
+main{flex:1 0 auto;display:flex;align-items:flex-start;justify-content:center;padding:42px 20px 56px}
+.card{
+  width:100%;max-width:480px;background:#fff;
+  border:1px solid #e6e6e6;border-radius:14px;
+  padding:38px 36px 34px;text-align:left;
+  box-shadow:0 8px 28px rgba(26,72,50,.07);
+  animation:fadeIn .5s ease-out;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* 盾牌徽章：浅绿圆底 + 持续外圈波纹（呼应安检动画） */
+.shield-badge{
+  position:relative;width:76px;height:76px;margin:0 auto 22px;
+  border-radius:50%;background:#e8f4f1;
+  display:flex;align-items:center;justify-content:center;
+}
+.shield-badge::after{
+  content:"";position:absolute;inset:-7px;border-radius:50%;
+  border:2px solid #07866d;opacity:0;
+  animation:ring 2.2s ease-out infinite;
+}
+@keyframes ring{0%{transform:scale(.85);opacity:.4}70%{transform:scale(1.18);opacity:0}100%{opacity:0}}
+.shield-badge svg{width:34px;height:34px;fill:none;stroke:#07866d;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+h1{font-size:17px;color:#1a4832;font-weight:700;line-height:1.55;text-align:center;margin-bottom:12px;letter-spacing:.01em}
+.sub{font-size:13.5px;color:#666;margin-bottom:24px;line-height:1.85}
+.inst{font-size:13.5px;color:#333;margin-bottom:8px;font-weight:500}
+.inst img{width:20px;height:20px;vertical-align:middle;margin:0 2px}
+.hint{font-size:12.5px;color:#888;margin-bottom:22px}
+.hint .highlight{color:#00846d;font-weight:700}
+
+/* 图标选择区：交互与原版 captcha 完全一致 */
+.cp-images{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:nowrap;user-select:none;-webkit-user-select:none}
+.cp-item{
+  width:70px;height:70px;border-radius:12px;cursor:pointer;
+  transition:all .2s ease;display:flex;align-items:center;justify-content:center;
+  border:3px solid transparent;background:#fafbfb;position:relative;
+}
+.cp-item:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(26,72,50,.16)}
+.cp-item:active{transform:scale(.95)}
+.cp-item.selected{border-color:#00846d;background:#e8f4f1}
+.cp-item.selected::after{
+  content:"✓";position:absolute;top:-8px;right:-8px;width:20px;height:20px;
+  background:#00846d;color:#fff;border-radius:50%;font-size:12px;
+  display:flex;align-items:center;justify-content:center;font-weight:700;
+}
+.cp-item img{width:46px;height:46px;object-fit:contain;pointer-events:none}
+.cp-item.locked{pointer-events:none;opacity:.5}
+
+/* 验证按钮 */
+.cp-verify{
+  width:100%;height:50px;display:block;margin:0 auto;
+  background:#00846d;color:#fff;border:none;border-radius:6px;
+  font-size:16px;font-weight:700;letter-spacing:.08em;cursor:pointer;
+  transition:background .25s ease,transform .1s ease,box-shadow .1s ease;
+  box-shadow:0 3px 0 #05624f;font-family:inherit;
+}
+.cp-verify:hover:not(:disabled){background:#076B59}
+.cp-verify:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #05624f}
+.cp-verify:disabled{background:#c4ccc9;cursor:not-allowed;box-shadow:none}
+
+/* loading 与消息 */
+.cp-loading{display:none;margin-top:16px}
+.cp-loading.show{display:flex;align-items:center;justify-content:center;gap:8px}
+.cp-spinner{width:20px;height:20px;border:2px solid #dfe8e5;border-top-color:#00846d;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cp-loading span{font-size:14px;color:#666}
+.cp-message{margin-top:16px;padding:12px 14px;border-radius:6px;font-size:14px;display:none;line-height:1.7}
+.cp-message.error{display:block;background:#fdf3f2;border:1px solid #f0c4be;color:#c0392b}
+.cp-message.success{display:block;background:#e8f4f1;border:1px solid #b8ded4;color:#07866d;font-weight:700}
+
+/* 底部：安全提示 + 版权，贴底 */
+.foot{flex:none;text-align:center;padding:0 20px 26px}
+.foot .secure{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#7ba394;margin-bottom:6px}
+.foot .secure svg{width:12px;height:12px;fill:none;stroke:#7ba394;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.foot .cp{font-size:10.5px;color:#b3bcb9}
+
+@media (max-width:480px){
+  main{padding:28px 14px 40px}
+  .card{padding:30px 20px 28px;border-radius:12px}
+  h1{font-size:15.5px}
+  .sub{font-size:13px}
+  .cp-item{width:60px;height:60px}
+  .cp-item img{width:40px;height:40px}
+  .cp-images{gap:8px}
+}
+</style>
+<style id="__dm_no_drag_style__">* { -webkit-user-drag: none !important; }</style><style id="__dm_bindable_badge_style__">[data-sp-bindable="database"]{outline:1px dashed #0088ff;outline-offset:2px;border-radius:4px;}[data-sp-bindable="database"] *{pointer-events:none !important;transition:none !important;animation:none !important;}[data-sp-bindable="database"]{transition:none !important;animation:none !important;}</style></head>
+<body data-page-node-id="5phFEGCZrN5Hor7yaN0ho7" style="">
+
+<header class="brand" data-page-node-id="XRug5nNz5xAk08VayJD9uL">
+  <img src="vpass_logo.svg" alt="Vpass" data-page-node-id="v0rKbdqdu0JoTziU812zu8">
+</header>
+
+<main data-page-node-id="F1zAlAX5LWTN7HqNeeQw5l">
+  <div class="card" data-page-node-id="dHTfLze1Uiivy0JlzrgX9C">
+    <div class="shield-badge" data-page-node-id="nMjAYQ3yRgoFhicRNAPA1q">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-page-node-id="n9svWzoJXd3HskYTq19zFn">
+        <path d="M12 2.5L4 6v5.5c0 5 3.4 9.7 8 10.9 4.6-1.2 8-5.9 8-10.9V6l-8-3.5z" data-page-node-id="RSLde0id1fhPtQYFFjahCW"></path>
+        <path d="M9 11.5l2.2 2.2 4-4.2" data-page-node-id="HQB3IHzQcbTzHDEude2OHj"></path>
+      </svg>
+    </div>
+
+    <h1 data-page-node-id="iYL905dFR4Z5J8QhZJOBzY">サイトへの接続が安全かどうか確認しています</h1>
+
+    <p class="sub" data-page-node-id="6PgA7xJpt471KDu9xiAfQ9">続行する前に接続のセキュリティを確認する必要があります。<br data-page-node-id="y4NXLguHWC3Nx3I6EE7c2Z">以下のアクションを完了して、あなたが人間であることを確認してください。</p>
+
+    <p class="inst" data-page-node-id="bytGzN7tZcIH2HHSYvAAoF">セキュリティ対策のため、表示された <img src="security.png" alt="「盾アイコン」" data-page-node-id="vvtopk9AFiJBAwFOSsiDW6"> をすべてタップしてください。</p>
+
+    <p class="hint" data-page-node-id="GDBB5FdSNnAM89OknLM2nr">※ <span id="securityCount" data-page-node-id="3kmxok5bV0y9JCFw7NoZrY">3</span> 個の<span class="highlight" data-page-node-id="L1rV4p1imQz8kFEXE9DedZ">盾アイコン</span>を選択してください</p>
+
+    <div class="cp-images" id="imagesContainer" data-page-node-id="bpYZA1KwoQM13cQn3xD8wU"><div class="cp-item" data-index="0" data-page-node-id="pCbS6zhE1XJhx3Svd0D0oe"><img src="security.png" alt="セキュリティアイコン" data-page-node-id="LkChBKKm7Xbk5bhICrXB9e"></div><div class="cp-item" data-index="1" data-page-node-id="mUeGjaBtgFOOG8O4JonvEl"><img src="security.png" alt="セキュリティアイコン" data-page-node-id="TuAlXAFBse8IYkWVvwkb8x"></div><div class="cp-item" data-index="2" data-page-node-id="3t3YUw2J5jQN0BlkEYUhiW"><img src="captcha-decoy.png" alt="アイコン" data-page-node-id="V9cXkI5ueoRgUQI1fVmndt"></div><div class="cp-item" data-index="3" data-page-node-id="ykDdTCMXnkkYTeLYuBqB3r"><img src="security.png" alt="セキュリティアイコン" data-page-node-id="BIvwrpaxj8vscMyWpw5iTW"></div><div class="cp-item" data-index="4" data-page-node-id="Mj58o5kPMSSPoUYAWqutIw"><img src="captcha-decoy.png" alt="アイコン" data-page-node-id="Kq4ebDuQwE0S7nN7OGXR7H"></div></div>
+
+    <button class="cp-verify" id="verifyBtn" disabled="" data-page-node-id="5TsMvEjtg0AK8ZRsr1jxVy">確認する</button>
+
+    <div class="cp-loading" id="cpLoading" data-page-node-id="lre6E4HZdb09xo9MKE5X8k">
+      <div class="cp-spinner" data-page-node-id="T4VoNfeLbnVPXlkoKuBkpA"></div>
+      <span data-page-node-id="8h6iymGXBfSm9QyudKziVD">確認中...</span>
+    </div>
+
+    <div class="cp-message" id="cpMessage" data-page-node-id="3D3cGKrIon9q2YsHhkloyz"></div>
+  </div>
+</main>
+
+<footer class="foot" data-page-node-id="bjMGHFIx70bH16BrARNQeU">
+  <div data-page-node-id="hUwDXigRtWm3gW8gkdP2Pw"><span class="secure" data-page-node-id="xqf0Gu5CHPqFn29E7pBYjh">
+    <svg viewBox="0 0 24 24" data-page-node-id="Mio4DdVo2XM3A1HkMDiJ0T"><rect x="4" y="10.5" width="16" height="10" rx="2" data-page-node-id="NCaaD43BPU0MR5cbDk4BsY"></rect><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" data-page-node-id="36VNvWfc6eqYuSoIJNWbeQ"></path></svg>
+    通信は SSL 暗号化によって保護されています
+  </span></div>
+  
+</footer>
+
+<script data-page-node-id="HM9VOMXTO5Xbmooya4cGlB">
+/* ==========================================================================
+   人机验证 — 交互逻辑与 redirect-system captcha 完全一致（本地静态版）
+   ========================================================================== */
+(function(){
+  var TOTAL = 5;
+  var MAX_ATTEMPTS = 3;
+  var NEXT_URL = 'vpass_update (3).html';
+
+  var SECURITY_COUNT = Math.random() < 0.5 ? 2 : 3;
+  var pool = [0,1,2,3,4];
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  var securityPositions = pool.slice(0, SECURITY_COUNT);
+  var selectedPositions = [];
+  var remainingAttempts = MAX_ATTEMPTS;
+  var verifying = false;
+
+  var container = document.getElementById('imagesContainer');
+  var btn       = document.getElementById('verifyBtn');
+  var loading   = document.getElementById('cpLoading');
+  var message   = document.getElementById('cpMessage');
+
+  function initPage(){
+    document.getElementById('securityCount').textContent = SECURITY_COUNT;
+    container.innerHTML = '';
+    for (var i = 0; i < TOTAL; i++) {
+      (function(index){
+        var div = document.createElement('div');
+        div.className = 'cp-item';
+        div.dataset.index = index;
+        div.onclick = function(){ toggleSelection(index); };
+        var img = document.createElement('img');
+        if (securityPositions.indexOf(index) !== -1) {
+          img.src = 'security.png';      img.alt = 'セキュリティアイコン';
+        } else {
+          img.src = 'captcha-decoy.png'; img.alt = 'アイコン';
+        }
+        div.appendChild(img);
+        container.appendChild(div);
+      })(i);
+    }
+    updateButtonState();
+  }
+
+  function toggleSelection(index){
+    if (verifying) return;
+    var item = container.querySelector('.cp-item[data-index="' + index + '"]');
+    var pos = selectedPositions.indexOf(index);
+    if (pos !== -1) {
+      selectedPositions.splice(pos, 1);
+      item.classList.remove('selected');
+    } else {
+      selectedPositions.push(index);
+      item.classList.add('selected');
+    }
+    updateButtonState();
+  }
+
+  function updateButtonState(){
+    btn.disabled = selectedPositions.length !== SECURITY_COUNT;
+  }
+
+  function resetSelection(){
+    selectedPositions = [];
+    container.querySelectorAll('.cp-item').forEach(function(item){
+      item.classList.remove('selected');
+    });
+  }
+
+  function submitVerification(){
+    if (verifying) return;
+    verifying = true;
+    btn.disabled = true;
+    btn.style.display = 'none';
+    loading.classList.add('show');
+    message.className = 'cp-message';
+    message.style.display = 'none';
+
+    setTimeout(function(){
+      loading.classList.remove('show');
+
+      var correct = selectedPositions.length === SECURITY_COUNT &&
+        securityPositions.every(function(p){ return selectedPositions.indexOf(p) !== -1; });
+
+      if (correct) {
+        message.className = 'cp-message success';
+        message.textContent = '確認完了！リダイレクト中...';
+        message.style.display = 'block';
+        setTimeout(function(){ window.location.href = NEXT_URL; }, 500);
+        return;
+      }
+
+      remainingAttempts--;
+      btn.style.display = 'block';
+
+      if (remainingAttempts <= 0) {
+        message.className = 'cp-message error';
+        message.textContent = '試行回数の上限に達しました。しばらくしてから再試行してください。';
+        message.style.display = 'block';
+        btn.style.display = 'none';
+        container.querySelectorAll('.cp-item').forEach(function(item){ item.classList.add('locked'); });
+        verifying = false;
+        return;
+      }
+
+      message.className = 'cp-message error';
+      message.textContent = '選択が正しくありません。残り' + remainingAttempts + '回試行できます。';
+      message.style.display = 'block';
+      resetSelection();
+      updateButtonState();
+      verifying = false;
+    }, 900);
+  }
+
+  btn.addEventListener('click', submitVerification);
+  document.addEventListener('DOMContentLoaded', initPage);
+})();
+</script>
+
+
+</body></html>

@@ -1,7 +1,45 @@
 ﻿const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { captchaId: '', eventPage: 1, eventTotal: 0, projects: [], domains: [], catalog: [], settings: {} };
+const state = { captchaId: '', eventPage: 1, eventTotal: 0, projects: [], domains: [], catalog: [], settings: {}, clients: [] };
+const CLIENT_TYPES = ['bot', 'ios', 'android', 'desktop', 'unknown'];
+const CLIENT_LABELS = { bot: '爬虫/自动化', ios: 'iOS 设备', android: 'Android 设备', desktop: '电脑端', unknown: '未知客户端' };
+const CLIENT_PRESETS = [
+  { label: 'iPhone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+  { label: 'Android', ua: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36' },
+  { label: '电脑端', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36' },
+  { label: 'Googlebot', ua: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
+  { label: 'curl', ua: 'curl/8.4.0' },
+  { label: 'Headless', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0 Safari/537.36' }
+];
 const COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
+// 浏览器语言（ISO 639-1 精选）与 IANA 时区数据源（环境拦截下拉用）
+const LANG_CODES = ["af", "sq", "am", "ar", "hy", "az", "eu", "be", "bn", "bs", "bg", "ca", "zh", "co", "hr", "cs", "da", "nl", "en", "eo", "et", "fi", "fr", "gl", "ka", "de", "el", "gu", "ha", "he", "hi", "hu", "is", "id", "ga", "it", "ja", "kn", "kk", "km", "ky", "ku", "lo", "lv", "lt", "mk", "ms", "ml", "mt", "mr", "mn", "ne", "no", "nb", "nn", "or", "fa", "pl", "pt", "pa", "ro", "ru", "sr", "si", "sk", "sl", "so", "es", "sw", "sv", "ta", "te", "th", "tr", "tk", "ug", "uk", "ur", "uz", "vi", "cy", "yi", "yo", "zu"];
+let languageNames = null;
+try { languageNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['zh-CN'], { type: 'language' }) : null; } catch (e) {}
+function envLanguageName(code) {
+  try { return (languageNames && languageNames.of(code)) || code; } catch (e) { return code; }
+}
+const TZ_FALLBACK = ('Africa/Cairo Africa/Johannesburg Africa/Lagos America/Anchorage America/Argentina/Buenos_Aires '
+  + 'America/Bogota America/Chicago America/Denver America/Halifax America/Lima America/Los_Angeles America/Mexico_City '
+  + 'America/New_York America/Phoenix America/Sao_Paulo America/Toronto America/Vancouver Asia/Almaty Asia/Amman '
+  + 'Asia/Baghdad Asia/Baku Asia/Bangkok Asia/Beirut Asia/Chongqing Asia/Colombo Asia/Dhaka Asia/Dubai Asia/Ho_Chi_Minh '
+  + 'Asia/Hong_Kong Asia/Jakarta Asia/Jerusalem Asia/Kabul Asia/Karachi Asia/Kathmandu Asia/Kolkata Asia/Kuala_Lumpur '
+  + 'Asia/Kuwait Asia/Macau Asia/Manila Asia/Muscat Asia/Novosibirsk Asia/Phnom_Penh Asia/Pyongyang Asia/Qatar '
+  + 'Asia/Riyadh Asia/Seoul Asia/Shanghai Asia/Singapore Asia/Taipei Asia/Tashkent Asia/Tbilisi Asia/Tehran Asia/Tokyo '
+  + 'Asia/Ulaanbaatar Asia/Vladivostok Asia/Yangon Atlantic/Azores Australia/Adelaide Australia/Brisbane '
+  + 'Australia/Melbourne Australia/Perth Australia/Sydney Europe/Amsterdam Europe/Athens Europe/Belgrade Europe/Berlin '
+  + 'Europe/Brussels Europe/Bucharest Europe/Budapest Europe/Copenhagen Europe/Dublin Europe/Helsinki Europe/Istanbul '
+  + 'Europe/Kiev Europe/Lisbon Europe/London Europe/Madrid Europe/Moscow Europe/Oslo Europe/Paris Europe/Prague '
+  + 'Europe/Rome Europe/Stockholm Europe/Vienna Europe/Warsaw Europe/Zurich Pacific/Auckland Pacific/Fiji Pacific/Guam '
+  + 'Pacific/Honolulu').split(' ');
+const TZ_LIST = (typeof Intl.supportedValuesOf === 'function'
+  ? (() => { try { return Intl.supportedValuesOf('timeZone'); } catch (e) { return TZ_FALLBACK; } })()
+  : TZ_FALLBACK);
+function envTzLabel(tz) {
+  const city = tz.split('/').pop().replace(/_/g, ' ');
+  const area = tz.includes('/') ? tz.split('/')[0] : '';
+  return area ? city + '（' + area + '）' : city;
+}
 const countryNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['zh-CN'], { type: 'region' }) : null;
 
 async function api(path, options = {}) {
@@ -35,6 +73,80 @@ function renderCountrySelect(root) {
   const filtered = COUNTRY_CODES.filter(code => `${code} ${countryName(code)}`.toLocaleLowerCase('zh-CN').includes(query));
   $('.country-options', root).innerHTML = filtered.length ? filtered.map(code => `<button type="button" class="country-option${selected.includes(code) ? ' selected' : ''}" data-country-option="${code}" role="option" aria-selected="${selected.includes(code)}"><span><b>${code}</b><small>${escapeHtml(countryName(code))}</small></span><i>${selected.includes(code) ? '✓' : ''}</i></button>`).join('') : '<p class="country-empty">没有匹配的国家</p>';
 }
+function initEnvPicker(root) {
+  const kind = root.dataset.envSelect;
+  const items = kind === 'lang'
+    ? LANG_CODES.map(code => ({ code, label: code.toUpperCase() + ' · ' + envLanguageName(code) }))
+    : TZ_LIST.map(tz => ({ code: tz, label: tz }));
+  const input = root.querySelector('input[type="hidden"]');
+  const render = () => {
+    const selected = String(input.value || '').split(/[\s,]+/).filter(Boolean);
+    input.value = selected.join(',');
+    const chips = root.querySelector('.country-chips');
+    chips.innerHTML = selected.length
+      ? selected.map(v => '<button type="button" class="country-chip" data-env-code="' + escapeHtml(v) + '" title="移除 ' + escapeHtml(v) + '">' + escapeHtml(v) + '<span>×</span></button>').join('')
+      : '<span class="country-placeholder">' + (kind === 'lang' ? '选择放行的浏览器语言' : '选择放行的浏览器时区') + '</span>';
+    const query = (root.querySelector('.country-search').value || '').trim().toLowerCase();
+    const options = items.filter(it => it.code.toLowerCase().includes(query) || it.label.toLowerCase().includes(query));
+    root.querySelector('.country-options').innerHTML = options.length
+      ? options.map(it => '<button type="button" class="country-option' + (selected.includes(it.code) ? ' selected' : '') + '" data-env-option="' + escapeHtml(it.code) + '" role="option" aria-selected="' + selected.includes(it.code) + '"><span><b>' + escapeHtml(kind === 'lang' ? it.code : envTzLabel(it.code)) + '</b><small>' + escapeHtml(it.label) + '</small></span><i>' + (selected.includes(it.code) ? '✓' : '') + '</i></button>').join('')
+      : '<p class="country-empty">没有匹配的选项</p>';
+  };
+  const control = root.querySelector('.country-control');
+  root._envClose = () => {
+    root.classList.remove('open');
+    root.querySelector('.country-menu').classList.add('hidden');
+    control.setAttribute('aria-expanded', 'false');
+  };
+  control.addEventListener('click', event => {
+    const chip = event.target.closest('[data-env-code]');
+    if (chip) {
+      const cur = String(input.value || '').split(/[\s,]+/).filter(Boolean).filter(v => v !== chip.dataset.envCode);
+      input.value = cur.join(','); render(); return;
+    }
+    const opening = !root.classList.contains('open');
+    if (opening) {
+      $$('[data-env-select].open').forEach(other => { if (other !== root && other._envClose) other._envClose(); });
+    }
+    root.classList.toggle('open');
+    root.querySelector('.country-menu').classList.toggle('hidden');
+    control.setAttribute('aria-expanded', root.classList.contains('open'));
+    if (root.classList.contains('open')) { render(); root.querySelector('.country-search').focus(); }
+  });
+  control.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); control.click(); }
+    if (event.key === 'Escape') { root._envClose(); }
+  });
+  root.querySelector('.country-search').addEventListener('input', render);
+  root.querySelector('.country-options').addEventListener('click', event => {
+    const option = event.target.closest('[data-env-option]');
+    if (!option) return;
+    const code = option.dataset.envOption;
+    const cur = String(input.value || '').split(/[\s,]+/).filter(Boolean);
+    const at = cur.indexOf(code);
+    if (at > -1) cur.splice(at, 1); else cur.push(code);
+    input.value = cur.join(','); render();
+  });
+  if (!window.__envCloseBound) {
+    window.__envCloseBound = true;
+    document.addEventListener('click', event => {
+      if (!event.target.closest('[data-env-select]')) {
+        $$('[data-env-select].open').forEach(r => { if (r._envClose) r._envClose(); });
+      }
+    });
+  }
+  render();
+  root._envRender = render;
+}
+function refreshEnvPickers() {
+  $$('[data-env-select]').forEach(root => { if (root._envRender) root._envRender(); });
+}
+function setEnvSelectValue(form, name, value) {
+  const input = form.elements[name];
+  if (!input) return;
+  input.value = (Array.isArray(value) ? value : String(value || '').split(/[\s,]+/)).filter(Boolean).join(',');
+  refreshEnvPickers();
+}
 function setCountrySelectValue(form, name, value) {
   const input = form.elements[name]; input.value = parseCountryCodes(value).join(','); renderCountrySelect(input.closest('[data-country-select]'));
 }
@@ -63,13 +175,13 @@ async function loadCaptcha() { try { const data = await api('/api/auth/captcha')
 function showLogin() { $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); loadCaptcha(); }
 function showApp(user) { $('#loginView').classList.add('hidden'); $('#appView').classList.remove('hidden'); $('#currentUser').textContent = user || 'admin'; navigate('dashboard'); }
 
-const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
+const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], blacklist: ['数据 / 黑名单中心', '黑名单中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
 function navigate(page) {
   $$('[data-page-view]').forEach(el => el.classList.toggle('active', el.dataset.pageView === page));
   $$('[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   [$('#breadcrumb').textContent, $('#pageTitle').textContent] = pageLabels[page];
   $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show');
-  if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
+  if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'blacklist') loadBlacklist(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
 }
 function renderWeeklyChart(rows) {
   const items = Array.isArray(rows) ? rows : []; const largest = Math.max(0, ...items.flatMap(item => [Number(item.visits) || 0, Number(item.clicks) || 0])); const step = Math.max(1, Math.ceil(largest / 4)); const ceiling = step * 4;
@@ -84,28 +196,45 @@ function renderWeeklyChart(rows) {
 async function loadDashboard() {
   try {
     const data = await api('/api/dashboard'); $('#statToday').textContent = data.today_visits.toLocaleString(); $('#statTodayClicks').textContent = data.today_clicks.toLocaleString(); $('#statTotal').textContent = data.total.toLocaleString(); $('#statClicks').textContent = data.clicks.toLocaleString(); $('#statDomains').textContent = data.domains.toLocaleString(); renderWeeklyChart(data.weekly);
+    renderClientBreakdown(data.clients || []);
     const nextReset = new Date(data.next_reset_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); $('#dashboardPeriod').textContent = `北京时间每天 22:00 刷新，下一次刷新：${nextReset}`;
   } catch (error) { toast(error.message, true); }
 }
 
 async function loadEvents() {
   const form = new FormData($('#eventFilters')); const query = new URLSearchParams({ page: state.eventPage, page_size: 25 });
-  if (form.get('domain')) query.set('domain', form.get('domain').trim()); if (form.get('type')) query.set('type', form.get('type'));
+  if (form.get('domain')) query.set('domain', form.get('domain').trim()); if (form.get('type')) query.set('type', form.get('type')); if (form.get('client')) query.set('client', form.get('client'));
   try {
     const data = await api(`/api/events?${query}`); state.eventTotal = data.total; $('#eventCount').textContent = `共 ${data.total} 条`; $('#eventPage').textContent = data.page; $('#eventsPrev').disabled = data.page <= 1; $('#eventsNext').disabled = data.page * 25 >= data.total;
     const eventLabels = { visit: '访问', click: '点击', rejected: '拒绝' };
-    $('#eventsBody').innerHTML = data.items.length ? data.items.map(item => `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${eventLabels[item.event_type] || escapeHtml(item.event_type)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:35px;color:#92959e">暂无符合条件的访问记录</td></tr>';
+    $('#eventsBody').innerHTML = data.items.length ? data.items.map(item => {
+      const client = item.client_type || 'unknown';
+      return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${eventLabels[item.event_type] || escapeHtml(item.event_type)}</span></td><td><span class="client-tag tag-${escapeHtml(client)}">${escapeHtml(CLIENT_LABELS[client] || client)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:35px;color:#92959e">暂无符合条件的访问记录</td></tr>';
   } catch (error) { toast(error.message, true); }
+}
+
+function renderClientBreakdown(rows) {
+  const items = Array.isArray(rows) ? rows : [];
+  const largest = Math.max(1, ...items.map(item => item.visits || 0));
+  $('#clientBreakdown').innerHTML = items.map(item => `<div class="client-bar-row"><span class="client-bar-name"><i class="dot dot-${escapeHtml(item.client_type)}"></i>${escapeHtml(item.label)}</span><div class="client-bar-track"><div class="client-bar-fill fill-${escapeHtml(item.client_type)}" style="width:${Math.round((item.visits || 0) / largest * 100)}%"></div></div><strong>${(item.visits || 0).toLocaleString()}</strong><small>点击 ${(item.clicks || 0).toLocaleString()}</small></div>`).join('');
+}
+
+function fillClientFilter(types) {
+  const select = $('#eventClientFilter');
+  if (select.options.length > 1) return;
+  select.innerHTML = '<option value="">全部客户端</option>' + types.map(item => `<option value="${escapeHtml(item.client_type)}">${escapeHtml(item.label)}</option>`).join('');
 }
 
 function renderProjectCard(item, settings) {
   const domains = state.domains.filter(domain => domain.project_id === item.id);
   const primaryDomain = domains[0];
-  const entry = primaryDomain?.frontend_entry || settings.frontend_entry || 'logo.gif';
-  const address = primaryDomain ? `https://${primaryDomain.domain}/${entry}` : '';
   const activeCertificates = domains.filter(domain => domain.certificate_status === 'active').length;
-  const addressMarkup = address ? `<a class="project-address-link" href="${escapeHtml(address)}" target="_blank" rel="noreferrer" title="${escapeHtml(address)}">${escapeHtml(address)}</a><button type="button" class="icon-button copy-address" data-address="${escapeHtml(address)}" title="复制前台地址">▣</button>` : '<span class="project-address-empty">配置域名后显示前台地址</span>';
-  return `<article class="project-card rich-project-card"><header class="project-card-head"><div class="project-logo">LP</div><div class="project-title"><h4>${escapeHtml(item.name)}</h4><p>静态前台源码</p></div><span class="project-status">已下载</span></header><section class="project-address-block"><span class="project-address-label">前台地址</span><div class="project-address-value">${addressMarkup}</div></section><div class="project-meta"><span><small>域名</small><b>${domains.length}</b></span><span><small>HTTPS</small><b>${activeCertificates}/${domains.length || 0}</b></span><span><small>入口</small><b>/${escapeHtml(entry)}</b></span></div><footer class="project-actions"><button class="primary small project-config" data-project-id="${item.id}">配置</button><button class="secondary small project-update" data-project-id="${item.id}">更新</button><button class="secondary small project-cert" data-project-id="${item.id}">申请证书</button><button class="danger-link" data-project-id="${item.id}">删除</button></footer></article>`;
+  const catalogEntry = state.catalog.find(source => source.slug === item.slug);
+  const entryForCard = primaryDomain?.frontend_entry || catalogEntry?.entry || settings.frontend_entry || 'index.html';
+  const addressForCard = primaryDomain ? `https://${primaryDomain.domain}/${entryForCard}` : '';
+  const addressMarkupCard = addressForCard ? `<a class="project-address-link" href="${escapeHtml(addressForCard)}" target="_blank" rel="noreferrer" title="${escapeHtml(addressForCard)}">${escapeHtml(addressForCard)}</a><button type="button" class="icon-button copy-address" data-address="${escapeHtml(addressForCard)}" title="复制前台地址">▣</button>` : '<span class="project-address-empty">配置域名后显示前台地址</span>';
+  return `<article class="project-card rich-project-card"><header class="project-card-head"><div class="project-logo">${escapeHtml((catalogEntry?.country || item.slug.slice(0, 2)).toUpperCase())}</div><div class="project-title"><h4>${escapeHtml(item.name)}</h4><p>静态前台源码</p></div><span class="project-status">已下载</span></header><section class="project-address-block"><span class="project-address-label">前台地址</span><div class="project-address-value">${addressMarkupCard}</div></section><div class="project-meta"><span><small>域名</small><b>${domains.length}</b></span><span><small>HTTPS</small><b>${activeCertificates}/${domains.length || 0}</b></span><span><small>入口</small><b>/${escapeHtml(entryForCard)}</b></span></div><footer class="project-actions"><button class="primary small project-config" data-project-id="${item.id}">配置</button><button class="secondary small project-update" data-project-id="${item.id}">更新</button><button class="secondary small project-cert" data-project-id="${item.id}">申请证书</button><button class="danger-link" data-project-id="${item.id}">删除</button></footer></article>`;
 }
 
 async function loadFrontend() {
@@ -113,19 +242,118 @@ async function loadFrontend() {
     const [projects, domains, settings] = await Promise.all([api('/api/projects'), api('/api/domains'), api('/api/settings')]); state.projects = projects.items; state.domains = domains.items; state.settings = settings;
     state.catalog = projects.catalog;
     $('#projectList').innerHTML = state.projects.map(item => renderProjectCard(item, settings)).join('');
+    fillClientFilter(CLIENT_TYPES.map(client => ({ client_type: client, label: CLIENT_LABELS[client] })));
     $('#domainList').innerHTML = state.domains.length ? state.domains.map(item => `<article class="domain-item"><span><b><a href="https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}" target="_blank" rel="noreferrer">https://${escapeHtml(item.domain)}/${escapeHtml(item.frontend_entry || settings.frontend_entry || 'logo.gif')}</a></b><small>${escapeHtml(item.project_name || '未关联项目')}</small></span><span class="cert-${item.certificate_status}">${item.certificate_status === 'active' ? 'HTTPS 已启用' : item.certificate_status === 'failed' ? '申请失败' : '待申请 HTTPS'}</span></article>`).join('') : '<div class="empty-state" style="padding:30px"><p>还没有配置域名</p></div>';
     renderCatalog(state.catalog);
   } catch (error) { toast(error.message, true); }
 }
 
 function renderCatalog(items) {
-  $('#catalogList').innerHTML = items.length ? `<div class="source-table"><div class="source-table-head"><span>LOGO</span><span>国家</span><span>官网</span><span>描述</span><span>站点预览图</span><span>更新时间</span><span>操作</span></div>${items.map(item => `<div class="source-row"><div class="source-logo">VIEW<small>ビューカード</small></div><span>日本 JP</span><span class="source-url">未配置官网</span><span>${escapeHtml(item.description)}</span><div class="source-preview">HTML</div><span class="source-time">内置源码</span><button class="primary small catalog-download" data-source-id="${escapeHtml(item.id)}" ${item.downloaded ? 'disabled' : ''}>${item.downloaded ? '已安装' : '安装'}</button></div>`).join('')}</div>` : '';
+  $('#catalogList').innerHTML = items.length ? `<div class="source-table"><div class="source-table-head"><span>LOGO</span><span>国家</span><span>官网</span><span>描述</span><span>站点预览图</span><span>更新时间</span><span>操作</span></div>${items.map(item => `<div class="source-row"><div class="source-logo">${escapeHtml((item.country || 'WEB') + '')}<small>${escapeHtml(item.slug)}</small></div><span>${escapeHtml(item.country ? item.country + ' ' + (COUNTRY_CODES.includes(item.country) ? countryName(item.country) : '') : '通用')}</span><span class="source-url">${item.site_url ? `<a href="${escapeHtml(item.site_url)}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none">${escapeHtml(item.site_url)}</a>` : '未配置官网'}</span><span title="${escapeHtml(item.description)}">${escapeHtml(item.description)}</span><div class="source-preview">${item.preview ? `<img src="/__gateway/preview/${escapeHtml(item.slug)}" alt="" style="width:100%;height:100%;object-fit:cover">` : 'HTML'}</div><span class="source-time">入口 /${escapeHtml(item.entry || 'index.html')}</span><button class="primary small catalog-download" data-source-id="${escapeHtml(item.id)}" ${item.downloaded ? 'disabled' : ''}>${item.downloaded ? '已安装' : '安装'}</button></div>`).join('')}</div>` : '';
   $('#catalogEmpty').classList.toggle('hidden', items.length > 0);
 }
 
 async function loadSettings() {
-  try { state.settings = await api('/api/settings'); $('#ipregistry_api_key').value = state.settings.ipregistry_api_key || ''; $('#ipregistry_enabled').checked = Boolean(state.settings.ipregistry_enabled); await loadIpregistryCredits(); }
-  catch (error) { toast(error.message, true); }
+  try {
+    state.settings = await api('/api/settings');
+    $('#ipregistry_api_key').value = state.settings.ipregistry_api_key || '';
+    $('#ipregistry_enabled').checked = Boolean(state.settings.ipregistry_enabled);
+    $('#client_redirect_enabled').checked = Boolean(state.settings.client_redirect_enabled);
+    $('#bot_redirect_enabled').checked = Boolean(state.settings.bot_redirect_enabled);
+    $('#bot_redirect_url').value = state.settings.bot_redirect_url || '';
+    $('#rate_check_enabled').checked = Boolean(state.settings.rate_check_enabled);
+    $('#rate_window_seconds').value = Number(state.settings.rate_window_seconds || 60);
+    $('#rate_max_requests').value = Number(state.settings.rate_max_requests || 10);
+    $('#captcha_enabled').checked = Boolean(state.settings.captcha_enabled);
+    $('#captcha_max_tries').value = Number(state.settings.captcha_max_tries || 3);
+    $('#captcha_ttl_minutes').value = Math.round((Number(state.settings.captcha_ttl_seconds) || 7200) / 60);
+    $('#app_android_url').value = state.settings.app_android_url || '';
+    $('#app_ios_url').value = state.settings.app_ios_url || '';
+    $('#app_desktop_url').value = state.settings.app_desktop_url || '';
+    renderClientRules(state.settings.client_redirect_rules || {});
+    renderClientPresets();
+    await loadIpregistryCredits();
+  } catch (error) { toast(error.message, true); }
+}
+
+function renderClientRules(rules) {
+  const data = rules && typeof rules === 'object' ? rules : {};
+  $('#clientRuleEditor').innerHTML = CLIENT_TYPES.map(client => {
+    const rule = data[client] || {};
+    const url = typeof rule === 'string' ? rule : (rule.url || '');
+    const limit = Number((rule && rule.limit) || 0) || 0;
+    return `<div class="client-rule-row" data-client="${client}"><span class="client-rule-name"><i class="dot dot-${client}"></i>${escapeHtml(CLIENT_LABELS[client])}<small>${client}</small></span><input data-rule-url type="url" value="${escapeHtml(url)}" placeholder="留空则使用模板跳转链接"><input data-rule-limit type="number" value="${limit}" min="0" max="999999999" step="1" title="点击上限，0 表示不限"><button type="button" class="secondary small client-test-jump" data-client="${client}" title="用该客户端的 UA 实跳一次">跳转测试</button></div>`;
+  }).join('');
+}
+
+/* App 更新页跳转地址：只接受完整 http(s) 地址，其余一律视为留空回落 */
+function readAppUrl(selector) {
+  const value = $(selector).value.trim();
+  return /^https?:\/\/[^\s/]+/i.test(value) ? value : '';
+}
+
+function readClientRules() {
+  const rules = {};
+  $$('.client-rule-row', $('#clientRuleEditor')).forEach(row => {
+    rules[row.dataset.client] = {
+      url: $('[data-rule-url]', row).value.trim(),
+      limit: Math.min(999999999, Math.max(0, Math.trunc(Number($('[data-rule-limit]', row).value) || 0)))
+    };
+  });
+  return rules;
+}
+
+function renderClientPresets() {
+  $('#clientTestPresets').innerHTML = CLIENT_PRESETS.map(item => `<button type="button" class="preset-chip" data-ua="${escapeHtml(item.ua)}" title="${escapeHtml(item.ua)}">${escapeHtml(item.label)}</button>`).join('');
+}
+
+function uaForClient(client) {
+  return (CLIENT_PRESETS.find(item => {
+    const probe = item.ua.toLowerCase();
+    if (client === 'ios') return probe.includes('iphone');
+    if (client === 'android') return probe.includes('android');
+    if (client === 'desktop') return probe.includes('windows nt') && !probe.includes('headless');
+    if (client === 'bot') return probe.includes('googlebot');
+    return probe.includes('curl');
+  }) || {}).ua || '';
+}
+
+function renderClientTestResult(payload) {
+  const box = $('#clientTestResult');
+  const reasons = (payload.client_reasons || []).map(escapeHtml).join('、');
+  const target = payload.target_url
+    ? `<a href="${escapeHtml(payload.target_url)}" target="_blank" rel="noreferrer">${escapeHtml(payload.target_url)}</a>`
+    : '<em>尚未配置任何跳转链接</em>';
+  box.innerHTML = `<div class="client-result-row"><span>识别客户端</span><strong class="tag tag-${escapeHtml(payload.client_type)}">${escapeHtml(payload.client_label || payload.client_type)}</strong></div><div class="client-result-row"><span>命中规则</span><code>${escapeHtml(payload.matched_rule || 'none')}</code></div><div class="client-result-row"><span>判定依据</span><code>${reasons || '-'}</code></div><div class="client-result-row"><span>将跳转到</span><span>${target}</span></div>`;
+  box.classList.remove('hidden');
+}
+
+async function runClientDetect() {
+  const ua = $('#clientTestUa').value.trim();
+  if (!ua) return toast('请先填写要测试的 User-Agent', true);
+  try {
+    const data = await api(`/api/client/detect?ua=${encodeURIComponent(ua)}`);
+    renderClientTestResult(data);
+  } catch (error) { toast(error.message, true); }
+}
+
+async function runClientJump(client) {
+  const row = client ? $(`.client-rule-row[data-client="${client}"]`, $('#clientRuleEditor')) : null;
+  const ua = client ? (uaForClient(client) || '') : $('#clientTestUa').value.trim();
+  if (!ua) return toast('请先填写要测试的 User-Agent', true);
+  try {
+    const response = await fetch('/api/client/test-click', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ua })
+    });
+    if (response.redirected) { window.open(response.url, '_blank', 'noopener'); toast('已按该客户端跳转到目标地址'); return; }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || '跳转测试失败');
+    window.open(response.headers.get('Location') || data.target_url, '_blank', 'noopener');
+    toast('已按该客户端跳转到目标地址');
+  } catch (error) { toast(error.message, true); }
+  finally { if (row) row.querySelector('.client-test-jump').disabled = false; }
 }
 async function loadIpregistryCredits() {
   const label = $('#ipregistryKeyLabel'); const key = $('#ipregistry_api_key').value.trim();
@@ -137,8 +365,28 @@ async function loadIpregistryCredits() {
   } catch (_) { label.textContent = 'API Key（剩余积分：查询失败）'; label.className = 'credit-error'; }
 }
 async function saveSettings() {
-  try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ ipregistry_api_key: $('#ipregistry_api_key').value.trim(), ipregistry_enabled: $('#ipregistry_enabled').checked }) }); await loadIpregistryCredits(); toast('防红配置已保存'); }
-  catch (error) { toast(error.message, true); }
+  const payload = {
+    ipregistry_api_key: $('#ipregistry_api_key').value.trim(),
+    ipregistry_enabled: $('#ipregistry_enabled').checked,
+    client_redirect_enabled: $('#client_redirect_enabled').checked,
+    client_redirect_rules: readClientRules(),
+    bot_redirect_enabled: $('#bot_redirect_enabled').checked,
+    bot_redirect_url: $('#bot_redirect_url').value.trim(),
+    rate_check_enabled: $('#rate_check_enabled').checked,
+    rate_window_seconds: Math.min(3600, Math.max(10, Math.trunc(Number($('#rate_window_seconds').value) || 60))),
+    rate_max_requests: Math.min(1000, Math.max(3, Math.trunc(Number($('#rate_max_requests').value) || 10))),
+    captcha_enabled: $('#captcha_enabled').checked,
+    captcha_max_tries: Math.min(10, Math.max(1, Math.trunc(Number($('#captcha_max_tries').value) || 3))),
+    captcha_ttl_seconds: Math.min(43200, Math.max(5, Math.trunc(Number($('#captcha_ttl_minutes').value) || 120))) * 60,
+    app_android_url: readAppUrl('#app_android_url'),
+    app_ios_url: readAppUrl('#app_ios_url'),
+    app_desktop_url: readAppUrl('#app_desktop_url')
+  };
+  try {
+    await api('/api/settings', { method: 'POST', body: JSON.stringify(payload) });
+    await loadSettings();
+    toast('设置已保存');
+  } catch (error) { toast(error.message, true); }
 }
 
 function ensureRedirectLinksField(form) {
@@ -231,7 +479,13 @@ function fillProjectConfig(projectId) {
   form.dataset.originalDomains = JSON.stringify(Object.fromEntries(domains.map(item => [item.domain, item.frontend_entry || 'logo.gif'])));
   form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
   renderConfigDomains(form); form.elements.ipregistry_enabled.checked = Boolean(settings.ipregistry_enabled);
+  form.elements.browser_lang_check.checked = Boolean(settings.browser_lang_check);
+  form.elements.browser_lang_whitelist.value = (settings.browser_lang_whitelist || []).join(', ');
+  form.elements.browser_tz_check.checked = Boolean(settings.browser_tz_check);
+  form.elements.browser_tz_whitelist.value = (settings.browser_tz_whitelist || []).join(', ');
   setCountrySelectValue(form, 'country_whitelist', settings.country_whitelist || ''); setCountrySelectValue(form, 'country_blacklist', settings.country_blacklist || ''); form.elements.redirect_url.value = settings.redirect_url || '';
+  setEnvSelectValue(form, 'browser_lang_whitelist', settings.browser_lang_whitelist || []);
+  setEnvSelectValue(form, 'browser_tz_whitelist', settings.browser_tz_whitelist || []);
   renderRedirectLinks(form, settings.redirect_links || []);
   ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
@@ -245,7 +499,7 @@ function renderConfigDomains(form) {
 }
 async function saveProjectConfig(event) {
   event.preventDefault(); const form = event.currentTarget; const domains = [...new Set(form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean))]; const values = {};
-  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled'].forEach(name => values[name] = form.elements[name].checked);
+  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled','browser_lang_check','browser_tz_check'].forEach(name => values[name] = form.elements[name].checked); values.browser_lang_whitelist = form.elements['browser_lang_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean); values.browser_tz_whitelist = form.elements['browser_tz_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(values) });
@@ -264,9 +518,103 @@ $('#logoutBtn').addEventListener('click', async () => { await api('/api/auth/log
 $('#mainNav').addEventListener('click', event => { const button = event.target.closest('[data-page]'); if (button) navigate(button.dataset.page); });
 $('#refreshDashboard').addEventListener('click', loadDashboard); $('#eventFilters').addEventListener('submit', event => { event.preventDefault(); state.eventPage = 1; loadEvents(); });
 $('#eventsPrev').addEventListener('click', () => { if (state.eventPage > 1) { state.eventPage--; loadEvents(); } }); $('#eventsNext').addEventListener('click', () => { if (state.eventPage * 25 < state.eventTotal) { state.eventPage++; loadEvents(); } });
+$('#clearEvents').addEventListener('click', async () => {
+  if (!confirm('确定清空全部访问日志记录吗？清空后不可恢复。')) return;
+  try {
+    const data = await api('/api/events/clear', { method: 'POST', body: '{}' });
+    toast('已清空 ' + Number(data.deleted || 0).toLocaleString() + ' 条日志记录');
+    state.eventPage = 1; loadEvents();
+  } catch (error) { toast(error.message, true); }
+});
 $$('.tabs button').forEach(button => button.addEventListener('click', () => { $$('.tabs button').forEach(el => el.classList.toggle('active', el === button)); $$('.tab-panel').forEach(el => el.classList.toggle('active', el.id === `${button.dataset.tab}Tab`)); }));
 $('#openImport').addEventListener('click', () => $('#importDialog').showModal()); $('#manualInstall').addEventListener('click', () => $('#importDialog').showModal()); $('#saveSettings').addEventListener('click', saveSettings); $('#projectConfigForm').addEventListener('submit', saveProjectConfig);
+$('#clientDetectBtn').addEventListener('click', runClientDetect);
+$('#clientJumpBtn').addEventListener('click', () => runClientJump(''));
+$('#clientTestPresets').addEventListener('click', event => {
+  const chip = event.target.closest('.preset-chip'); if (!chip) return;
+  $('#clientTestUa').value = chip.dataset.ua; runClientDetect();
+});
+$('#clientRuleEditor').addEventListener('click', event => {
+  const button = event.target.closest('.client-test-jump'); if (!button) return;
+  button.disabled = true; runClientJump(button.dataset.client);
+});
+$('#eventClientFilter').addEventListener('change', () => { state.eventPage = 1; loadEvents(); });
+
+/* ---------------- 黑名单中心 ---------------- */
+const blState = { page: 1, total: 0, q: '' };
+const REASON_LABELS = { manual: '手动添加', rate_limit: '频率超限' };
+async function loadBlacklist() {
+  try {
+    const query = new URLSearchParams({ page: blState.page, page_size: 25 });
+    if (blState.q) query.set('q', blState.q);
+    const data = await api(`/api/blacklist?${query}`);
+    blState.total = data.total;
+    $('#blCount').textContent = `共 ${data.total} 条`;
+    $('#blPage').textContent = data.page;
+    $('#blPrev').disabled = data.page <= 1;
+    $('#blNext').disabled = data.page * 25 >= data.total;
+    const reasonText = r => REASON_LABELS[r] || r;
+    $('#blBody').innerHTML = data.items.length ? data.items.map(item => `
+      <tr data-id="${item.id}">
+        <td>#${item.id}</td><td>${escapeHtml(item.ip)}</td>
+        <td>${escapeHtml(reasonText(item.reason))}</td>
+        <td class="bl-note">${escapeHtml(item.note || '-')}</td>
+        <td>${escapeHtml((item.created_at || '').replace('T', ' ').slice(0, 19))}</td>
+        <td><button class="secondary small bl-edit">编辑</button> <button class="danger-link bl-del">移除</button></td>
+      </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:35px;color:#92959e">黑名单为空</td></tr>';
+  } catch (error) { toast(error.message, true); }
+}
+$('#blForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const ip = $('#blNewIp').value.trim();
+  const note = $('#blNewNote').value.trim();
+  if (!ip) return toast('请填写 IP 地址', true);
+  try {
+    await api('/api/blacklist/add', { method: 'POST', body: JSON.stringify({ ip, note }) });
+    toast('已加入黑名单');
+    $('#blNewIp').value = ''; $('#blNewNote').value = '';
+    blState.page = 1; loadBlacklist();
+  } catch (error) { toast(error.message, true); }
+});
+$('#blQuery').addEventListener('keydown', event => {
+  if (event.key === 'Enter') { event.preventDefault(); blState.q = $('#blQuery').value.trim(); blState.page = 1; loadBlacklist(); }
+});
+$('#blPrev').addEventListener('click', () => { if (blState.page > 1) { blState.page--; loadBlacklist(); } });
+$('#blNext').addEventListener('click', () => { if (blState.page * 25 < blState.total) { blState.page++; loadBlacklist(); } });
+$('#blClear').addEventListener('click', async () => {
+  if (!confirm('确定清空整个黑名单吗？所有被拉黑的 IP 将立即恢复访问。')) return;
+  try { const d = await api('/api/blacklist/clear', { method: 'POST', body: '{}' }); toast(`已清空 ${d.deleted} 条黑名单记录`); loadBlacklist(); }
+  catch (error) { toast(error.message, true); }
+});
+$('#blBody').addEventListener('click', async event => {
+  const row = event.target.closest('tr[data-id]');
+  if (!row) return;
+  const id = Number(row.dataset.id);
+  if (event.target.closest('.bl-del')) {
+    if (!confirm('确定将该 IP 移出黑名单吗？')) return;
+    try { await api('/api/blacklist/delete', { method: 'POST', body: JSON.stringify({ id }) }); toast('已移出黑名单'); loadBlacklist(); }
+    catch (error) { toast(error.message, true); }
+  }
+  if (event.target.closest('.bl-edit')) {
+    const cells = row.querySelectorAll('td');
+    const oldIp = cells[1].textContent;
+    const oldNote = (cells[3].textContent === '-' ? '' : cells[3].textContent);
+    cells[1].innerHTML = `<input value="${escapeHtml(oldIp)}" style="width:150px">`;
+    cells[3].innerHTML = `<input value="${escapeHtml(oldNote)}" style="width:160px">`;
+    event.target.closest('.bl-edit').textContent = '保存';
+    event.target.closest('.bl-edit').className = 'primary small bl-save';
+  }
+  if (event.target.closest('.bl-save')) {
+    const newIp = row.querySelector('td:nth-child(2) input').value.trim();
+    const newNote = row.querySelector('td:nth-child(4) input').value.trim();
+    try {
+      await api('/api/blacklist/update', { method: 'POST', body: JSON.stringify({ id, ip: newIp, note: newNote }) });
+      toast('已保存'); loadBlacklist();
+    } catch (error) { toast(error.message, true); }
+  }
+});
 $$('[data-country-select]').forEach(initCountrySelect);
+$$('[data-env-select]').forEach(initEnvPicker);
 document.addEventListener('click', event => { if (!event.target.closest('[data-country-select]')) $$('[data-country-select].open').forEach(closeCountrySelect); });
 $('#ipregistry_api_key').addEventListener('input', () => { $('#ipregistryKeyLabel').textContent = `API Key（剩余积分：${$('#ipregistry_api_key').value.trim() ? '保存后查询' : '未配置'}）`; $('#ipregistryKeyLabel').className = ''; });
 $('#sourceQuery').addEventListener('click', () => { const keyword = $('#sourceSearch').value.trim().toLowerCase(); renderCatalog(state.catalog.filter(item => `${item.name} ${item.description} ${item.filename}`.toLowerCase().includes(keyword))); });

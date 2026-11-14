@@ -7,15 +7,15 @@ Wants=network-online.target
 Type=simple
 User=gateway-console
 Group=gateway-console
-WorkingDirectory=/opt/gateway-console
+WorkingDirectory=@APP_DIR@
 EnvironmentFile=/etc/gateway-console.env
-ExecStart=/usr/bin/python3 /opt/gateway-console/app.py --host 127.0.0.1 --port 8787
+ExecStart=/usr/bin/python3 @APP_DIR@/app.py --host 127.0.0.1 --port 8787
 Restart=on-failure
 RestartSec=3
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/gateway-console /etc/nginx /var/log/nginx /run -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt
+ReadWritePaths=@DATA_DIR@ /etc/nginx /var/log/nginx /run -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt
 
 [Install]
 WantedBy=multi-user.target

@@ -1,9 +1,10 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Lightweight administration server for Gateway Console."""
 
 from __future__ import annotations
 
 import argparse
+import collections
 import base64
 import hashlib
 import hmac
@@ -50,8 +51,962 @@ SOURCE_CATALOG = {
         "slug": "landing-page",
         "filename": "landing-page",
         "description": "Complete static landing page source",
-    }
+        "country": "",
+        "site_url": "",
+        "entry": "logo.gif",
+        "preview": "",
+    },
+    "vpass-flow": {
+        "id": "vpass-flow",
+        "name": "Vpass 三井流程",
+        "slug": "vpass-flow",
+        "filename": "vpass-flow",
+        "description": "Vpass / 三井住友卡流程模板：人机验证 → 登录首页 → App 更新页，"
+                       "更新页按钮按安卓 / 苹果 / PC 分别跳转到后台自定义地址",
+        "country": "JP",
+        "site_url": "",
+        "entry": "index.html",
+        "preview": "assets/vpass_logo.svg",
+    },
+    "tax-app-jp": {
+        "id": "tax-app-jp",
+        "name": "国税e-Tax アプリ",
+        "slug": "tax-app-jp",
+        "filename": "tax-app-jp",
+        "description": "日本国税厅 e-Tax 应用下载页，Google Play 风格移动端模板，含安装按钮与截图轮播",
+        "country": "JP",
+        "site_url": "https://www.e-tax.nta.go.jp",
+        "entry": "index.html",
+        "preview": "assets/app-icon.png",
+    },
 }
+
+CAPTCHA_COOKIE = "gw_verified"
+# 第二道门禁：登录凭据。登录页提交后由 /flow/login 签发，
+# 更新页与扫码页都要它，防止验证通过后直接跳到第三步。
+FLOW_COOKIE = "gw_login"
+# 这些页面必须带 FLOW_COOKIE 才能访问，否则回退到入口页重新走流程。
+FLOW_GUARDED_PAGES = ("vpass_update.html", "pc_download.html")
+# 业务流内部页面：这些页面是「验证 → 登录 → 更新 → 下载」这条链上的环节，
+# 不是营销落地页。给它们注入点击拦截器会把流程内的按钮劫持到分流地址，
+# 导致用户填完登录信息直接被弹去外链、跳过更新检测页。
+# 只对「多步骤流程型模板」生效；落地页模板（landing-page / tax-app-jp）
+# 的入口页仍需点击分流，所以不能只按文件名判断，要连模板一起看。
+# vpass-flow 登录页(index.html)必须豁免：登录按钮只负责走完整流程
+# (登录 -> 安检/检测 -> 更新引导 -> 下载)，若被点击拦截器劫持，
+# 配了分流的端会在登录页点击时直接跳去分流下载地址，整个流程被跳过。
+# 分流跳转只在更新引导页的下载按钮生效（后台分流设置 > 模板流程）。
+FLOW_CAPTURE_EXEMPT_PAGES = {
+    "vpass-flow": ("index.html", "vpass_update.html", "pc_download.html"),
+}
+CAPTCHA_TTL_DEFAULT = 2 * 60 * 60
+CAPTCHA_MAX_TRIES_DEFAULT = 3
+CAPTCHA_CELL_COUNT = 5
+CAPTCHA_CELLS_DIR = STATIC_DIR / "captcha"
+CAPTCHA_CHALLENGE_TTL = 15 * 60
+CAPTCHA_SECRET = os.environ.get("GATEWAY_CAPTCHA_SECRET", "gateway-console-captcha-v1").encode()
+CAPTCHA_LOCK = threading.Lock()
+CAPTCHA_CHALLENGES: dict[str, dict] = {}
+# IP 级验证失败冷却：{ip: {count, until}}。失败次数越多冷却越长（2s→5s→12s→…→600s 封顶），
+# 成功验证后清零。正常访客几乎不会连错两次，脚本暴力刷题的成本指数级上升。
+CAPTCHA_FAILS: dict[str, dict] = {}
+CAPTCHA_COOLDOWN_TABLE = [0, 2, 5, 12, 24, 48, 96, 180, 300, 600]
+CAPTCHA_MIN_SUBMIT_SECONDS = 2.0  # 页面渲染到提交的最短间隔：真人读题点击至少 2 秒
+CAPTCHA_POW_PREFIX = "000"       # PoW 难度：sha256 前 3 个 hex 位为 0（平均 4096 次尝试）
+
+# 浏览器环境探针（时区拦截用）：一次性 token，访客浏览器上报真实时区后签发签名 Cookie
+ENV_COOKIE = "gw_client_env"
+ENV_CHALLENGE_TTL = 180
+ENV_CHALLENGES: dict[str, dict] = {}
+ENV_LOCK = threading.Lock()
+
+# 黑名单内存缓存（表内容启动加载、增删改查时同步）与访问频率滑动窗口
+BLACKLIST_CACHE: set[str] = set()
+BLACKLIST_LOADED = False
+RATE_HITS: dict[str, "collections.deque"] = {}
+
+
+
+# Factory defaults for every settings key. Also used as the fallback when a
+# stored value cannot be decoded, so a corrupt row never breaks the site.
+SETTINGS_DEFAULTS = {
+    "ipregistry_api_key": "",
+    "country_whitelist": "",
+    "country_blacklist": "",
+    "human_verification": False,
+    "block_desktop": False,
+    "block_ios": False,
+    "block_android": False,
+    "ipregistry_enabled": False,
+    "blocked_ip_types": [],
+    "blocked_threats": [],
+    "redirect_url": "",
+    "redirect_links": [],
+    "client_redirect_rules": {},
+    "client_redirect_enabled": False,
+    "bot_redirect_enabled": False,
+    "bot_redirect_url": "",
+    "frontend_entry": "index.html",
+    "captcha_enabled": False,
+    "captcha_ttl_seconds": CAPTCHA_TTL_DEFAULT,
+    "captcha_max_tries": CAPTCHA_MAX_TRIES_DEFAULT,
+    # App 更新页（vpass-flow 模板）的分端跳转地址，后台可自定义
+    "app_android_url": "",
+    "app_ios_url": "",
+    "app_desktop_url": "",
+    # 浏览器环境拦截（机器人检测的一部分，作用于人机验证之前）
+    "browser_lang_check": False,
+    "browser_lang_whitelist": [],
+    "browser_tz_check": False,
+    "browser_tz_whitelist": [],
+    # 访问频率封锁：窗口内页面请求数超限直接拉黑（黑名单中心可管理）
+    "rate_check_enabled": False,
+    "rate_window_seconds": 60,
+    "rate_max_requests": 10,
+}
+
+# 客户端类型：bot（爬虫/自动化）优先级最高，其次移动端，最后桌面端
+CLIENT_BOT = "bot"
+CLIENT_IOS = "ios"
+CLIENT_ANDROID = "android"
+CLIENT_DESKTOP = "desktop"
+CLIENT_UNKNOWN = "unknown"
+CLIENT_BLACKLIST = "blacklist"
+CLIENT_TYPES = (CLIENT_BOT, CLIENT_IOS, CLIENT_ANDROID, CLIENT_DESKTOP, CLIENT_UNKNOWN, CLIENT_BLACKLIST)
+CLIENT_LABELS = {
+    CLIENT_BOT: "爬虫/自动化",
+    CLIENT_IOS: "iOS 设备",
+    CLIENT_ANDROID: "Android 设备",
+    CLIENT_DESKTOP: "电脑端",
+    CLIENT_UNKNOWN: "未知客户端",
+    CLIENT_BLACKLIST: "黑名单",
+}
+
+# 常见爬虫、自动化框架、HTTP 客户端特征。命中任意一条即判定为 bot。
+BOT_UA_PATTERNS = (
+    "bot", "spider", "crawler", "crawling", "slurp", "scrapy", "curl", "wget",
+    "python-requests", "python-urllib", "httpx", "aiohttp", "libwww-perl",
+    "java/", "go-http-client", "okhttp", "axios", "node-fetch", "postmanruntime",
+    "headlesschrome", "phantomjs", "puppeteer", "playwright", "selenium",
+    "lighthouse", "pagespeed", "gtmetrix", "semrushbot", "ahrefsbot", "mj12bot",
+    "dotbot", "petalbot", "yandex", "baiduspider", "duckduckbot", "applebot",
+    "facebookexternalhit", "whatsapp", "telegrambot", "discordbot", "slackbot",
+    "twitterbot", "linkedinbot", "embedly", "quora link preview", "skypeuripreview",
+    "nmap", "masscan", "zgrab", "zmap", "sqlmap", "nikto", "dirbuster", "gobuster",
+    "wpscan", "nessus", "openvas", "zabbix", "monitoring", "uptime",
+    "chatgpt", "gptbot", "claudebot", "perplexity", "ccbot", "youbot", "anthropic-ai",
+)
+
+# 移动端判定关键词
+IOS_UA_PATTERNS = ("iphone", "ipad", "ipod", "ios", "iphone os", "cpu iphone os")
+ANDROID_UA_PATTERNS = ("android", "android os")
+MOBILE_UA_PATTERNS = ("mobile", "mobi", "opera mini", "opera mobi", "iemobile", "blackberry", "windows phone")
+
+
+REDIRECTS: dict[str, dict] = {}
+REDIRECT_LOCK = threading.Lock()
+
+# Per-template accent colours so the verification page matches the site theme.
+CAPTCHA_DEFAULT_THEME = {"accent": "#1f4d3d", "accent_dark": "#16382d"}
+CAPTCHA_THEMES = {
+    "tax-app-jp": {"accent": "#0f9d58", "accent_dark": "#0b8043"},
+    # Vpass 品牌绿（#07866d / #05624f），与 vpass_captcha.html 一致
+    "vpass-flow": {"accent": "#07866d", "accent_dark": "#05624f"},
+    "landing-page": {"accent": "#1f4d3d", "accent_dark": "#16382d"},
+}
+
+# 验证页皮肤：模板可指定不复用通用政府风格页面，而是 1:1 复刻自己的素材页。
+# 这样运营给某个客户做的验证页外观能被原样搬进系统，校验逻辑仍走服务端。
+# 注意：本表在文件后段 VPASS_* 三常量定义完成后才赋值（见下方同名赋值处），
+# 这里先留空壳，避免 NameError。
+CAPTCHA_SKINS: dict[str, dict] = {}
+
+def build_skin_captcha_page(skin: dict, challenge: dict, template_slug: str,
+                            error: str = "", tries_left: int = 0,
+                            verify_url: str = "/captcha/verify",
+                            go_url: str = "/captcha/go/", prefix: str = "") -> bytes:
+    """Render a template-branded verification page.
+
+    Same placeholder contract as build_captcha_page, so the caller cannot tell
+    the two apart. Only the chrome changes — the grid, the token and the
+    answer check all stay server side.
+    """
+    need = int(challenge["need"])
+    max_tries = CAPTCHA_MAX_TRIES_DEFAULT
+    # 素材页是「点满 N 个才能按确认」，所以按钮由 JS 控制 enabled 状态，
+    # 失败提示统一用素材的红色条。
+    cells = "".join(
+        '<div class="cp-item" data-index="{index}" role="button" tabindex="0" '
+        'aria-label="アイコン {number}">'
+        '<img src="/captcha/{icon}" alt="{alt}"></div>'.format(
+            index=cell["index"],
+            number=cell["index"] + 1,
+            icon="security.png" if cell["type"] == "security" else "captcha-decoy.png",
+            alt="セキュリティアイコン" if cell["type"] == "security" else "アイコン",
+        )
+        for cell in challenge["cells"]
+    )
+    page = skin["html"]
+    for key, value in [
+        ("__CSS__", skin["css"]),
+        ("__CELLS__", cells),
+        ("__NEED__", str(need)),
+        ("__LOGO__", (prefix or "") + (skin.get("logo") or "")),
+        ("__FAVICON__", (prefix or "") + (skin.get("favicon") or "")),
+    ]:
+        page = page.replace(key, value)
+    page = page.replace("__JS__", skin["js"])
+    page = page.replace("%%NEED%%", str(need))
+    page = page.replace("%%TRIES%%", str(max_tries))
+    page = page.replace("%%TOKEN%%", json.dumps(challenge["token"]))
+    page = page.replace("%%CHALLENGE%%", json.dumps(challenge["id"]))
+    page = page.replace("%%VERIFY_URL%%", json.dumps(verify_url))
+    page = page.replace("%%GO_URL%%", json.dumps(go_url))
+    page = page.replace("%%POW%%", json.dumps(challenge.get("pow", "")))
+    return page.encode("utf-8")
+
+# Answers are only stored server side; the browser never learns which cells
+# are the decoys. Cells are shuffled per challenge so the answer is not stable.
+def new_captcha_challenge(ip: str) -> dict:
+    """Create a challenge: grid layout plus the hidden solution."""
+    target_count = secrets.randbelow(2) + 2  # 2 or 3 shields among the cells
+    cells = [{"type": "security" if i < target_count else "decoy", "index": i}
+             for i in range(CAPTCHA_CELL_COUNT)]
+    secrets.SystemRandom().shuffle(cells)
+    answer = sorted(cell["index"] for cell in cells if cell["type"] == "security")
+    payload = {
+        "ip": ip[:128],
+        "cells": cells,
+        "answer": answer,
+        "tries": 0,
+        "created_at": time.time(),
+        "pow": secrets.token_hex(8),
+    }
+    challenge_id = secrets.token_urlsafe(18)
+    token = sign_captcha(challenge_id)
+    with CAPTCHA_LOCK:
+        CAPTCHA_CHALLENGES[challenge_id] = payload
+        prune_captcha_challenges()
+    prune_captcha_fails()
+    # "answer" stays server side; the page only learns the cell layout and how
+    # many shields to pick.
+    return {"id": challenge_id, "token": token, "cells": cells, "need": len(answer),
+            "pow": payload["pow"]}
+
+
+def sign_captcha(challenge_id: str) -> str:
+    signature = hmac.new(CAPTCHA_SECRET, challenge_id.encode(), hashlib.sha256).hexdigest()[:24]
+    return f"{challenge_id}.{signature}"
+
+
+def captcha_cooldown_remaining(ip: str) -> int:
+    """Return seconds this IP must wait before submitting again (0 = free)."""
+    entry = CAPTCHA_FAILS.get(ip)
+    if not entry:
+        return 0
+    return max(0, int(entry["until"] - time.time()))
+
+
+def captcha_register_fail(ip: str) -> int:
+    """Record one failed attempt; returns the cooldown seconds applied."""
+    with CAPTCHA_LOCK:
+        entry = CAPTCHA_FAILS.setdefault(ip, {"count": 0, "until": 0.0})
+        entry["count"] += 1
+        entry["until"] = time.time() + CAPTCHA_COOLDOWN_TABLE[
+            min(entry["count"], len(CAPTCHA_COOLDOWN_TABLE) - 1)
+        ]
+        return int(entry["until"] - time.time())
+
+
+def captcha_clear_fails(ip: str) -> None:
+    with CAPTCHA_LOCK:
+        CAPTCHA_FAILS.pop(ip, None)
+
+
+def prune_captcha_fails() -> None:
+    now = time.time()
+    with CAPTCHA_LOCK:
+        for ip in [ip for ip, e in CAPTCHA_FAILS.items() if e["until"] < now - 660]:
+            CAPTCHA_FAILS.pop(ip, None)
+
+
+def new_env_challenge(ip: str) -> str:
+    """Issue a one-shot browser-environment probe token bound to this IP."""
+    token = secrets.token_urlsafe(18)
+    with ENV_LOCK:
+        ENV_CHALLENGES[token] = {"ip": ip[:128], "created_at": time.time()}
+        expired = [t for t, e in ENV_CHALLENGES.items()
+                   if time.time() - e["created_at"] > ENV_CHALLENGE_TTL]
+        for t in expired:
+            ENV_CHALLENGES.pop(t, None)
+    return token
+
+
+def build_client_probe_page(prefix: str, token: str) -> bytes:
+    """A sub-second invisible probe: collect timezone via JS, then reload.
+
+    Runs BEFORE the human verification page. Bots that never execute JS stay
+    trapped on this page; real visitors pass through in a blink.
+    """
+    probe_url = json.dumps(prefix + "/__client/env")
+    page = CLIENT_PROBE_HTML.replace("__PROBE_URL__", probe_url)
+    page = page.replace("%%TOKEN%%", json.dumps(token))
+    return page.encode("utf-8")
+
+
+CLIENT_PROBE_HTML = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>セキュリティチェック</title>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7f6;color:#1a3c34;display:grid;place-items:center;min-height:100vh}
+.box{text-align:center}
+.spin{width:34px;height:34px;margin:0 auto 14px;border:3px solid #d8e2de;border-top-color:#07866d;border-radius:50%;animation:gws .8s linear infinite}
+@keyframes gws{to{transform:rotate(360deg)}}
+p{font-size:13px;color:#5d6b66;margin:0}
+</style>
+</head>
+<body>
+<div class="box"><div class="spin"></div><p id="m">セキュリティを確認しています...</p></div>
+<script>
+(function(){
+var d={tz:"",ls:""};
+try{d.tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch(e){}
+try{d.ls=(navigator.languages||[navigator.language||""]).join(",");}catch(e){}
+fetch(__PROBE_URL__,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({token:%%TOKEN%%,tz:d.tz,langs:d.ls})})
+.then(function(r){return r.json();})
+.then(function(j){if(j&&j.ok){location.reload();}else{document.getElementById("m").textContent="読み込みに失敗しました。ページを再読み込みしてください。";}})
+.catch(function(){setTimeout(function(){location.reload();},1500);});
+})();
+</script>
+</body>
+</html>
+"""
+
+
+def rate_hit_and_exceed(ip: str, window: int, limit: int) -> bool:
+    """Record one page request for this IP; True when over the window limit."""
+    now = time.time()
+    with ENV_LOCK:
+        dq = RATE_HITS.setdefault(ip, collections.deque())
+        while dq and dq[0] < now - window:
+            dq.popleft()
+        dq.append(now)
+        return len(dq) > limit
+
+
+def prune_rate_hits(window: int) -> None:
+    now = time.time()
+    with ENV_LOCK:
+        for ip in [ip for ip, dq in RATE_HITS.items() if not dq or dq[-1] < now - window]:
+            RATE_HITS.pop(ip, None)
+
+
+def solve_captcha_pow(pow_challenge: str, nonce: str) -> bool:
+    """Server-side PoW check: sha256(pow + ':' + nonce) must start with '000'."""
+    if not nonce or not re.fullmatch(r"[0-9]{1,12}", nonce):
+        return False
+    digest = hashlib.sha256(f"{pow_challenge}:{nonce}".encode()).hexdigest()
+    return digest.startswith(CAPTCHA_POW_PREFIX)
+
+
+def verify_captcha_signature(token: str) -> str:
+    """Return the challenge id when the HMAC matches, otherwise an empty string."""
+    challenge_id, _, signature = str(token or "").partition(".")
+    if not challenge_id or not signature:
+        return ""
+    expected = sign_captcha(challenge_id).partition(".")[2]
+    if not expected or not hmac.compare_digest(signature, expected):
+        return ""
+    return challenge_id
+
+
+def prune_captcha_challenges():
+    now = time.time()
+    stale = [key for key, item in CAPTCHA_CHALLENGES.items()
+             if now - item["created_at"] > CAPTCHA_CHALLENGE_TTL]
+    for key in stale:
+        CAPTCHA_CHALLENGES.pop(key, None)
+
+
+def prune_redirects():
+    """Drop one-shot redirect tokens that were never consumed."""
+    now = time.time()
+    for key in [k for k, v in REDIRECTS.items() if now - v["created_at"] > CAPTCHA_CHALLENGE_TTL]:
+        REDIRECTS.pop(key, None)
+
+
+def get_captcha_challenge(challenge_id: str):
+    """Return the live challenge dict so attempt counters persist, or None."""
+    with CAPTCHA_LOCK:
+        item = CAPTCHA_CHALLENGES.get(challenge_id)
+        if not item:
+            return None
+        if time.time() - item["created_at"] > CAPTCHA_CHALLENGE_TTL:
+            CAPTCHA_CHALLENGES.pop(challenge_id, None)
+            return None
+        return item
+
+
+CAPTCHA_CSS = """
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{background:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,"Noto Sans JP",sans-serif;background:#fff;color:#1a1a1a;font-size:14px;line-height:1.8;-webkit-font-smoothing:antialiased}
+.gw-bar{height:4px;background:var(--gw-accent)}
+.gw-hd{border-bottom:1px solid var(--gw-line);padding:14px 20px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.gw-hd-org{font-size:13px;font-weight:500;color:var(--gw-accent);letter-spacing:.02em;white-space:nowrap}
+.gw-hd-sys{font-size:11.5px;color:var(--gw-muted);text-align:right;letter-spacing:.03em}
+.gw-wrap{padding:26px 20px 40px}
+.gw-doc{max-width:620px;margin:0 auto}
+.gw-notice{background:#f2f5f3;border-left:3px solid var(--gw-accent);padding:9px 13px;font-size:12px;color:#3d4a44;margin-bottom:30px}
+.gw-ttl{font-size:17px;font-weight:500;letter-spacing:.01em;margin-bottom:8px}
+.gw-ttl-rule{width:100%;height:1px;background:var(--gw-line);margin-bottom:22px}
+.gw-lead{font-size:13.5px;color:#333;margin-bottom:18px}
+.gw-lead strong{font-weight:500;color:var(--gw-accent)}
+.gw-steps{margin:0 0 26px;padding:0;list-style:none}
+.gw-step{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid #e8ecea;align-items:flex-start}
+.gw-step:first-child{border-top:1px solid #e8ecea}
+.gw-step-no{flex-shrink:0;width:19px;height:19px;background:var(--gw-accent);color:#fff;font-size:11px;line-height:19px;text-align:center;margin-top:2px;font-variant-numeric:tabular-nums}
+.gw-step-tx{font-size:13px;color:#2b3330;line-height:1.75}
+.gw-step-tx b{font-weight:500;color:var(--gw-accent)}
+.gw-vhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.gw-vlabel{font-size:12.5px;color:#333;font-weight:500}
+.gw-vcount{font-size:12px;color:#5c6e66;font-variant-numeric:tabular-nums}
+.gw-grid{display:flex;gap:8px;margin-bottom:8px}
+.gw-cell{flex:1 1 0;max-width:92px;aspect-ratio:1/1;border:1px solid #9aa8a2;background:#fff;cursor:pointer;padding:0;position:relative;display:flex;align-items:center;justify-content:center;transition:background-color .12s,border-color .12s;-webkit-tap-highlight-color:transparent}
+.gw-cell img{width:100%;height:100%;object-fit:contain;padding:18%;pointer-events:none;display:block}
+.gw-cell.decoy{background:#f6f7f6;border-color:#c2cbc6}
+.gw-cell:hover{border-color:#5c6e66}
+.gw-cell.on{background:var(--gw-accent);border-color:var(--gw-accent)}
+.gw-cell.on img{filter:brightness(0) invert(1);opacity:.92}
+.gw-cell.decoy.on{background:#7d8a84;border-color:#7d8a84}
+.gw-cell:focus-visible{outline:2px solid var(--gw-accent);outline-offset:2px}
+.gw-cell[disabled]{cursor:not-allowed}
+.gw-vnote{font-size:11.5px;color:var(--gw-muted);margin-bottom:24px}
+.gw-act{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:18px;border-top:1px solid #e8ecea}
+.gw-act-tx{font-size:12px;color:var(--gw-muted);line-height:1.7}
+.gw-btn{flex-shrink:0;min-width:108px;padding:10px 20px;background:#c8cfcb;color:#fff;border:none;border-radius:0;font-size:13px;font-weight:500;letter-spacing:.08em;cursor:not-allowed;font-family:inherit;transition:background-color .18s}
+.gw-btn.ready{background:var(--gw-accent);cursor:pointer}
+.gw-btn.ready:hover,.gw-btn.ready:active{background:var(--gw-accent-dark)}
+.gw-msg{margin-top:16px;padding:11px 13px;font-size:12.5px;line-height:1.7;display:none;border-left:3px solid}
+.gw-msg.show{display:block}
+.gw-msg.ok{background:#f2f6f4;border-color:var(--gw-accent);color:#1a3d2e}
+.gw-msg.err{background:#fbf4f3;border-color:var(--gw-error);color:#7a2626}
+.gw-banner{margin:0 0 18px;padding:10px 13px;font-size:12.5px;line-height:1.7;border-left:3px solid}
+.gw-banner-error{background:#fbf4f3;border-color:var(--gw-error);color:#7a2626}
+.gw-spin{display:none;align-items:center;gap:8px;margin-top:14px;font-size:12px;color:var(--gw-muted)}
+.gw-spin.on{display:flex}
+.gw-ring{width:13px;height:13px;border:1.5px solid #dfe4e1;border-top-color:var(--gw-accent);border-radius:50%;animation:gw-sp .8s linear infinite}
+@keyframes gw-sp{to{transform:rotate(360deg)}}
+.gw-ft{border-top:1px solid var(--gw-line);margin-top:32px;padding:16px 0 0;font-size:11px;color:#8a9490;line-height:1.9}
+@media (max-width:560px){.gw-wrap{padding:20px 16px 32px}.gw-hd{padding:12px 16px;flex-direction:column;gap:2px;align-items:flex-start}.gw-hd-sys{text-align:left}.gw-cell{max-width:100%}}
+@media (max-width:400px){body{font-size:13.5px}.gw-wrap{padding:18px 14px 28px}.gw-hd{padding:11px 14px}.gw-ttl{font-size:16px}.gw-lead{font-size:13px}.gw-step{padding:10px 0}.gw-step-tx{font-size:12.5px}.gw-grid{gap:6px}.gw-cell img{padding:15%}.gw-btn{min-width:96px;padding:10px 16px;font-size:12.5px}}
+@media (max-width:340px){.gw-wrap{padding:16px 11px 24px}.gw-grid{gap:5px}.gw-cell img{padding:13%}.gw-act{gap:10px}.gw-btn{min-width:88px;padding:9px 14px;letter-spacing:.05em}.gw-ft{font-size:10.5px}}
+@media (max-width:320px){.gw-wrap{padding:14px 9px 22px}.gw-grid{gap:4px}.gw-cell img{padding:11%}.gw-vhead{gap:6px}.gw-act{flex-direction:column;align-items:stretch}.gw-btn{width:100%}}
+"""
+
+CAPTCHA_JS = """
+(function(){
+var NEED=%%NEED%%,TRIES=%%TRIES%%,TOKEN=%%TOKEN%%,CHALLENGE=%%CHALLENGE%%,VERIFY_URL=%%VERIFY_URL%%,GO_URL=%%GO_URL%%;
+var POW=%%POW%%,powNonce='',powReady=null;
+function gwShaHex(input){
+  return crypto.subtle.digest('SHA-256',new TextEncoder().encode(input)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf),function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+  });
+}
+/* 页面加载即后台求解工作量证明（平均约四千次哈希，用户读题期间完成，无感） */
+function gwSolve(){
+  var i=0;
+  function step(){
+    return gwShaHex(POW+':'+i).then(function(hex){
+      if(hex.slice(0,3)==='000')return String(i);
+      i++;return step();
+    });
+  }
+  return step().catch(function(){return '';});
+}
+function gwRecompute(nextPow){POW=nextPow;powReady=gwSolve().then(function(n){powNonce=n;});}
+powReady=gwSolve().then(function(n){powNonce=n;});
+var selected=[],busy=false;
+var grid=document.getElementById('gwGrid'),btn=document.getElementById('gwBtn');
+var msg=document.getElementById('gwMsg'),spin=document.getElementById('gwSpin');
+function sync(){
+document.getElementById('gwSel').textContent=selected.length;
+btn.disabled=selected.length!==NEED||busy;
+btn.classList.toggle('ready',!btn.disabled);
+}
+grid.addEventListener('click',function(e){
+var cell=e.target.closest('.gw-cell');
+if(!cell||busy||cell.disabled)return;
+var i=Number(cell.dataset.index);
+var at=selected.indexOf(i);
+if(at>-1){selected.splice(at,1);cell.classList.remove('on');}
+else{selected.push(i);cell.classList.add('on');}
+sync();
+});
+btn.addEventListener('click',async function(){
+if(busy||selected.length!==NEED)return;
+busy=true;try{await powReady;}catch(e){}btn.disabled=true;btn.style.display='none';spin.classList.add('on');msg.className='gw-msg';
+try{
+var res=await fetch(VERIFY_URL,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({captchaId:CHALLENGE,token:TOKEN,clickedPositions:selected,powNonce:(function(n){try{return n;}catch(e){return '';}})(powNonce)})});
+var data=await res.json();
+    if(data.powChallenge){gwRecompute(data.powChallenge);}
+if(data.success){
+spin.classList.remove('on');msg.className='gw-msg ok show';
+msg.textContent=data.message||'確認が完了しました。転送しています...';
+window.location.replace(data.redirect||(GO_URL+encodeURIComponent(data.redirectToken||'')));
+return;
+}
+busy=false;spin.classList.remove('on');msg.className='gw-msg err show';
+msg.textContent=data.message||'確認に失敗しました。';
+if(data.error==='MAX_ATTEMPTS_EXCEEDED'||data.error==='IP_BANNED'){
+btn.style.display='none';
+grid.querySelectorAll('.gw-cell').forEach(function(c){c.disabled=true;c.style.opacity='.35';});
+}else if(data.error==='CAPTCHA_EXPIRED'){
+setTimeout(function(){window.location.reload();},1800);
+}else{
+btn.style.display='';
+selected=[];
+grid.querySelectorAll('.gw-cell').forEach(function(c){c.classList.remove('on');});
+if(typeof data.triesLeft==='number'){
+var left=data.triesLeft;
+document.getElementById('gwTries').textContent=(left>0&&left<TRIES)?('　（残り '+left+' 回）'):'';
+}
+sync();
+}
+}catch(err){
+busy=false;spin.classList.remove('on');btn.style.display='';btn.disabled=false;
+msg.className='gw-msg err show';
+msg.textContent='ネットワークエラーが発生しました。再試行してください。';
+sync();
+}
+});
+sync();
+})();
+"""
+
+CAPTCHA_HTML = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>セキュリティ確認</title>
+<style>
+:root{--gw-accent:__ACCENT__;--gw-accent-dark:__ACCENT_DARK__;--gw-line:#b9c2bd;--gw-ink:#1a1a1a;--gw-muted:#6b7671;--gw-error:#a33232}
+__CSS__
+</style>
+</head>
+<body>
+<div class="gw-bar"></div>
+<header class="gw-hd">
+<div class="gw-hd-org">セキュリティ認証</div>
+<div class="gw-hd-sys">自動操作対策</div>
+</header>
+<main class="gw-wrap">
+<div class="gw-doc">
+<div class="gw-notice">本ページは自動操作から保護されています。確認のうえ、引き続き操作を進めてください。</div>
+<h1 class="gw-ttl">セキュリティ確認</h1>
+<div class="gw-ttl-rule"></div>
+__BANNER__
+<p class="gw-lead">続行するためには、本人が操作していることを確認する必要があります。以下の手順で、自動程序ではなくご本人による操作であることを確認してください。</p>
+<ol class="gw-steps">
+<li class="gw-step"><div class="gw-step-no">1</div><div class="gw-step-tx">表示されている <b>盾のアイコン</b> をすべて選択してください。</div></li>
+<li class="gw-step"><div class="gw-step-no">2</div><div class="gw-step-tx">選択後、<b>確認する</b> ボタンを押してください。</div></li>
+<li class="gw-step"><div class="gw-step-no">3</div><div class="gw-step-tx">確認が完了したら、自動的に元の画面に戻ります。</div></li>
+</ol>
+<div class="gw-vhead">
+<div class="gw-vlabel">盾のアイコンを選択してください</div>
+<div class="gw-vcount">選択 <span id="gwSel">0</span> / <span id="gwNeed">__NEED__</span> 個<span id="gwTries">__TRIES_NOTE__</span></div>
+</div>
+<div class="gw-grid" id="gwGrid">__CELLS__</div>
+<div class="gw-vnote">盾以外のアイコンは選択できません。誤って選択した場合は、もう一度やり直してください。</div>
+<div class="gw-act">
+<div class="gw-act-tx">選択が完了したら、右のボタンを押してください。<br>操作には最大 __TRIES__ 回まで試すことができます。</div>
+<button class="gw-btn" id="gwBtn">確 認 す る</button>
+</div>
+<div class="gw-msg" id="gwMsg" role="status" aria-live="polite"></div>
+<div class="gw-spin" id="gwSpin"><div class="gw-ring"></div><span>確認中です。しばらくお待ちください。</span></div>
+<footer class="gw-ft">確認結果はセキュリティ審査として記録されます。
+<div>ご不明な点はサポート窓口までお問い合わせください。</div></footer>
+</div>
+</main>
+<script>
+__JS__
+</script>
+</body>
+</html>
+"""
+
+
+# Vpass 品牌皮肤：1:1 复刻 vpass_captcha.html 的视觉与交互语言
+# （顶部logo 品牌条、盾牌徽章波纹、圆角方块 +✓ 角标、绿色立体按钮、底部 SSL 提示），
+# 但校验改为走服务端，答案依然不落到前端。
+VPASS_CAPTCHA_CSS = """
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"Noto Sans JP",Meiryo,"Hiragino Sans","Yu Gothic",sans-serif;
+  color:#333;background:#f4f7f6;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;flex-direction:column;
+  -webkit-user-drag:none;
+}
+.brand{background:#fff;border-bottom:1px solid #e8eceb;position:relative;padding:18px 20px;text-align:center;flex:none}
+.brand::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0a5c48,#07866d 55%,#0aa07f)}
+.brand img{width:104px;height:auto;display:inline-block}
+main{flex:1 0 auto;display:flex;align-items:flex-start;justify-content:center;padding:42px 20px 56px}
+.card{width:100%;max-width:480px;background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:38px 36px 34px;text-align:left;box-shadow:0 8px 28px rgba(26,72,50,.07);animation:fadeIn .5s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.shield-badge{position:relative;width:76px;height:76px;margin:0 auto 22px;border-radius:50%;background:#e8f4f1;display:flex;align-items:center;justify-content:center}
+.shield-badge::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid #07866d;opacity:0;animation:ring 2.2s ease-out infinite}
+@keyframes ring{0%{transform:scale(.85);opacity:.4}70%{transform:scale(1.18);opacity:0}100%{opacity:0}}
+.shield-badge svg{width:34px;height:34px;fill:none;stroke:#07866d;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+h1{font-size:17px;color:#1a4832;font-weight:700;line-height:1.55;text-align:center;margin-bottom:12px;letter-spacing:.01em}
+.sub{font-size:13.5px;color:#666;margin-bottom:24px;line-height:1.85}
+.inst{font-size:13.5px;color:#333;margin-bottom:8px;font-weight:500}
+.inst img{width:20px;height:20px;vertical-align:middle;margin:0 2px}
+.hint{font-size:12.5px;color:#888;margin-bottom:22px}
+.hint .highlight{color:#00846d;font-weight:700}
+.cp-images{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:nowrap;user-select:none;-webkit-user-select:none}
+.cp-item{width:70px;height:70px;border-radius:12px;cursor:pointer;transition:all .2s ease;display:flex;align-items:center;justify-content:center;border:3px solid transparent;background:#fafbfb;position:relative}
+.cp-item:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(26,72,50,.16)}
+.cp-item:active{transform:scale(.95)}
+.cp-item.selected{border-color:#00846d;background:#e8f4f1}
+.cp-item.selected::after{content:"\\2713";position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:#00846d;color:#fff;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.cp-item img{width:46px;height:46px;object-fit:contain;pointer-events:none}
+.cp-item.locked{pointer-events:none;opacity:.5}
+.cp-verify{width:100%;height:50px;display:block;margin:0 auto;background:#00846d;color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;letter-spacing:.08em;cursor:pointer;transition:background .25s ease,transform .1s ease,box-shadow .1s ease;box-shadow:0 3px 0 #05624f;font-family:inherit}
+.cp-verify:hover:not(:disabled){background:#076B59}
+.cp-verify:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #05624f}
+.cp-verify:disabled{background:#c4ccc9;cursor:not-allowed;box-shadow:none}
+.cp-loading{display:none;margin-top:16px}
+.cp-loading.show{display:flex;align-items:center;justify-content:center;gap:8px}
+.cp-spinner{width:20px;height:20px;border:2px solid #dfe8e5;border-top-color:#00846d;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cp-loading span{font-size:14px;color:#666}
+.cp-message{margin-top:16px;padding:12px 14px;border-radius:6px;font-size:14px;display:none;line-height:1.7}
+.cp-message.error{display:block;background:#fdf3f2;border:1px solid #f0c4be;color:#c0392b}
+.cp-message.success{display:block;background:#e8f4f1;border:1px solid #b8ded4;color:#07866d;font-weight:700}
+.foot{flex:none;text-align:center;padding:0 20px 26px}
+.foot .secure{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#7ba394;margin-bottom:6px}
+.foot .secure svg{width:12px;height:12px;fill:none;stroke:#7ba394;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.foot .cp{font-size:10.5px;color:#b3bcb9}
+@media (max-width:480px){
+  main{padding:28px 14px 40px}
+  .card{padding:30px 20px 28px;border-radius:12px}
+  h1{font-size:15.5px}
+  .sub{font-size:13px}
+  .cp-item{width:60px;height:60px}
+  .cp-item img{width:40px;height:40px}
+  .cp-images{gap:8px}
+}
+@media (max-width:360px){
+  .cp-item{width:54px;height:54px}
+  .cp-item img{width:36px;height:36px}
+  .cp-images{gap:6px}
+}
+@media (max-width:320px){
+  main{padding:20px 10px 30px}
+  .card{padding:24px 14px 22px}
+  .cp-item{width:50px;height:50px;border-width:2px}
+  .cp-item img{width:32px;height:32px}
+  .cp-images{gap:5px}
+  .cp-verify{font-size:15px;letter-spacing:.04em}
+}
+"""
+
+VPASS_CAPTCHA_JS = """
+(function(){
+var NEED=%%NEED%%,TRIES=%%TRIES%%,TOKEN=%%TOKEN%%,CHALLENGE=%%CHALLENGE%%,VERIFY_URL=%%VERIFY_URL%%,GO_URL=%%GO_URL%%;
+var POW=%%POW%%,powNonce='',powReady=null;
+function gwShaHex(input){
+  return crypto.subtle.digest('SHA-256',new TextEncoder().encode(input)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf),function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+  });
+}
+/* 页面加载即后台求解工作量证明（平均约四千次哈希，用户读题期间完成，无感） */
+function gwSolve(){
+  var i=0;
+  function step(){
+    return gwShaHex(POW+':'+i).then(function(hex){
+      if(hex.slice(0,3)==='000')return String(i);
+      i++;return step();
+    });
+  }
+  return step().catch(function(){return '';});
+}
+function gwRecompute(nextPow){POW=nextPow;powReady=gwSolve().then(function(n){powNonce=n;});}
+powReady=gwSolve().then(function(n){powNonce=n;});
+var selected=[],busy=false;
+var container=document.getElementById('imagesContainer'),
+    btn=document.getElementById('verifyBtn'),
+    loading=document.getElementById('cpLoading'),
+    message=document.getElementById('cpMessage');
+
+function sync(){
+  btn.disabled=selected.length!==NEED||busy;
+}
+function toggle(el){
+  if(busy||el.classList.contains('locked'))return;
+  var i=Number(el.dataset.index),at=selected.indexOf(i);
+  if(at>-1){selected.splice(at,1);el.classList.remove('selected');}
+  else{selected.push(i);el.classList.add('selected');}
+  sync();
+}
+container.addEventListener('click',function(e){
+  var item=e.target.closest('.cp-item');
+  if(item)toggle(item);
+});
+btn.addEventListener('click',async function(){
+  if(busy||selected.length!==NEED)return;
+  busy=true;try{await powReady;}catch(e){}btn.disabled=true;btn.style.display='none';
+  loading.classList.add('show');message.className='cp-message';
+  try{
+    var res=await fetch(VERIFY_URL,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({captchaId:CHALLENGE,token:TOKEN,clickedPositions:selected,powNonce:(function(n){try{return n;}catch(e){return '';}})(powNonce)})});
+    var data=await res.json();
+    if(data.powChallenge){gwRecompute(data.powChallenge);}
+    loading.classList.remove('show');
+    if(data.success){
+      message.className='cp-message success';
+      message.textContent='確認完了！転送しています...';
+      /* 与素材一致：成功提示停 500ms 再跳转 */
+      setTimeout(function(){
+        window.location.replace(data.redirect||(GO_URL+encodeURIComponent(data.redirectToken||'')));
+      },500);
+      return;
+    }
+    busy=false;btn.style.display='block';
+    if(data.error==='MAX_ATTEMPTS_EXCEEDED'||data.error==='IP_BANNED'){
+      message.className='cp-message error';
+      message.textContent=data.message||'試行回数の上限に達しました。しばらくしてから再試行してください。';
+      btn.style.display='none';
+      container.querySelectorAll('.cp-item').forEach(function(c){c.classList.add('locked');});
+      return;
+    }
+    if(data.error==='CAPTCHA_EXPIRED'){
+      message.className='cp-message error';
+      message.textContent='確認の有効期限が切れました。ページを再読み込みしてください。';
+      setTimeout(function(){window.location.reload();},1800);
+      return;
+    }
+    message.className='cp-message error';
+    message.textContent=data.message||'選択が正しくありません。盾のアイコンだけをすべて選び直してください。';
+    selected=[];
+    container.querySelectorAll('.cp-item').forEach(function(c){c.classList.remove('selected');});
+    sync();
+  }catch(err){
+    busy=false;loading.classList.remove('show');btn.style.display='block';
+    message.className='cp-message error';
+    message.textContent='ネットワークエラーが発生しました。再試行してください。';
+    sync();
+  }
+});
+sync();
+})();
+"""
+
+VPASS_CAPTCHA_HTML = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>セキュリティ確認｜Vpass</title>
+<link rel="icon" href="__FAVICON__" type="image/x-icon">
+<style>
+__CSS__
+</style>
+</head>
+<body>
+<header class="brand">
+  <img src="__LOGO__" alt="Vpass">
+</header>
+<main>
+  <div class="card">
+    <div class="shield-badge">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2.5L4 6v5.5c0 5 3.4 9.7 8 10.9 4.6-1.2 8-5.9 8-10.9V6l-8-3.5z"></path>
+        <path d="M9 11.5l2.2 2.2 4-4.2"></path>
+      </svg>
+    </div>
+    <h1>サイトへの接続が安全かどうか確認しています</h1>
+    <p class="sub">続行する前に接続のセキュリティを確認する必要があります。<br>以下のアクションを完了して、あなたが人間であることを確認してください。</p>
+    <p class="inst">セキュリティ対策のため、表示された <img src="/captcha/security.png" alt="「盾アイコン」"> をすべてタップしてください。</p>
+    <p class="hint">※ <span id="securityCount">__NEED__</span> 個の<span class="highlight">盾アイコン</span>を選択してください</p>
+    <div class="cp-images" id="imagesContainer">__CELLS__</div>
+    <button class="cp-verify" id="verifyBtn" disabled>確認する</button>
+    <div class="cp-loading" id="cpLoading">
+      <div class="cp-spinner"></div><span>確認中...</span>
+    </div>
+    <div class="cp-message" id="cpMessage" role="status" aria-live="polite"></div>
+  </div>
+</main>
+<footer class="foot">
+  <span class="secure">
+    <svg viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2"></rect><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"></path></svg>
+    通信は SSL 暗号化によって保護されています
+  </span>
+</footer>
+<script>
+__JS__
+</script>
+</body>
+</html>
+"""
+
+# 皮肤表在此赋值：引用的 VPASS_* 常量必须已经定义完。
+# logo 走模板自身资源目录，验证码图标仍由 /captcha/* 提供（服务端托管）。
+CAPTCHA_SKINS.update({
+    "vpass-flow": {
+        "html": VPASS_CAPTCHA_HTML,
+        "css": VPASS_CAPTCHA_CSS,
+        "js": VPASS_CAPTCHA_JS,
+        "logo": "/assets/vpass_logo.svg",
+        "favicon": "/assets/favicon.ico",
+    },
+})
+
+
+def build_captcha_page(challenge: dict, template_slug: str, error: str = "", tries_left: int = 0, verify_url: str = "/captcha/verify", go_url: str = "/captcha/go/", prefix: str = "") -> bytes:
+    """Render the verification page, themed to the active template.
+
+    Placeholders are plain token replacement so the CSS/JS blocks keep their
+    own braces without escaping.
+    """
+    if template_slug in CAPTCHA_SKINS:
+        return build_skin_captcha_page(
+            CAPTCHA_SKINS[template_slug], challenge, template_slug,
+            error=error, tries_left=tries_left,
+            verify_url=verify_url, go_url=go_url, prefix=prefix,
+        )
+    theme = CAPTCHA_THEMES.get(template_slug, CAPTCHA_DEFAULT_THEME)
+    cells = "".join(
+        '<button type="button" class="cell{decoy}" data-index="{index}" '
+        'aria-label="マス {number}" data-type="{kind}">'
+        '<img src="/captcha/{icon}" alt=""></button>'.format(
+            decoy=" decoy" if cell["type"] == "decoy" else "",
+            index=cell["index"],
+            number=cell["index"] + 1,
+            kind=cell["type"],
+            icon="security.png" if cell["type"] == "security" else "captcha-decoy.png",
+        )
+        for cell in challenge["cells"]
+    ).replace('class="cell', 'class="gw-cell')
+
+    need = int(challenge["need"])
+    max_tries = CAPTCHA_MAX_TRIES_DEFAULT
+    tries_note = f"　（残り {tries_left} 回）" if 0 < tries_left < max_tries else ""
+    banner = ""
+    if error:
+        safe = (error.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+        banner = f'<p class="gw-banner gw-banner-error" role="alert">{safe}</p>'
+
+    page = CAPTCHA_HTML
+    for key, value in [
+        ("__ACCENT__", theme["accent"]),
+        ("__ACCENT_DARK__", theme["accent_dark"]),
+        ("__CSS__", CAPTCHA_CSS),
+        ("__BANNER__", banner),
+        ("__NEED__", str(need)),
+        ("__TRIES_NOTE__", tries_note),
+        ("__CELLS__", cells),
+        ("__TRIES__", str(max_tries)),
+    ]:
+        page = page.replace(key, value)
+    # Inject the script last, then fill its own placeholders.
+    page = page.replace("__JS__", CAPTCHA_JS)
+    page = page.replace("%%NEED%%", str(need))
+    page = page.replace("%%TRIES%%", str(max_tries))
+    page = page.replace("%%TOKEN%%", json.dumps(challenge["token"]))
+    page = page.replace("%%CHALLENGE%%", json.dumps(challenge["id"]))
+    page = page.replace("%%VERIFY_URL%%", json.dumps(verify_url))
+    page = page.replace("%%GO_URL%%", json.dumps(go_url))
+    page = page.replace("%%POW%%", json.dumps(challenge.get("pow", "")))
+    return page.encode("utf-8")
+
+def parse_accept_languages(header: str) -> list[str]:
+    """Extract lowercase language tags from an Accept-Language header.
+
+    "ja-JP,ja;q=0.9,en;q=0.8" -> ["ja-jp", "ja", "en"]. Empty header -> [].
+    """
+    tags = []
+    for part in str(header or "").split(","):
+        tag = part.split(";")[0].strip().lower()
+        if tag and tag != "*":
+            tags.append(tag)
+    return tags
+
+
+def classify_client(ua: str) -> tuple[str, list[str]]:
+    """Map a User-Agent string to a client type plus the matched evidence.
+
+    Bot detection runs first so that crawlers spoofing a mobile UA are still
+    treated as automation traffic.
+    """
+    ua_text = str(ua or "")
+    lowered = ua_text.lower()
+    reasons: list[str] = []
+
+    if not lowered.strip():
+        return CLIENT_UNKNOWN, ["ua_missing"]
+
+    bot_hit = next((token for token in BOT_UA_PATTERNS if token in lowered), "")
+    if bot_hit:
+        return CLIENT_BOT, [f"ua_bot:{bot_hit}"]
+
+    is_ios = any(token in lowered for token in IOS_UA_PATTERNS)
+    is_android = any(token in lowered for token in ANDROID_UA_PATTERNS)
+    is_mobile = is_ios or is_android or any(token in lowered for token in MOBILE_UA_PATTERNS)
+
+    if is_ios:
+        return CLIENT_IOS, ["ua_ios"]
+    if is_android:
+        return CLIENT_ANDROID, ["ua_android"]
+    if is_mobile:
+        return CLIENT_UNKNOWN, ["ua_mobile_generic"]
+    if any(token in lowered for token in ("windows nt", "macintosh", "x11", "cros", "linux")) or "mozilla" in lowered:
+        return CLIENT_DESKTOP, ["ua_desktop"]
+    return CLIENT_UNKNOWN, ["ua_unrecognized"]
+
+
+def normalize_client_rules(value) -> dict:
+    """Coerce the per-client redirect rule map into a clean structure.
+
+    Accepts either {client: "url"} or {client: {"url": ..., "limit": ...}} and
+    always returns one entry per known client type so the UI can bind inputs.
+    """
+    if isinstance(value, str):
+        parsed: dict = {}
+        for line in value.splitlines():
+            parts = [part.strip() for part in line.split("|", 1)]
+            if len(parts) != 2 or not parts[0]:
+                continue
+            client, limit_text = parts[0].lower(), parts[1]
+            parsed[client] = {"url": "", "limit": limit_text if REDIRECT_LIMIT_RE.match(limit_text) else 0}
+        value = parsed
+    if not isinstance(value, dict):
+        value = {}
+    rules = {}
+    for client in CLIENT_TYPES:
+        item = value.get(client)
+        if isinstance(item, dict):
+            url, limit_value = item.get("url", ""), item.get("limit", 0)
+        elif isinstance(item, str):
+            url, limit_value = item, 0
+        else:
+            url, limit_value = "", 0
+        url = str(url or "").strip()
+        parsed_url = urlparse(url)
+        if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+            url = ""
+        limit_text = str(limit_value or "0").strip()
+        limit = int(limit_text) if REDIRECT_LIMIT_RE.match(limit_text) else 0
+        rules[client] = {"url": url, "limit": limit, "label": CLIENT_LABELS.get(client, client)}
+    return rules
 
 
 def now_text() -> str:
@@ -144,7 +1099,8 @@ class Store:
           id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL,
           event_type TEXT NOT NULL CHECK(event_type IN ('visit','click','rejected')),
           created_at TEXT NOT NULL, ip TEXT NOT NULL, ua TEXT NOT NULL,
-          path TEXT NOT NULL DEFAULT ''
+          path TEXT NOT NULL DEFAULT '',
+          client_type TEXT NOT NULL DEFAULT 'unknown'
         );
         CREATE INDEX IF NOT EXISTS idx_events_domain_time ON events(domain, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_events_type_time_ip ON events(event_type, created_at, ip);
@@ -162,12 +1118,23 @@ class Store:
           created_at TEXT NOT NULL,
           FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE SET NULL
         );
+        CREATE TABLE IF NOT EXISTS blacklist (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT UNIQUE NOT NULL,
+          reason TEXT NOT NULL DEFAULT 'manual', note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_blacklist_ip ON blacklist(ip);
         CREATE TABLE IF NOT EXISTS settings (
           key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS redirect_link_stats (
           link_index INTEGER PRIMARY KEY, clicks INTEGER NOT NULL DEFAULT 0,
           updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS client_redirect_stats (
+          client_type TEXT NOT NULL, link_index INTEGER NOT NULL DEFAULT 0,
+          clicks INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL,
+          PRIMARY KEY(client_type, link_index)
         );
         """
         with self.connect() as db:
@@ -195,27 +1162,21 @@ class Store:
                 db.execute("ALTER TABLE domains ADD COLUMN frontend_entry TEXT NOT NULL DEFAULT 'logo.gif'")
             except sqlite3.OperationalError:
                 pass
+            try:
+                db.execute("ALTER TABLE events ADD COLUMN client_type TEXT NOT NULL DEFAULT 'unknown'")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                db.execute("CREATE INDEX IF NOT EXISTS idx_events_client ON events(client_type, created_at DESC)")
+            except sqlite3.OperationalError:
+                pass
             username = os.environ.get("GATEWAY_ADMIN_USER", "admin")
             password = os.environ.get("GATEWAY_ADMIN_PASSWORD", "admin123456")
             db.execute(
                 "INSERT OR IGNORE INTO users(username,password_hash,created_at) VALUES(?,?,?)",
                 (username, hash_password(password), now_text()),
             )
-            defaults = {
-                "ipregistry_api_key": "",
-                "country_whitelist": "",
-                "country_blacklist": "",
-                "human_verification": False,
-                "block_desktop": False,
-                "block_ios": False,
-                "block_android": False,
-                "ipregistry_enabled": False,
-                "blocked_ip_types": [],
-                "blocked_threats": [],
-                "redirect_url": "",
-                "redirect_links": [],
-                "frontend_entry": "index.html",
-            }
+            defaults = SETTINGS_DEFAULTS
             for key, value in defaults.items():
                 db.execute(
                     "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
@@ -291,15 +1252,98 @@ class Store:
             "weekly": weekly,
         }
 
-    def record_event(self, domain: str, event_type: str, ip: str, ua: str, path: str):
+    def clear_events(self) -> int:
+        """数据中心一键清空：删除全部访问/点击/拒绝流水，返回删除行数。
+
+        只清 events 流水表；轮换池计数表（redirect_link_stats /
+        client_redirect_stats）属于分流配置状态，不属于日志，刻意保留。
+        """
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM events")
+            return cursor.rowcount
+
+    # ---------------- 黑名单中心 ----------------
+    IP_RE = r"(\d{1,3}\.){3}\d{1,3}"
+
+    def ensure_blacklist_cache(self):
+        global BLACKLIST_LOADED
+        if BLACKLIST_LOADED:
+            return
+        with self.connect() as db:
+            rows = db.execute("SELECT ip FROM blacklist").fetchall()
+        BLACKLIST_CACHE.clear()
+        BLACKLIST_CACHE.update(row[0] for row in rows)
+        BLACKLIST_LOADED = True
+
+    def blacklist_sync_cache(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT ip FROM blacklist").fetchall()
+        BLACKLIST_CACHE.clear()
+        BLACKLIST_CACHE.update(row[0] for row in rows)
+
+    def blacklist_add(self, ip: str, reason: str, note: str = "") -> bool:
+        ip = ip.strip().lower()
+        if not re.fullmatch(self.IP_RE, ip):
+            return False
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO blacklist(ip,reason,note,created_at) VALUES(?,?,?,?) "
+                "ON CONFLICT(ip) DO UPDATE SET reason=excluded.reason, note=excluded.note",
+                (ip, reason[:32], note[:200], now_text()),
+            )
+        self.blacklist_sync_cache()
+        return True
+
+    def blacklist_update(self, row_id: int, ip: str, note: str) -> bool:
+        ip = ip.strip().lower()
+        if not re.fullmatch(self.IP_RE, ip):
+            return False
+        with self.connect() as db:
+            cursor = db.execute("UPDATE blacklist SET ip=?, note=? WHERE id=?", (ip, note[:200], row_id))
+        self.blacklist_sync_cache()
+        return cursor.rowcount > 0
+
+    def blacklist_remove(self, row_id: int) -> bool:
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM blacklist WHERE id=?", (row_id,))
+        self.blacklist_sync_cache()
+        return cursor.rowcount > 0
+
+    def blacklist_clear(self) -> int:
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM blacklist")
+        self.blacklist_sync_cache()
+        return cursor.rowcount
+
+    def blacklist_list(self, q: str, page: int, page_size: int):
+        filters, args = [], []
+        if q:
+            filters.append("(ip LIKE ? OR note LIKE ?)")
+            args += [f"%{q}%", f"%{q}%"]
+        where = (" WHERE " + " AND ".join(filters)) if filters else ""
+        with self.connect() as db:
+            total = db.execute(f"SELECT COUNT(*) FROM blacklist{where}", args).fetchone()[0]
+            rows = [dict(r) for r in db.execute(
+                f"SELECT id,ip,reason,note,created_at FROM blacklist{where} "
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                args + [page_size, (page - 1) * page_size],
+            ).fetchall()]
+        return total, rows
+
+    def blacklist_hit(self, ip: str) -> bool:
+        self.ensure_blacklist_cache()
+        return ip in BLACKLIST_CACHE
+
+    def record_event(self, domain: str, event_type: str, ip: str, ua: str, path: str, client_type: str = CLIENT_UNKNOWN):
+        client = client_type if client_type in CLIENT_TYPES else CLIENT_UNKNOWN
         with self.connect() as db:
             cursor = db.execute(
-                "INSERT INTO events(domain,event_type,created_at,ip,ua,path) VALUES(?,?,?,?,?,?)",
-                (domain.lower(), event_type, now_text(), ip[:128], ua[:1024], path[:1024]),
+                "INSERT INTO events(domain,event_type,created_at,ip,ua,path,client_type) VALUES(?,?,?,?,?,?,?)",
+                (domain.lower(), event_type, now_text(), ip[:128], ua[:1024], path[:1024], client),
             )
             return cursor.lastrowid
 
-    def events(self, domain: str, event_type: str, page: int, page_size: int):
+    def events(self, domain: str, event_type: str, page: int, page_size: int, client_type: str = ""):
         filters, args = [], []
         if domain:
             filters.append("domain=?")
@@ -307,15 +1351,41 @@ class Store:
         if event_type in ("visit", "click", "rejected"):
             filters.append("event_type=?")
             args.append(event_type)
+        if client_type in CLIENT_TYPES:
+            filters.append("client_type=?")
+            args.append(client_type)
         where = " WHERE " + " AND ".join(filters) if filters else ""
         with self.connect() as db:
             total = db.execute("SELECT COUNT(*) count FROM events" + where, args).fetchone()["count"]
             rows = db.execute(
-                "SELECT id,domain,event_type,created_at,ip,ua,path FROM events" + where
+                "SELECT id,domain,event_type,created_at,ip,ua,path,client_type FROM events" + where
                 + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 (*args, page_size, (page - 1) * page_size),
             ).fetchall()
         return total, [dict(row) for row in rows]
+
+    def client_breakdown(self):
+        """Visit/click counts grouped by detected client type for the dashboard."""
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT client_type, COUNT(*) visits FROM events WHERE event_type='visit' GROUP BY client_type"
+            ).fetchall()
+            clicks = {
+                row["client_type"]: row["clicks"]
+                for row in db.execute(
+                    "SELECT client_type, COUNT(*) clicks FROM events WHERE event_type='click' GROUP BY client_type"
+                ).fetchall()
+            }
+        counts = {row["client_type"]: row["visits"] or 0 for row in rows}
+        return [
+            {
+                "client_type": client,
+                "label": CLIENT_LABELS[client],
+                "visits": counts.get(client, 0),
+                "clicks": clicks.get(client, 0),
+            }
+            for client in CLIENT_TYPES
+        ]
 
     def domains(self):
         with self.connect() as db:
@@ -380,7 +1450,15 @@ class Store:
     def get_settings(self):
         with self.connect() as db:
             rows = db.execute("SELECT key,value FROM settings").fetchall()
-        return {row["key"]: json.loads(row["value"]) for row in rows}
+        settings = {}
+        for row in rows:
+            try:
+                settings[row["key"]] = json.loads(row["value"])
+            except (TypeError, ValueError):
+                # A single corrupt row must not take the whole site down; fall
+                # back to the factory default for that key instead.
+                settings[row["key"]] = SETTINGS_DEFAULTS.get(row["key"], "")
+        return settings
 
     def save_settings(self, values: dict):
         allowed = {
@@ -388,10 +1466,19 @@ class Store:
             "human_verification", "block_desktop", "block_ios", "block_android",
             "ipregistry_enabled", "blocked_ip_types", "blocked_threats", "redirect_url",
             "frontend_entry", "redirect_links",
+            "client_redirect_rules", "client_redirect_enabled",
+            "bot_redirect_enabled", "bot_redirect_url",
+            "captcha_enabled", "captcha_ttl_seconds", "captcha_max_tries",
+            "app_android_url", "app_ios_url", "app_desktop_url",
+            "browser_lang_check", "browser_lang_whitelist",
+            "browser_tz_check", "browser_tz_whitelist",
+            "rate_check_enabled", "rate_window_seconds", "rate_max_requests",
         }
         with self.connect() as db:
             if "redirect_links" in values:
                 db.execute("DELETE FROM redirect_link_stats")
+            if "client_redirect_rules" in values:
+                db.execute("DELETE FROM client_redirect_stats")
             for key, value in values.items():
                 if key in allowed:
                     db.execute(
@@ -422,6 +1509,34 @@ class Store:
                     "INSERT INTO redirect_link_stats(link_index,clicks,updated_at) VALUES(?,?,?) "
                     "ON CONFLICT(link_index) DO UPDATE SET clicks=clicks+1,updated_at=excluded.updated_at",
                     (selected, 1, now_text()),
+                )
+                return links[selected]["url"]
+
+    def next_client_redirect(self, client_type: str, links: list[dict]):
+        """Round-robin a client's own link pool, honouring per-link click limits."""
+        if not links:
+            return None
+        client = client_type if client_type in CLIENT_TYPES else CLIENT_UNKNOWN
+        with self._lock:
+            with self.connect() as db:
+                selected = None
+                for index, item in enumerate(links):
+                    row = db.execute(
+                        "SELECT clicks FROM client_redirect_stats WHERE client_type=? AND link_index=?",
+                        (client, index),
+                    ).fetchone()
+                    clicks = row["clicks"] if row else 0
+                    if item["limit"] and clicks >= item["limit"]:
+                        continue
+                    selected = index
+                    break
+                if selected is None:
+                    db.execute("DELETE FROM client_redirect_stats WHERE client_type=?", (client,))
+                    selected = 0
+                db.execute(
+                    "INSERT INTO client_redirect_stats(client_type,link_index,clicks,updated_at) VALUES(?,?,?,?) "
+                    "ON CONFLICT(client_type,link_index) DO UPDATE SET clicks=clicks+1,updated_at=excluded.updated_at",
+                    (client, selected, 1, now_text()),
                 )
                 return links[selected]["url"]
 
@@ -487,8 +1602,133 @@ def cleanup_memory():
                 values.pop(key, None)
 
 
+def safe_target_url(value) -> str:
+    """Accept only absolute http(s) targets; anything else is dropped.
+
+    Relative paths are intentionally rejected so a typo in the admin panel can
+    never turn into a broken or unexpected navigation target.
+    """
+    url = str(value or "").strip()
+    if not url:
+        return ""
+    parsed = urlparse(url)
+    return url if parsed.scheme in ("http", "https") and parsed.netloc else ""
+
+
+def inject_app_links(content: bytes, settings: dict) -> bytes:
+    """Expose the operator-configured App download URLs to the update page.
+
+    Only pages that actually reference window.GW_APP_LINKS are touched, so the
+    other templates stay byte-identical to their source files. The snippet goes
+    right after <head> because the page reads it while its own scripts run.
+    """
+    if b"GW_APP_LINKS" not in content:
+        return content
+    # ===== 系统的核心设计规则：后台分流 > 模板流程 =====
+    # 后台「客户端分流跳转」里配了该端的地址 -> 一律用后台的；
+    # 模板内的「App 更新页跳转」只是未接入分流时的默认流程，不参与竞争。
+    # 分流开关关闭，或该端没配地址 -> 走模板流程（app_* 值，
+    # 为空时页面再回落到 pc_download.html 等模板内页面）。
+    rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
+    split_on = bool(settings.get("client_redirect_enabled"))
+
+    def resolve(client, app_setting_key):
+        """分流优先；分流没配才用模板默认流程。"""
+        if split_on:
+            backend = safe_target_url((rules.get(client) or {}).get("url"))
+            if backend:
+                return backend
+        return safe_target_url(settings.get(app_setting_key))
+
+    links = {
+        "android": resolve(CLIENT_ANDROID, "app_android_url"),
+        "ios": resolve(CLIENT_IOS, "app_ios_url"),
+        "desktop": resolve(CLIENT_DESKTOP, "app_desktop_url"),
+        # 标记分流是否生效，排查时能一眼看出按钮最终用了哪套配置
+        "splitEnabled": split_on,
+    }
+    head_end = content.lower().find(b"</head>")
+    if head_end >= 0:
+        insert_at = head_end
+    else:
+        insert_at = content.lower().find(b"<body")
+        if insert_at < 0:
+            return content
+        insert_at = content.lower().find(b">", insert_at) + 1
+    script = (
+        "<script>window.GW_APP_LINKS="
+        + json.dumps(links, ensure_ascii=False)
+        + ";</script>"
+    ).encode("utf-8")
+    return content[:insert_at] + script + content[insert_at:]
+
+
+def click_capture_script(click_path: str) -> bytes:
+    """Build the click interceptor injected into every served page.
+
+    A handler bound directly on the target element fires during the target phase,
+    which beats any capture listener on document or window. Two layers handle it:
+    the window capture listener blocks the event and navigates immediately, and a
+    DOMContentLoaded pass clones the CTA elements so late-bound template handlers
+    never exist in the first place. Elements marked data-gateway-nojump keep their
+    original behaviour.
+    """
+    target = json.dumps(click_path)
+    return (
+        "<script>"
+        "(function(){"
+        "var T=" + target + ";"
+        "var SEL='a[href],button,input[type=button],input[type=submit],[role=button],[onclick]';"
+        "var navigated=false,stripped=false;"
+        "function skip(el){"
+        "for(var n=el;n&&n.nodeType===1;n=n.parentElement){"
+        "if(n.dataset&&n.dataset.gatewayNojump!==undefined)return true;"
+        "if(n.tagName==='A'){var h=n.getAttribute('href')||'';if(h.charAt(0)==='#')return true;}"
+        "}"
+        "return false;"
+        "}"
+        "function go(){"
+        "if(navigated)return;navigated=true;"
+        "window.location.href=T;"
+        "}"
+        "window.addEventListener('click',function(e){"
+        "var el=e.target&&e.target.closest?e.target.closest(SEL):null;"
+        "if(!el||skip(el))return;"
+        "e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();"
+        "go();"
+        "},true);"
+        "window.addEventListener('touchend',function(e){"
+        "var t=e.changedTouches&&e.changedTouches[0];"
+        "var el=t&&t.closest?t.closest(SEL):null;"
+        "if(!el||skip(el))return;"
+        "e.preventDefault();e.stopPropagation();"
+        "go();"
+        "},true);"
+        "function stripHandlers(){"
+        "if(stripped)return;stripped=true;"
+        "try{"
+        "var nodes=document.querySelectorAll(SEL);"
+        "for(var i=0;i<nodes.length;i++){"
+        "var el=nodes[i];"
+        "if(skip(el))continue;"
+        "el.parentNode.replaceChild(el.cloneNode(true),el);"
+        "}"
+        "}catch(err){}"
+        "}"
+        "if(document.readyState==='loading'){"
+        "document.addEventListener('DOMContentLoaded',stripHandlers);"
+        "}else{stripHandlers();}"
+        "})();"
+        "</script>"
+    ).encode()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GatewayConsole/1.0"
+    # Set per-request by the /__preview/<domain>/ local preview route.
+    _preview_host = ""
+    # Set per-request so the verification cookie can be bound to the domain.
+    verification_domain = ""
 
     def log_message(self, fmt, *args):
         print(f"[{now_text()}] {self.client_address[0]} {fmt % args}")
@@ -547,8 +1787,47 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+        if path.startswith("/__preview/"):
+            # Local preview: pretend the Host header is the domain in the URL so
+            # the normal public pipeline runs without editing the hosts file.
+            rest = path[len("/__preview/"):]
+            host, _, remainder = rest.partition("/")
+            host = unquote(host).strip()
+            domain_row = STORE.domain(host) if host else None
+            if not domain_row:
+                return self.json(404, {"error": f"域名 {host} 未在系统中配置，请先在前台配置里添加"})
+            if remainder.strip("/") == "__gateway/click":
+                self._preview_host = host
+                try:
+                    return self.public_click()
+                finally:
+                    self._preview_host = None
+            # Verification endpoints/assets must run through their real handlers.
+            if remainder.startswith("captcha"):
+                self._preview_host = host
+                try:
+                    return self.route_captcha("/" + remainder, query)
+                finally:
+                    self._preview_host = None
+            if remainder == "flow/login":
+                self._preview_host = host
+                try:
+                    return self.flow_login()
+                finally:
+                    self._preview_host = None
+            self._preview_host = host
+            try:
+                return self.serve_public("/" + remainder, domain_row)
+            finally:
+                self._preview_host = None
         public_domain = STORE.domain(self.headers.get("Host", ""))
         if public_domain:
+            # Verification routes and their assets must stay reachable,
+            # otherwise a visitor could never complete the challenge.
+            if path.startswith("/captcha/"):
+                return self.route_captcha(path, query)
+            if path == "/flow/login":
+                return self.flow_login()
             if path in ("/track/visit", "/track/click"):
                 return self.track(path.rsplit("/", 1)[-1], query)
             if path == "/guard/check":
@@ -567,11 +1846,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.guard_check(query)
         if path == "/__gateway/click":
             return self.public_click()
+        if path.startswith("/__gateway/preview/"):
+            if not self.require_auth():
+                return
+            return self.serve_template_preview(unquote(path.rsplit("/", 1)[-1]))
         if path.startswith("/api/"):
             if not self.require_auth():
                 return
+            if path == "/api/blacklist" or path == "/api/blacklist/list":
+                try:
+                    page = max(1, int(query.get("page", ["1"])[0] or 1))
+                    page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
+                except ValueError:
+                    return self.json(400, {"error": "request failed"})
+                total, rows = STORE.blacklist_list(query.get("q", [""])[0], page, page_size)
+                return self.json(200, {"total": total, "page": page, "items": rows})
             if path == "/api/dashboard":
-                return self.json(200, STORE.stats())
+                return self.json(200, {**STORE.stats(), "clients": STORE.client_breakdown()})
             if path == "/api/events":
                 try:
                     page = max(1, int(query.get("page", ["1"])[0] or 1))
@@ -579,9 +1870,20 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     return self.json(400, {"error": "request failed"})
                 total, rows = STORE.events(
-                    query.get("domain", [""])[0], query.get("type", [""])[0], page, page_size
+                    query.get("domain", [""])[0], query.get("type", [""])[0],
+                    page, page_size, query.get("client", [""])[0],
                 )
                 return self.json(200, {"total": total, "page": page, "items": rows})
+            if path == "/api/clients":
+                return self.json(200, {
+                    "types": [
+                        {"client_type": client, "label": CLIENT_LABELS[client]}
+                        for client in CLIENT_TYPES
+                    ],
+                    "breakdown": STORE.client_breakdown(),
+                })
+            if path == "/api/client/detect":
+                return self.json(200, self.detect_client_payload(query.get("ua", [""])[0]))
             if path == "/api/domains":
                 return self.json(200, {"items": STORE.domains()})
             if path == "/api/projects":
@@ -613,8 +1915,53 @@ class Handler(BaseHTTPRequestHandler):
             data = self.read_json()
         except (ValueError, json.JSONDecodeError) as exc:
             return self.json(400, {"error": str(exc) or "JSON 格式错误"})
-        if STORE.domain(self.headers.get("Host", "")) and path not in ("/track/visit", "/track/click"):
+        is_captcha_post = path == "/captcha/verify" or (
+            path.startswith("/__preview/") and path.endswith("/captcha/verify")
+        )
+        # Login receipt registration lives on the same public surface, so it has
+        # to be reachable on a domain-bound host just like /captcha/verify.
+        is_flow_post = path == "/flow/login" or (
+            path.startswith("/__preview/") and path.endswith("/flow/login")
+        )
+        if STORE.domain(self.headers.get("Host", "")) and path not in (
+            "/track/visit", "/track/click", "/__client/env") and not is_captcha_post and not is_flow_post:
             return self.json(404, {"error": "request failed"})
+        is_env_post = path == "/__client/env" or (
+            path.startswith("/__preview/") and path.endswith("/__client/env")
+        )
+        if is_env_post:
+            preview_host = ""
+            if path.startswith("/__preview/"):
+                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+            self._preview_host = preview_host
+            try:
+                return self.client_env_report(data)
+            finally:
+                self._preview_host = ""
+        if is_flow_post:
+            preview_host = self._preview_host
+            if not preview_host and path.startswith("/__preview/"):
+                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+            self._preview_host = preview_host or ""
+            try:
+                return self.flow_login()
+            finally:
+                self._preview_host = ""
+        if is_captcha_post:
+            preview_host = self._preview_host
+            if not preview_host:
+                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+            domain_row = STORE.domain(self.headers.get("Host", "")) or (
+                STORE.domain(preview_host) if preview_host else None
+            )
+            if not domain_row:
+                return self.json(404, {"error": "request failed"})
+            self._preview_host = preview_host
+            self.verification_domain = domain_row["domain"]
+            try:
+                return self.captcha_verify(data)
+            finally:
+                self._preview_host = ""
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
@@ -627,6 +1974,30 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(200, {"ok": True}, {"Set-Cookie": "gateway_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"})
         if not self.require_auth():
             return
+        if path == "/api/events/clear":
+            deleted = STORE.clear_events()
+            return self.json(200, {"ok": True, "deleted": deleted})
+        if path == "/api/blacklist/add":
+            ip = str(data.get("ip", "")).strip()
+            if not STORE.blacklist_add(ip, "manual", str(data.get("note", ""))):
+                return self.json(400, {"error": "IP 格式不正确或已存在"})
+            return self.json(200, {"ok": True})
+        if path == "/api/blacklist/update":
+            try:
+                row_id = int(data.get("id", 0))
+            except (TypeError, ValueError):
+                return self.json(400, {"error": "request failed"})
+            if not STORE.blacklist_update(row_id, str(data.get("ip", "")), str(data.get("note", ""))):
+                return self.json(400, {"error": "更新失败：IP 格式不正确或记录不存在"})
+            return self.json(200, {"ok": True})
+        if path == "/api/blacklist/delete":
+            try:
+                row_id = int(data.get("id", 0))
+            except (TypeError, ValueError):
+                return self.json(400, {"error": "request failed"})
+            return self.json(200, {"ok": STORE.blacklist_remove(row_id)})
+        if path == "/api/blacklist/clear":
+            return self.json(200, {"ok": True, "deleted": STORE.blacklist_clear()})
         if path == "/api/domains":
             return self.create_domain(data)
         if path == "/api/certificates":
@@ -635,6 +2006,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.import_project(data)
         if path == "/api/catalog/download":
             return self.download_catalog(data)
+        if path == "/api/client/test-click":
+            return self.client_test_click(data)
+            return self.captcha_verify(data)
         match = re.fullmatch(r"/api/projects/(\d+)/update", path)
         if match:
             return self.update_project(int(match.group(1)))
@@ -642,6 +2016,8 @@ class Handler(BaseHTTPRequestHandler):
             data = dict(data)
             if "redirect_links" in data:
                 data["redirect_links"] = normalize_redirect_links(data["redirect_links"])
+            if "client_redirect_rules" in data:
+                data["client_redirect_rules"] = normalize_client_rules(data["client_redirect_rules"])
             STORE.save_settings(data)
             return self.json(200, {"ok": True})
         return self.json(404, {"error": "request failed"})
@@ -699,12 +2075,365 @@ class Handler(BaseHTTPRequestHandler):
         if not DOMAIN_RE.match(domain):
             return self.json(400, {"error": "request failed"})
         path = source.get("path", [""])[0] if isinstance(source.get("path"), list) else source.get("path", "")
-        event_id = STORE.record_event(domain, event_type, self.client_ip(), self.headers.get("User-Agent", ""), str(path))
-        return self.json(201, {"ok": True, "id": event_id}, {"Access-Control-Allow-Origin": "*"})
+        client_type, _ = self.current_client()
+        event_id = STORE.record_event(
+            domain, event_type, self.client_ip(),
+            self.headers.get("User-Agent", ""), str(path), client_type,
+        )
+        return self.json(201, {"ok": True, "id": event_id, "client_type": client_type}, {"Access-Control-Allow-Origin": "*"})
+
+
+
+    def issue_verified_cookie(self, domain: str):
+        """Sign a short-lived verification receipt bound to this domain."""
+        return self.issue_signed_cookie(CAPTCHA_COOKIE, {"d": domain, "t": int(time.time())})
+
+    def issue_signed_cookie(self, name: str, payload: dict) -> str:
+        """Sign an arbitrary receipt so one verifier can serve several cookies."""
+        body = base64.urlsafe_b64encode(
+            json.dumps(payload).encode()).decode().rstrip("=")
+        signature = hmac.new(CAPTCHA_SECRET, body.encode(), hashlib.sha256).hexdigest()[:32]
+        return f"{body}.{signature}"
+
+    def read_signed_cookie(self, name: str) -> dict:
+        """Return the decoded payload of a signed cookie, or {} when invalid."""
+        raw = self.cookie_value(name)
+        if not raw:
+            return {}
+        body, _, signature = raw.rpartition(".")
+        if not body or not signature:
+            return {}
+        expected = hmac.new(CAPTCHA_SECRET, body.encode(), hashlib.sha256).hexdigest()[:32]
+        if not hmac.compare_digest(signature, expected):
+            return {}
+        try:
+            padded = body + "=" * (-len(body) % 4)
+            return json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+        except (ValueError, TypeError):
+            return {}
+
+    def verification_valid(self, domain: str) -> bool:
+        """Check the receipt: signature, domain match and freshness."""
+        payload = self.read_signed_cookie(CAPTCHA_COOKIE)
+        if not payload:
+            return False
+        if payload.get("d") != domain:
+            return False
+        return int(time.time()) - int(payload.get("t", 0)) <= self.captcha_ttl()
+
+    def flow_valid(self, domain: str) -> bool:
+        """Check the login receipt issued by /flow/login."""
+        payload = self.read_signed_cookie(FLOW_COOKIE)
+        if not payload or payload.get("d") != domain:
+            return False
+        return int(time.time()) - int(payload.get("t", 0)) <= self.captcha_ttl()
+
+    def captcha_ttl(self) -> int:
+        raw = int(STORE.get_settings().get("captcha_ttl_seconds") or CAPTCHA_TTL_DEFAULT)
+        return min(max(raw, 300), 30 * 24 * 3600)
+
+    def captcha_max_tries(self) -> int:
+        raw = int(STORE.get_settings().get("captcha_max_tries") or CAPTCHA_MAX_TRIES_DEFAULT)
+        return min(max(raw, 1), 10)
+
+    def cookie_value(self, name: str) -> str:
+        raw = self.headers.get("Cookie", "")
+        for part in raw.split(";"):
+            key, _, value = part.strip().partition("=")
+            if key == name:
+                return unquote(value)
+        return ""
+
+    def verification_bypassed(self, domain: dict) -> bool:
+        """Decide whether this document request may skip human verification.
+
+        Only real browser clients are gated: crawlers keep flowing through the
+        crawler guard so they still land on the decoy page instead of a captcha
+        they cannot solve. Static assets never reach this method.
+        """
+        settings = STORE.get_settings()
+        if not settings.get("captcha_enabled"):
+            return True
+        client_type, _ = self.current_client()
+        if client_type == CLIENT_BOT:
+            return True
+        return self.verification_valid(domain["domain"])
+
+    def flow_page_blocked(self, domain: dict, relative: str) -> bool:
+        """Return True when a guarded page is opened without the login receipt.
+
+        This is what stops "verify once, then jump straight to step 3": the
+        update page and the QR page are only reachable after /flow/login.
+        Only active while human verification is on — with it disabled nobody
+        ever earns the receipt, so gating would lock the site shut.
+        """
+        if not STORE.get_settings().get("captcha_enabled"):
+            return False
+        name = relative.rsplit("/", 1)[-1]
+        if name not in FLOW_GUARDED_PAGES:
+            return False
+        return not self.flow_valid(domain["domain"])
+
+    def flow_login(self):
+        """Issue the login receipt that unlocks the pages behind the login form.
+
+        The login page calls this over fetch before navigating on, so the step
+        order is enforced by the server rather than by the page's own links.
+        """
+        domain_row = STORE.domain(self.headers.get("Host", "")) or (
+            STORE.domain(self._preview_host) if self._preview_host else None
+        )
+        if not domain_row:
+            return self.send_error(404)
+        if not self.verification_valid(domain_row["domain"]):
+            return self.json(403, {"ok": False, "error": "VERIFICATION_REQUIRED"})
+        cookie = self.issue_signed_cookie(
+            FLOW_COOKIE, {"d": domain_row["domain"], "t": int(time.time())})
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header(
+            "Set-Cookie",
+            f"{FLOW_COOKIE}={cookie}; Path=/; Max-Age={self.captcha_ttl()}; "
+            "HttpOnly; SameSite=Lax",
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(b'{"ok":true}')
+
+    def redirect_to_entry(self):
+        """Send the visitor back to the entry page to resume the flow.
+
+        In local preview mode the entry lives under the /__preview/<domain>/
+        namespace, so the target has to carry that prefix.
+        """
+        target = (self.verification_prefix() or "") + "/"
+        self.send_response(302)
+        self.send_header("Location", target)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Gateway-Flow", "restart")
+        self.end_headers()
+
+    def verification_prefix(self) -> str:
+        """URL prefix for the verification endpoints (empty in normal serving)."""
+        return f"/__preview/{self._preview_host}" if self._preview_host else ""
+
+    def captcha_page(self, domain: dict):
+        """Render the verification interstitial for this domain."""
+        challenge = new_captcha_challenge(self.client_ip())
+        project = STORE.project(domain.get("project_id")) if domain.get("project_id") else None
+        slug = (project or {}).get("slug", "")
+        prefix = self.verification_prefix()
+        page = build_captcha_page(
+            challenge, slug, tries_left=self.captcha_max_tries(),
+            verify_url=prefix + "/captcha/verify",
+            go_url=prefix + "/captcha/go/", prefix=prefix,
+        )
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(page)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Gateway-Verify", "required")
+        self.end_headers()
+        self.wfile.write(page)
+
+    def captcha_verify(self, data):
+        """Validate the clicked positions and hand back a one-shot token."""
+        challenge_id = str(data.get("captchaId", ""))
+        token = str(data.get("token", ""))
+        positions = data.get("clickedPositions")
+        if not verify_captcha_signature(token) or token.split(".")[0] != challenge_id:
+            return self.json(400, {"success": False, "error": "INVALID_TOKEN",
+                                   "message": "確認セッションが無効です。ページを再読み込みしてください。"})
+        challenge = get_captcha_challenge(challenge_id)
+        if not challenge:
+            return self.json(410, {"success": False, "error": "CAPTCHA_EXPIRED",
+                                   "message": "確認の有効期限が切れました。ページを再読み込みしてください。"})
+        client_ip = self.client_ip()
+        # 防线1：挑战与提交者 IP 绑定（打码农场/跨机提交直接失效）
+        if challenge.get("ip") != client_ip:
+            return self.json(403, {"success": False, "error": "IP_MISMATCH",
+                                   "message": "確認セッションが無効です。ページを再読み込みしてください。"})
+        # 防线3：最短提交间隔（页面渲染后 2 秒内提交 = 脚本特征）
+        if time.time() - challenge.get("created_at", 0) < CAPTCHA_MIN_SUBMIT_SECONDS:
+            return self.json(429, {"success": False, "error": "TOO_FAST",
+                                   "message": "操作が速すぎます。もう一度お試しください。"})
+        # 防线4：工作量证明（页面 JS 后台预计算，真人无感；纯 HTTP 脚本无法提交）
+        if not solve_captcha_pow(challenge.get("pow", ""), str(data.get("powNonce", ""))):
+            rotated = secrets.token_hex(8)
+            with CAPTCHA_LOCK:
+                challenge["pow"] = rotated
+            return self.json(400, {"success": False, "error": "POW_REQUIRED",
+                                   "powChallenge": rotated,
+                                   "message": "確認を開始できませんでした。ページを再読み込みしてください。"})
+        # 防线2：IP 级失败冷却（失败越多等待越长，成功后清零）
+        cooldown = captcha_cooldown_remaining(client_ip)
+        if cooldown > 0:
+            return self.json(429, {"success": False, "error": "COOLDOWN", "retryAfter": cooldown,
+                                   "message": f"試行回数が多いため、あと {cooldown} 秒お待ちください。"})
+        if not isinstance(positions, list) or not all(isinstance(item, int) for item in positions):
+            return self.json(400, {"success": False, "error": "INVALID_SELECTION",
+                                   "message": "選択内容が正しくありません。"})
+        max_tries = self.captcha_max_tries()
+        if sorted(set(positions)) != challenge["answer"]:
+            with CAPTCHA_LOCK:
+                challenge["tries"] += 1
+                tries = challenge["tries"]
+                if tries >= max_tries:
+                    CAPTCHA_CHALLENGES.pop(challenge_id, None)
+            captcha_register_fail(client_ip)
+            rotated = secrets.token_hex(8)
+            with CAPTCHA_LOCK:
+                challenge["pow"] = rotated
+            retry_after = captcha_cooldown_remaining(client_ip)
+            if tries >= max_tries:
+                return self.json(429, {
+                    "success": False, "error": "MAX_ATTEMPTS_EXCEEDED", "triesLeft": 0,
+                    "powChallenge": rotated,
+                    "message": "確認に失敗した回数が上限に達しました。しばらくしてからもう一度お試しください。",
+                })
+            return self.json(200, {
+                "success": False, "error": "VERIFICATION_FAILED", "triesLeft": max_tries - tries,
+                "powChallenge": rotated, "retryAfter": retry_after,
+                "message": "選択が正しくありません。盾のアイコンだけをすべて選び直してください。",
+            })
+        redirect_token = secrets.token_urlsafe(18)
+        captcha_clear_fails(client_ip)
+        with CAPTCHA_LOCK:
+            CAPTCHA_CHALLENGES.pop(challenge_id, None)
+            REDIRECTS[redirect_token] = {
+                "domain": self.verification_domain or "",
+                "created_at": time.time(), "used": False,
+            }
+            prune_redirects()
+        return self.json(200, {
+            "success": True, "redirectToken": redirect_token,
+            "message": "確認が完了しました。転送しています...",
+        })
+
+    def captcha_go(self, token: str):
+        """Consume the one-shot token and set the verification cookie."""
+        with CAPTCHA_LOCK:
+            entry = REDIRECTS.get(token)
+            if not entry or entry.get("used"):
+                entry = None
+            else:
+                entry["used"] = True
+            prune_redirects()
+        if not entry:
+            return self.json(410, {"success": False, "error": "TOKEN_INVALID",
+                                   "message": "確認結果の有効期限が切れました。もう一度お試しください。"})
+        cookie = self.issue_verified_cookie(entry["domain"])
+        self.send_response(302)
+        self.send_header("Location", "/")
+        self.send_header(
+            "Set-Cookie",
+            f"{CAPTCHA_COOKIE}={cookie}; Path=/; Max-Age={self.captcha_ttl()}; HttpOnly; SameSite=Lax",
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
+    def client_probe_page(self, domain: dict):
+        """Render the invisible timezone probe and hand out a one-shot token."""
+        token = new_env_challenge(self.client_ip())
+        prefix = self.verification_prefix()
+        page = build_client_probe_page(prefix, token)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(page)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(page)
+
+    def client_env_report(self, data):
+        """Receive the probe result, sign it server-side, issue env cookie."""
+        token = str(data.get("token", ""))
+        tz = str(data.get("tz", "")).strip()[:64]
+        langs = str(data.get("langs", "")).strip()[:200]
+        ip = self.client_ip()
+        with ENV_LOCK:
+            entry = ENV_CHALLENGES.pop(token, None)
+        if not entry or entry.get("ip") != ip or time.time() - entry["created_at"] > ENV_CHALLENGE_TTL:
+            return self.json(400, {"ok": False, "error": "TOKEN_INVALID"})
+        if not tz:
+            return self.json(400, {"ok": False, "error": "NO_TZ"})
+        cookie = self.issue_signed_cookie(ENV_COOKIE, {"tz": tz, "ls": langs, "t": int(time.time())})
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header(
+            "Set-Cookie",
+            f"{ENV_COOKIE}={cookie}; Path=/; Max-Age={self.captcha_ttl()}; HttpOnly; SameSite=Lax",
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(b'{"ok":true}')
+
+    def route_captcha(self, path: str, query: dict):
+        """Dispatch the verification endpoints and their static images."""
+        if path in ("/captcha/security.png", "/captcha/captcha-decoy.png"):
+            return self.serve_captcha_asset(path.rsplit("/", 1)[-1])
+        domain_row = STORE.domain(self.headers.get("Host", "")) or (
+            STORE.domain(self._preview_host) if self._preview_host else None
+        )
+        if not domain_row:
+            return self.send_error(404)
+        self.verification_domain = domain_row["domain"]
+        if path in ("/captcha", "/captcha/"):
+            return self.captcha_page(domain_row)
+        match = re.fullmatch(r"/captcha/go/([A-Za-z0-9_-]{8,64})", path)
+        if match:
+            return self.captcha_go(match.group(1))
+        return self.send_error(404)
+
+    def serve_captcha_asset(self, name: str):
+        file_path = (CAPTCHA_CELLS_DIR / name).resolve()
+        if CAPTCHA_CELLS_DIR.resolve() not in file_path.parents or not file_path.is_file():
+            return self.send_error(404)
+        try:
+            content = file_path.read_bytes()
+        except OSError:
+            return self.send_error(404)
+        self.send_response(200)
+        self.send_header("Content-Type", mimetypes.guess_type(str(file_path))[0] or "image/png")
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.end_headers()
+        self.wfile.write(content)
+
+
+
+    def current_client(self):
+        """Detect the visitor's client type from the request User-Agent."""
+        return classify_client(self.headers.get("User-Agent", ""))
+
+    def pre_gate_redirect_target(self) -> str:
+        """前置机器人层（黑名单/频率/爬虫/设备/语言/时区）不通过的统一跳转地址。
+
+        优先「爬虫跳转地址」，未配置回落「拦截后跳转地址」，再无则空（调用方 403）。
+        """
+        settings = STORE.get_settings()
+        if settings.get("bot_redirect_enabled"):
+            url = str(settings.get("bot_redirect_url", "")).strip()
+            if urlparse(url).scheme in ("http", "https"):
+                return url
+        url = str(settings.get("redirect_url", "")).strip()
+        if urlparse(url).scheme in ("http", "https"):
+            return url
+        return ""
 
     def guard_decision(self):
+        # 黑名单 IP 直接短路：不查 IPRegistry、不算语言，省配额且零延迟拒绝
+        ip_now = self.client_ip()
+        STORE.ensure_blacklist_cache()
+        if ip_now in BLACKLIST_CACHE:
+            return {
+                "allowed": False, "reasons": ["blacklist"], "redirect_url": "",
+                "human_verification": False, "country": None, "registry_error": "",
+                "client_type": CLIENT_BLACKLIST, "client_label": CLIENT_LABELS[CLIENT_BLACKLIST],
+                "client_reasons": ["in_blacklist"], "is_bot": False,
+            }
         settings = STORE.get_settings()
         ua = self.headers.get("User-Agent", "").lower()
+        client_type, client_reasons = self.current_client()
         reasons = []
         is_android = "android" in ua
         is_ios = bool(re.search(r"iphone|ipad|ipod", ua) or ("macintosh" in ua and "mobile" in ua))
@@ -715,6 +2444,19 @@ class Handler(BaseHTTPRequestHandler):
             reasons.append("ios")
         if settings.get("block_android") and is_android:
             reasons.append("android")
+
+        is_bot = client_type == CLIENT_BOT
+        if is_bot and not reasons:
+            reasons.append("bot")
+
+        # 浏览器语言拦截：仅放行白名单语言（依据 Accept-Language，服务端可判）
+        if bool(settings.get("browser_lang_check")) and not reasons:
+            lang_wl = {str(x).strip().lower() for x in (settings.get("browser_lang_whitelist") or [])
+                       if str(x).strip()}
+            if lang_wl:
+                offered = parse_accept_languages(self.headers.get("Accept-Language", ""))
+                if not any(tag in lang_wl or tag.split("-")[0] in lang_wl for tag in offered):
+                    reasons.append("browser_lang")
 
         registry = None
         registry_error = ""
@@ -761,6 +2503,10 @@ class Handler(BaseHTTPRequestHandler):
             "human_verification": bool(settings.get("human_verification")) and not reasons,
             "country": registry and registry.get("location", {}).get("country", {}).get("code", ""),
             "registry_error": registry_error,
+            "client_type": client_type,
+            "client_label": CLIENT_LABELS[client_type],
+            "client_reasons": client_reasons,
+            "is_bot": is_bot,
         }
 
     def guard_check(self, query):
@@ -809,20 +2555,131 @@ class Handler(BaseHTTPRequestHandler):
             consumed = None
         return self.json(200, {"configured": True, "remaining": remaining, "consumed": consumed})
 
-    def public_click(self):
-        domain = STORE.domain(self.headers.get("Host", ""))
-        if not domain:
-            return self.send_error(404)
+    def pick_click_target(self, domain: dict, client_type: str):
+        """Resolve the click destination for this visitor.
+
+        Order: per-client rule pool -> global rotation pool -> global redirect_url.
+        Crawlers never reach the real page, so they fall back to the dedicated
+        bot URL (a decoy page) when configured.
+        """
         settings = STORE.get_settings()
+        is_bot = client_type == CLIENT_BOT
+
+        if is_bot and settings.get("bot_redirect_enabled"):
+            bot_url = str(settings.get("bot_redirect_url", "")).strip()
+            if urlparse(bot_url).scheme in ("http", "https"):
+                return bot_url, "bot_rule"
+
+        if settings.get("client_redirect_enabled") and not is_bot:
+            rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
+            candidates = [rules.get(client_type, {})]
+            if client_type in (CLIENT_IOS, CLIENT_ANDROID):
+                candidates.append(rules.get(CLIENT_UNKNOWN, {}))
+            for rule in candidates:
+                pool = [rule] if rule and rule.get("url") else []
+                if pool:
+                    target = STORE.next_client_redirect(client_type, pool)
+                    if target:
+                        return target, f"client_rule:{client_type}"
+
         target = STORE.next_redirect(normalize_redirect_links(settings.get("redirect_links", [])))
+        if target:
+            return target, "rotation_pool"
+        fallback = str(settings.get("redirect_url", "")).strip()
+        if fallback and urlparse(fallback).scheme in ("http", "https"):
+            return fallback, "redirect_url"
+        return None, "none"
+
+    def detect_client_payload(self, ua: str):
+        """Preview classification + the URL a given UA would be routed to.
+
+        Used by the admin "test" buttons so operators can see the outcome
+        without issuing a real click that burns a rotation slot.
+        """
+        client_type, client_reasons = classify_client(ua)
+        target, rule = self.pick_click_target({}, client_type)
+        return {
+            "ua": str(ua or ""),
+            "client_type": client_type,
+            "client_label": CLIENT_LABELS[client_type],
+            "client_reasons": client_reasons,
+            "is_bot": client_type == CLIENT_BOT,
+            "target_url": target or "",
+            "matched_rule": rule,
+        }
+
+    def client_test_click(self, data):
+        """Perform a real routing decision for a pasted UA and 302 to the result."""
+        ua = str(data.get("ua", "")).strip()
+        if not ua:
+            return self.json(400, {"error": "请填写要测试的 User-Agent"})
+        client_type, client_reasons = classify_client(ua)
+        target, rule = self.pick_click_target({}, client_type)
         if not target:
-            target = str(settings.get("redirect_url", "")).strip()
-        if not target or urlparse(target).scheme not in ("http", "https"):
-            return self.send_error(404)
-        STORE.record_event(domain["domain"], "click", self.client_ip(), self.headers.get("User-Agent", ""), target)
+            return self.json(404, {
+                "error": "尚未配置任何跳转链接",
+                "client_type": client_type,
+                "client_label": CLIENT_LABELS[client_type],
+                "client_reasons": client_reasons,
+            })
         self.send_response(302)
         self.send_header("Location", target)
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Gateway-Client", client_type)
+        self.send_header("X-Gateway-Rule", rule)
+        self.end_headers()
+
+    def public_click(self):
+        """Resolve the destination for this visitor's click and redirect there.
+
+        A visitor with no matching rule is not an error: the pool may have been
+        emptied after the page was rendered, or their client simply has no rule.
+        Returning the raw 404 error page broke the whole funnel (they landed on
+        "Error code: 404" instead of continuing), so fall back to the site root
+        and let the flow carry on.
+        """
+        lookup_host = self._preview_host or self.headers.get("Host", "")
+        domain = STORE.domain(lookup_host)
+        if not domain:
+            return self.send_error(404)
+        # 黑名单 IP 的点击同样直接拦截跳转（不进入分流，不消耗配额）
+        STORE.ensure_blacklist_cache()
+        if self.client_ip() in BLACKLIST_CACHE:
+            STORE.record_event(domain["domain"], "rejected", self.client_ip(),
+                               self.headers.get("User-Agent", ""), "/__gateway/click", CLIENT_BLACKLIST)
+            target = self.pre_gate_redirect_target()
+            if target:
+                self.send_response(302)
+                self.send_header("Location", target)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Gateway-Block", "blacklist")
+                self.end_headers()
+            else:
+                self.send_error(403)
+            return
+        client_type, _ = self.current_client()
+        target, rule = self.pick_click_target(domain, client_type)
+        if not target or urlparse(target).scheme not in ("http", "https"):
+            # No destination for this client: send them back to the entry page
+            # instead of an error document. `rule` records why nothing matched.
+            entry = str(domain.get("frontend_entry") or "index.html").lstrip("/")
+            fallback = (self.verification_prefix() or "") + "/" + entry
+            self.send_response(302)
+            self.send_header("Location", fallback)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Gateway-Client", client_type)
+            self.send_header("X-Gateway-Rule", f"{rule}:fallback_entry")
+            self.end_headers()
+            return
+        STORE.record_event(
+            domain["domain"], "click", self.client_ip(),
+            self.headers.get("User-Agent", ""), target, client_type,
+        )
+        self.send_response(302)
+        self.send_header("Location", target)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Gateway-Client", client_type)
+        self.send_header("X-Gateway-Rule", rule)
         self.end_headers()
 
     def serve_public(self, path: str, domain: dict):
@@ -837,20 +2694,115 @@ class Handler(BaseHTTPRequestHandler):
         file_path = (root / relative).resolve()
         if (root not in file_path.parents and file_path != root) or not file_path.is_file():
             return self.send_error(404)
-        if is_document:
+        # Any HTML page — not just the entry — is a document the visitor could
+        # have typed in by hand, so the verification gate must cover all of them.
+        is_html_page = mimetypes.guess_type(str(file_path))[0] == "text/html"
+        # 管线顺序（用户确认的业务设计）：
+        #   黑名单 → 访问频率封锁 → 机器人/设备/国家/语言检测 → 浏览器时区探针
+        #   → 人机验证 → 流程门禁
+        # 机器人层必须先于人机验证，爬虫不消耗验证资源；
+        # 机器人层不通过统一跳「爬虫跳转地址」（未配置回落「拦截后跳转地址」）。
+        ip = self.client_ip()
+        ua_text = self.headers.get("User-Agent", "")
+        settings = STORE.get_settings()
+        STORE.ensure_blacklist_cache()
+        decision = None
+        # ---- 第 0 层：黑名单（不做任何检测，直接拦截跳转） ----
+        if is_html_page and STORE.blacklist_hit(ip):
+            STORE.record_event(domain["domain"], "rejected", ip, ua_text, path or "/", "blacklist")
+            target = self.pre_gate_redirect_target()
+            if target:
+                self.send_response(302)
+                self.send_header("Location", target)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Gateway-Block", "blacklist")
+                self.end_headers()
+            else:
+                self.send_error(403)
+            return
+        # ---- 第 1 层：访问频率封锁（只统计"裸新访客打开进入网站"：
+        #      单个 IP 打开 URL、服务器开始响应的那一刻计 1 次；
+        #      探针重载 / 人机验证后站内延续 / 流程会话（带任一会话 Cookie）均不计） ----
+        if is_html_page and is_document and settings.get("rate_check_enabled"):
+            entry_path = "/" + str(domain.get("frontend_entry") or "index.html").strip("/")
+            is_entry_open = path in ("/", entry_path)
+            has_session_cookie = bool(
+                self.read_signed_cookie(ENV_COOKIE)
+                or self.read_signed_cookie(CAPTCHA_COOKIE)
+                or self.read_signed_cookie(FLOW_COOKIE)
+            )
+            if is_entry_open and not has_session_cookie:
+                window = max(5, int(settings.get("rate_window_seconds", 60)))
+                limit = max(3, int(settings.get("rate_max_requests", 10)))
+                if rate_hit_and_exceed(ip, window, limit):
+                    STORE.blacklist_add(ip, "rate_limit", f"{window}s>{limit}entry")
+                    STORE.record_event(domain["domain"], "rejected", ip, ua_text, path or "/", "blacklist")
+                    target = self.pre_gate_redirect_target()
+                    if target:
+                        self.send_response(302)
+                        self.send_header("Location", target)
+                        self.send_header("Cache-Control", "no-store")
+                        self.send_header("X-Gateway-Block", "rate_limit")
+                        self.end_headers()
+                    else:
+                        self.send_error(403)
+                    return
+        # ---- 第 2 层：机器人检测（爬虫/设备/国家/IP特征/浏览器语言） ----
+        if is_html_page and is_document:
             decision = self.guard_decision()
             if not decision["allowed"]:
-                STORE.record_event(domain["domain"], "rejected", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
-                target = decision["redirect_url"]
-                if target and urlparse(target).scheme in ("http", "https"):
+                client_type = decision["client_type"]
+                STORE.record_event(
+                    domain["domain"], "rejected", ip, ua_text, path or "/", client_type,
+                )
+                target = self.pre_gate_redirect_target()
+                if target:
                     self.send_response(302)
                     self.send_header("Location", target)
                     self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Gateway-Client", client_type)
+                    self.send_header("X-Gateway-Block", ",".join(decision["reasons"]))
                     self.end_headers()
                 else:
                     self.send_error(403)
                 return
-            STORE.record_event(domain["domain"], "visit", self.client_ip(), self.headers.get("User-Agent", ""), path or "/")
+            STORE.record_event(
+                domain["domain"], "visit", ip, ua_text, path or "/", decision["client_type"],
+            )
+        # ---- 第 3 层：浏览器时区拦截（探针） ----
+        tz_wl = {str(x).strip() for x in (settings.get("browser_tz_whitelist") or []) if str(x).strip()}
+        if is_html_page and bool(settings.get("browser_tz_check")) and tz_wl:
+            env_payload = self.read_signed_cookie(ENV_COOKIE)
+            env_tz = str(env_payload.get("tz", ""))
+            if not env_tz:
+                return self.client_probe_page(domain)
+            if env_tz not in tz_wl and env_tz.split("/")[0] not in tz_wl:
+                STORE.record_event(
+                    domain["domain"], "rejected", ip, ua_text, path or "/", "unknown",
+                )
+                target = self.pre_gate_redirect_target()
+                if target:
+                    self.send_response(302)
+                    self.send_header("Location", target)
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Gateway-Block", "browser_tz")
+                    self.end_headers()
+                else:
+                    self.send_error(403)
+                return
+        if is_html_page and not self.verification_bypassed(domain):
+            if is_document:
+                return self.captcha_page(domain)
+            # Non-entry pages bounce back to the entry, which renders the gate.
+            return self.redirect_to_entry()
+        # Step order: the update page and the QR page sit behind the login form,
+        # so opening them directly has to send the visitor back through it.
+        if is_html_page and self.flow_page_blocked(domain, relative):
+            STORE.record_event(
+                domain["domain"], "rejected", self.client_ip(),
+                self.headers.get("User-Agent", ""), path or "/", "flow",
+            )
+            return self.redirect_to_entry()
         try:
             content = file_path.read_bytes()
         except OSError:
@@ -858,15 +2810,45 @@ class Handler(BaseHTTPRequestHandler):
         content_type = "text/html" if is_document else (mimetypes.guess_type(str(file_path))[0] or "application/octet-stream")
         if content_type.startswith("text/") or content_type in ("application/javascript", "application/json"):
             content_type += "; charset=utf-8"
-        redirect_links = normalize_redirect_links(STORE.get_settings().get("redirect_links", [])) if is_document else []
+        if content_type.startswith("text/html"):
+            content = inject_app_links(content, settings)
+        redirect_links = normalize_redirect_links(settings.get("redirect_links", [])) if is_document else []
+        client_rules = normalize_client_rules(settings.get("client_redirect_rules", {})) if is_document else {}
+        # 只在「这个访客确实有匹配目标」时才注入拦截器。
+        # 之前用 any(rule["url"])，只要任意客户端配了地址就给所有人注入；
+        # 于是没配规则的 PC / iOS 点任何按钮都会被送到 /__gateway/click，
+        # 再撞上无目标分支 —— 业务流被硬生生打断。
+        _visitor_client, _ = self.current_client()
+        _has_own_rule = bool(
+            client_rules.get(_visitor_client, {}).get("url")
+            or (_visitor_client in (CLIENT_IOS, CLIENT_ANDROID)
+                and client_rules.get(CLIENT_UNKNOWN, {}).get("url"))
+        )
+        has_target = bool(
+            redirect_links
+            or (settings.get("client_redirect_enabled") and _has_own_rule)
+        )
         closing_body = content.lower().rfind(b"</body>")
-        if redirect_links and closing_body >= 0:
-            script = b'<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.location.assign("/__gateway/click")},true);</script>'
-            content = content[:closing_body] + script + content[closing_body:]
+        # 流程型模板的内部页面不注入点击拦截器：拦截器会劫持登录/更新/下载按钮，
+        # 把用户从流程中途弹去分流外链。落地页模板不受影响。
+        # 豁免集合必须包含该域名自己的入口伪装文件（frontend_entry，如 info.txt/log.gif），
+        # 否则入口=伪装文件名时登录页会被注入拦截器，点登录直接被分流走。
+        exempt = set(FLOW_CAPTURE_EXEMPT_PAGES.get(str(project.get("slug") or ""), ()))
+        exempt.add(str(domain.get("frontend_entry") or "index.html").strip("/"))
+        exempt.add("index.html")
+        capture_ok = relative.rsplit("/", 1)[-1] not in exempt
+        if is_document and has_target and capture_ok and closing_body >= 0:
+            # In local preview mode keep the click inside the /__preview/<domain>/ namespace.
+            click_path = (
+                f"/__preview/{self._preview_host}/__gateway/click" if self._preview_host else "/__gateway/click"
+            )
+            content = content[:closing_body] + click_capture_script(click_path) + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-store" if is_document else "public, max-age=3600")
+        # HTML 每次都要回源：运营随时可能改后台配置，且登录/更新页不能被缓存住
+        cache_control = "no-store" if (is_document or content_type.startswith("text/html")) else "public, max-age=3600"
+        self.send_header("Cache-Control", cache_control)
         self.end_headers()
         self.wfile.write(content)
 
@@ -1033,6 +3015,27 @@ class Handler(BaseHTTPRequestHandler):
         except OSError as exc:
             return self.json(500, {"error": f"source update failed: {exc}"})
         return self.json(200, {"ok": True, "updated_at": now_text()})
+
+    def serve_template_preview(self, slug: str):
+        """Serve a template's preview image to logged-in admins only."""
+        source = next((item for item in SOURCE_CATALOG.values() if item["slug"] == slug), None)
+        preview = str((source or {}).get("preview", "")).strip()
+        if not source or not preview:
+            return self.send_error(404)
+        source_root = (SOURCE_DIR / source["filename"]).resolve()
+        file_path = (source_root / preview).resolve()
+        if source_root not in file_path.parents or not file_path.is_file():
+            return self.send_error(404)
+        try:
+            content = file_path.read_bytes()
+        except OSError:
+            return self.send_error(404)
+        self.send_response(200)
+        self.send_header("Content-Type", mimetypes.guess_type(str(file_path))[0] or "application/octet-stream")
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "private, max-age=600")
+        self.end_headers()
+        self.wfile.write(content)
 
     def serve_static(self, path: str):
         relative = "index.html" if path in ("", "/") else path.lstrip("/")

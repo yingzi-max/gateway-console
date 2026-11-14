@@ -41,6 +41,7 @@
         <button data-page="dashboard" class="active"><span class="nav-icon">⌂</span>仪表板</button>
         <p>数据</p>
         <button data-page="data"><span class="nav-icon">≡</span>数据中心</button>
+        <button data-page="blacklist"><span class="nav-icon">⛔</span>黑名单中心</button>
         <p>管理</p>
         <button data-page="frontend"><span class="nav-icon">◇</span>前台配置</button>
         <button data-page="settings"><span class="nav-icon">⚙</span>系统设置</button>
@@ -71,20 +72,41 @@
           <div class="block-heading"><div><h3>最近 7 个统计日</h3><p>北京时间 22:00 刷新，同一 IP 每日去重。</p></div><div class="chart-legend"><span><i class="visit"></i>访问</span><span><i class="click"></i>点击</span></div></div>
           <div class="weekly-chart-scroll"><div id="weeklyChart" class="weekly-chart" aria-label="最近七天访问和点击统计"></div></div>
         </section>
+        <section class="content-block client-breakdown-block">
+          <div class="block-heading"><div><h3>来访客户端构成</h3><p>按 User-Agent 识别的设备与爬虫分布。</p></div></div>
+          <div id="clientBreakdown" class="client-breakdown"></div>
+        </section>
       </div>
 
       <div class="page" data-page-view="data">
-        <div class="page-intro"><div><h3>访问明细</h3><p>按单个域名和事件类型查询访客记录。</p></div></div>
+        <div class="page-intro"><div><h3>访问明细</h3><p>按单个域名、事件类型和来访客户端查询访客记录。</p></div></div>
         <section class="content-block">
           <form id="eventFilters" class="filterbar">
             <label>域名<input name="domain" placeholder="example.com"></label>
             <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option><option value="rejected">拒绝</option></select></label>
+            <label>客户端<select name="client" id="eventClientFilter"><option value="">全部客户端</option></select></label>
             <button class="primary" type="submit">查询</button>
           </form>
           <div class="table-wrap">
-            <table><thead><tr><th>编号</th><th>时间</th><th>域名</th><th>类型</th><th>IP</th><th>UA</th></tr></thead><tbody id="eventsBody"></tbody></table>
+            <table><thead><tr><th>编号</th><th>时间</th><th>域名</th><th>类型</th><th>客户端</th><th>IP</th><th>UA</th></tr></thead><tbody id="eventsBody"></tbody></table>
           </div>
-          <div class="table-foot"><span id="eventCount">共 0 条</span><button id="eventsPrev" class="secondary small">上一页</button><span id="eventPage">1</span><button id="eventsNext" class="secondary small">下一页</button></div>
+          <div class="table-foot"><span id="eventCount">共 0 条</span><button id="eventsPrev" class="secondary small">上一页</button><span id="eventPage">1</span><button id="eventsNext" class="secondary small">下一页</button><button id="clearEvents" class="danger-link" type="button" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 一键清空日志</button></div>
+        </section>
+      </div>
+
+      <div class="page" data-page-view="blacklist">
+        <div class="page-intro"><div><h3>黑名单管理</h3><p>名单内 IP 的访问不做任何检测，直接拦截并跳转到「爬虫跳转地址」，直到被移除。</p></div></div>
+        <section class="content-block">
+          <form id="blForm" class="filterbar">
+            <label>搜索（IP 或备注）<input id="blQuery" placeholder="输入关键字后回车或点查询"></label>
+            <label>新增 IP<input id="blNewIp" placeholder="1.2.3.4"></label>
+            <label>备注<input id="blNewNote" placeholder="原因，可留空"></label>
+            <button class="primary" type="submit" id="blAddBtn">加入黑名单</button>
+          </form>
+          <div class="table-wrap">
+            <table><thead><tr><th>编号</th><th>IP</th><th>来源</th><th>备注</th><th>加入时间</th><th>操作</th></tr></thead><tbody id="blBody"></tbody></table>
+          </div>
+          <div class="table-foot"><span id="blCount">共 0 条</span><button id="blClear" class="danger-link" type="button">🗑 清空黑名单</button><button id="blPrev" class="secondary small">上一页</button><span id="blPage">1</span><button id="blNext" class="secondary small">下一页</button></div>
         </section>
       </div>
 
@@ -108,12 +130,64 @@
       </div>
 
       <div class="page" data-page-view="settings">
-        <div class="page-intro"><div><h3>系统设置</h3><p>配置 IPRegistry 风险识别和访问拦截策略。</p></div><button id="saveSettings" class="primary">保存设置</button></div>
+        <div class="page-intro"><div><h3>系统设置</h3><p>配置 IPRegistry 风险识别、爬虫防护和客户端分流跳转。</p></div><button id="saveSettings" class="primary">保存设置</button></div>
         <div class="settings-layout">
           <section class="content-block">
             <div class="block-heading"><div><h3>防红配置</h3><p>IPRegistry API Key 供源码配置中的风险识别使用。</p></div><a href="https://dashboard.ipregistry.co/overview" target="_blank" rel="noreferrer">获取 API Key ↗</a></div>
             <label class="switch-row"><span><b>启用 IPRegistry 检测</b><small>需要有效的 API Key</small></span><input id="ipregistry_enabled" type="checkbox"><i></i></label>
             <label class="field"><span id="ipregistryKeyLabel">API Key（剩余积分：未配置）</span><input id="ipregistry_api_key" type="password" placeholder="输入 IPRegistry API Key" autocomplete="off"></label>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>客户端分流跳转</h3><p>按来访者的设备类型把点击分别导向不同 URL，爬虫单独处理。<b>这是全站优先级最高的跳转配置</b> —— 模板内的下载按钮也以这里为准。</p></div></div>
+            <label class="switch-row"><span><b>启用客户端分流跳转</b><small>关闭后所有客户端都走下方「模板跳转链接」轮换池；关闭时也不再作为 App 更新页按钮的回落来源</small></span><input id="client_redirect_enabled" type="checkbox"><i></i></label>
+            <div id="clientRuleEditor" class="client-rule-editor"></div>
+            <p class="client-rule-help">每类客户端可单独填写跳转 URL 与点击上限；留空表示该类客户端回落到模板跳转链接。未知客户端同时作为手机端未精确匹配时的兜底。</p>
+            <div class="client-test-box">
+              <div class="client-test-head"><h4>测试按钮</h4><p>粘贴任意 User-Agent，查看会被识别成什么客户端、并跳到哪个 URL。</p></div>
+              <label class="field"><span>测试 User-Agent</span><textarea id="clientTestUa" rows="3" placeholder="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile"></textarea></label>
+              <div class="client-test-presets" id="clientTestPresets"></div>
+              <div class="client-test-actions">
+                <button id="clientDetectBtn" class="secondary" type="button">检测判定</button>
+                <button id="clientJumpBtn" class="primary" type="button">点击跳转测试</button>
+              </div>
+              <div id="clientTestResult" class="client-test-result hidden"></div>
+            </div>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>人机验证</h3><p>在所有前台页面之前插入验证页，未通过验证无法访问任何页面。</p></div></div>
+            <label class="switch-row"><span><b>启用人机验证</b><small>对所有已配置域名的前台页面生效；爬虫与后台管理入口不受影响</small></span><input id="captcha_enabled" type="checkbox"><i></i></label>
+            <div class="field-grid">
+              <label class="field"><span>验证有效期（分钟）</span><input id="captcha_ttl_minutes" type="number" min="5" max="43200" step="1"><small>验证通过后免验证的时长，默认 120 分钟</small></label>
+              <label class="field"><span>最多尝试次数</span><input id="captcha_max_tries" type="number" min="1" max="10" step="1"><small>超过次数后需刷新页面重新开始</small></label>
+            </div>
+            <p class="client-rule-help">验证页样式会自动跟随当前域名的模板配色（国税e-Tax 与 Vpass 为绿色系，其他模板为墨绿色系），互不影响。</p>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>App 更新页跳转</h3><p>「Vpass 三井流程」模板的 App 更新页按钮按设备分流，点击后跳转到下面配置的地址。</p></div></div>
+            <div class="field-grid">
+              <label class="field"><span>安卓端地址</span><input id="app_android_url" type="url" placeholder="留空则回落到 PC 下载页" autocomplete="off"><small>Android 设备点击「最新版をダウンロード」时跳转</small></label>
+              <label class="field"><span>苹果端地址</span><input id="app_ios_url" type="url" placeholder="留空则回落到 PC 下载页" autocomplete="off"><small>iPhone / iPad / iPod 点击时跳转</small></label>
+              <label class="field"><span>PC 端地址</span><input id="app_desktop_url" type="url" placeholder="留空则使用模板内的 pc_download.html" autocomplete="off"><small>电脑端点击时跳转；默认进入模板自带的扫码下载页</small></label>
+            </div>
+            <p class="client-rule-help">这是模板<b>未接入分流时的默认流程</b>。<b>优先级：上方「客户端分流跳转」里该端已配置的地址 &gt; 这里的地址</b> —— 分流是这套系统的核心，分流配了就以分流为准，这里的值不参与。分流开关关闭或该端没配时，才用这里的值；PC 端建议留空，让它进入模板自带的扫码下载页。</p>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>爬虫专用跳转</h3><p>识别到爬虫/自动化客户端时，导向独立页面，避免把真实链接暴露给采集程序。</p></div></div>
+            <label class="switch-row"><span><b>启用爬虫专用跳转</b><small>优先级高于客户端分流规则</small></span><input id="bot_redirect_enabled" type="checkbox"><i></i></label>
+            <label class="field"><span>爬虫跳转地址</span><input id="bot_redirect_url" type="url" placeholder="https://example.com/decoy" autocomplete="off"><small>留空则回落到「拦截跳转地址」，没有则返回 403</small></label>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>访问频率封锁</h3><p>同一来访者「打开进入网站」的次数在单位时间内超过上限时（站内跳转操作不计入），直接拉入黑名单（在「黑名单中心」可管理），后续访问直接拦截跳转，跳过一切检测。</p></div></div>
+            <label class="switch-row"><span><b>启用访问频率封锁</b><small>只统计「打开进入网站」的次数，站内跳转不计入；被拉黑的 IP 在「黑名单中心」移除前持续生效</small></span><input id="rate_check_enabled" type="checkbox"><i></i></label>
+            <div class="field-grid">
+              <label class="field"><span>统计窗口（秒）</span><input id="rate_window_seconds" type="number" min="10" max="3600" step="1"><small>建议 60 秒</small></label>
+              <label class="field"><span>打开次数上限</span><input id="rate_max_requests" type="number" min="3" max="1000" step="1"><small>窗口内打开进入网站的次数超过该值即拉黑，建议 10</small></label>
+            </div>
           </section>
         </div>
       </div>
@@ -136,7 +210,7 @@
       <input name="project_id" type="hidden">
       <div class="config-grid">
         <section class="config-panel domain-panel"><h4>域名管理</h4><label class="field">添加域名（如有多个域名，一行一个）<div class="inline-field"><textarea name="domains" placeholder="example.com\nwww.example.com"></textarea><button id="addConfigDomain" type="button" class="secondary">添加</button></div></label><label class="field">前台入口<input name="frontend_entry" placeholder="例如：logo.gif 或 index.html"><small>保存后会生成 https://你的域名/你填写的入口</small></label><div class="domain-list config-domain-list"><p>保存后配置的域名会显示在这里</p></div></section>
-        <section class="config-panel access-panel"><h4>访问配置</h4><div class="field-grid country-field-grid"><div class="field country-field"><span>国家白名单</span><div class="country-select" data-country-select data-input="country_whitelist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择允许访问的国家</span></div><button type="button" class="country-toggle" title="展开国家列表" aria-label="展开国家列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索国家代码或名称" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="country_whitelist"></div><small class="country-help">选择国家后，未选择的所有国家会自动加入黑名单</small></div><div class="field country-field"><span>国家黑名单</span><div class="country-select" data-country-select data-input="country_blacklist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择需要拦截的国家</span></div><button type="button" class="country-toggle" title="展开国家列表" aria-label="展开国家列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索国家代码或名称" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="country_blacklist"></div><small class="country-help">额外明确拦截所选国家</small></div></div><div class="check-grid compact-checks"><label><input name="human_verification" type="checkbox">人机验证</label><label><input name="block_desktop" type="checkbox">拦截电脑端</label><label><input name="block_ios" type="checkbox">拦截 iOS</label><label><input name="block_android" type="checkbox">拦截 Android</label></div><label class="check-row"><input name="ipregistry_enabled" type="checkbox">开启 IPRegistry API 防红检测</label><div class="risk-caption">检测以下类型 IP</div><div class="risk-groups"><fieldset><legend>网络类型</legend><label><input type="checkbox" name="blocked_ip_types" value="proxy">代理</label><label><input type="checkbox" name="blocked_ip_types" value="vpn">VPN</label><label><input type="checkbox" name="blocked_ip_types" value="anonymous">匿名</label><label><input type="checkbox" name="blocked_ip_types" value="relay">中继服务器</label><label><input type="checkbox" name="blocked_ip_types" value="cloud">云服务商</label></fieldset><fieldset><legend>威胁类型</legend><label><input type="checkbox" name="blocked_threats" value="threat">威胁</label><label><input type="checkbox" name="blocked_threats" value="abuser">滥用者</label><label><input type="checkbox" name="blocked_threats" value="attacker">攻击者</label><label><input type="checkbox" name="blocked_threats" value="bogon">虚假 IP</label><label><input type="checkbox" name="blocked_threats" value="tor">Tor 网络</label></fieldset></div><label class="field">拦截后跳转地址<input name="redirect_url" type="url" placeholder="https://example.com/"></label></section>
+        <section class="config-panel access-panel"><h4>访问配置</h4><div class="field-grid country-field-grid"><div class="field country-field"><span>国家白名单</span><div class="country-select" data-country-select data-input="country_whitelist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择允许访问的国家</span></div><button type="button" class="country-toggle" title="展开国家列表" aria-label="展开国家列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索国家代码或名称" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="country_whitelist"></div><small class="country-help">选择国家后，未选择的所有国家会自动加入黑名单</small></div><div class="field country-field"><span>国家黑名单</span><div class="country-select" data-country-select data-input="country_blacklist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择需要拦截的国家</span></div><button type="button" class="country-toggle" title="展开国家列表" aria-label="展开国家列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索国家代码或名称" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="country_blacklist"></div><small class="country-help">额外明确拦截所选国家</small></div></div><div class="check-grid compact-checks"><label><input name="human_verification" type="checkbox">人机验证</label><label><input name="block_desktop" type="checkbox">拦截电脑端</label><label><input name="block_ios" type="checkbox">拦截 iOS</label><label><input name="block_android" type="checkbox">拦截 Android</label></div><label class="check-row"><input name="browser_lang_check" type="checkbox">启用浏览器语言拦截</label><div class="country-select" data-env-select="lang" data-input="browser_lang_whitelist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择放行的浏览器语言</span></div><button type="button" class="country-toggle" title="展开语言列表" aria-label="展开语言列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索语言代码或名称" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="browser_lang_whitelist"></div><small class="country-help">点击语言加入放行列表；依据浏览器 Accept-Language 匹配</small><label class="check-row"><input name="browser_tz_check" type="checkbox">启用浏览器时区拦截</label><div class="country-select" data-env-select="tz" data-input="browser_tz_whitelist"><div class="country-control" role="combobox" aria-expanded="false" tabindex="0"><div class="country-chips"><span class="country-placeholder">选择放行的浏览器时区</span></div><button type="button" class="country-toggle" title="展开时区列表" aria-label="展开时区列表">⌄</button></div><div class="country-menu hidden"><input class="country-search" type="search" placeholder="搜索时区（如 Tokyo）" autocomplete="off"><div class="country-options" role="listbox" aria-multiselectable="true"></div></div><input type="hidden" name="browser_tz_whitelist"></div><small class="country-help">点击时区加入放行列表；时区由首次访问的无感探测页采集</small><label class="check-row"><input name="ipregistry_enabled" type="checkbox">开启 IPRegistry API 防红检测</label><div class="risk-caption">检测以下类型 IP</div><div class="risk-groups"><fieldset><legend>网络类型</legend><label><input type="checkbox" name="blocked_ip_types" value="proxy">代理</label><label><input type="checkbox" name="blocked_ip_types" value="vpn">VPN</label><label><input type="checkbox" name="blocked_ip_types" value="anonymous">匿名</label><label><input type="checkbox" name="blocked_ip_types" value="relay">中继服务器</label><label><input type="checkbox" name="blocked_ip_types" value="cloud">云服务商</label></fieldset><fieldset><legend>威胁类型</legend><label><input type="checkbox" name="blocked_threats" value="threat">威胁</label><label><input type="checkbox" name="blocked_threats" value="abuser">滥用者</label><label><input type="checkbox" name="blocked_threats" value="attacker">攻击者</label><label><input type="checkbox" name="blocked_threats" value="bogon">虚假 IP</label><label><input type="checkbox" name="blocked_threats" value="tor">Tor 网络</label></fieldset></div><label class="field">拦截后跳转地址<input name="redirect_url" type="url" placeholder="https://example.com/"></label></section>
       </div>
       <div class="wizard-actions"><button type="button" class="secondary" disabled>← 上一页</button><button class="primary" type="submit">保存配置 →</button></div>
     </form>
@@ -152,6 +226,6 @@
     </form>
   </dialog>
   <div id="mobileBackdrop" class="backdrop"></div>
-  <script src="/app.js?v=12"></script>
+  <script src="/app.js?v=13"></script>
 </body>
 </html>
