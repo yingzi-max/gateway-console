@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/app/reference-assets/reference-header/combined.css">
+</head>
+<body data-design="seeds" data-channel="main-site-user">
+<header class="slc-header" data-design="seeds-layout-responsive" data-scroll-hide="" aria-hidden="false" data-name="global-navigation" data-static-contents="visitor">
+  <nav class="slc-header-nav" role="navigation">
+    <section class="slc-header-nav-container">
+      <div class="slc-nav-logo">
+        <div class="slc-hamburger">
+          <label class="slc-hamburger-switch">
+            <input type="checkbox" data-global-hamburger="" aria-expanded="false" autocomplete="off" style="">
+            <span></span>
+            <span></span>
+            <span></span>
+          </label>
+        </div>
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLEThmR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLEThmR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_logo" class="slc-logo-space slc-nav-link"><i class="slc-i-logo"></i></a>
+      </div>
+      <div class="slc-header-nav-menu">
+        <div class="slc-header-nav-menu-items">
+          <div class="slc-header-nav-upper-menu">
+            <ul class="slc-nav-items" role="menubar">
+              <li class="slc-nav-item slc-search-container" role="none" data-nav-item="search">
+                <button class="slc-nav-link slc-max-display-sm" data-search="trigger">
+                  <span></span>
+                  <i class="slc-i-glass-simple"></i>
+                </button>
+                <div class="slc-search-dropdown">
+                  <div class="slc-brand-search">
+                    <label class="slc-search-title"><span>銘柄</span><span>検索</span></label>
+                    <div class="slc-search-form">
+                      <div class="slc-category-select">
+                        <select name="category" id="brand-search-category">
+                          <option value="domestic">国内株式</option>
+                          <option value="foreign">外国株式</option>
+                          <option value="fund">投資信託</option>
+                        </select>
+                      </div>
+                      <div class="slc-brand-search-box">
+                        <i class="slc-i-glass-simple slc-search-icon"></i>
+                        <input type="text" placeholder="銘柄・銘柄コード" id="brand-search-text" name="i_stock_sec" autocomplete="off" enterkeyhint="search" style="">
+                        <input type="hidden" name="_ControlID" value="WPLETsiR001Control" style="">
+                        <input type="hidden" name="_PageID" value="WPLETsiR001Iser10" style="">
+                        <input type="hidden" name="_DataStoreID" value="DSWPLETsiR001Control" style="">
+                        <input type="hidden" name="_ActionID" value="clickToSearchStockPriceJP" style="">
+                        <input type="hidden" name="i_dom_flg" value="1" style="">
+                        <input type="hidden" name="ref_from" value="1" style="">
+                        <input type="hidden" name="ref_to" value="20" style="">
+                        <input type="hidden" name="wstm4130_sort_id" value="  " style="">
+                        <input type="hidden" name="wstm4130_sort_kbn" value=" " style="">
+                        <input type="hidden" name="i_exchange_code" value="JPN" style="">
+                        <input type="hidden" name="json_status" style="">
+                        <input type="hidden" name="json_content" style="">
+                        <input type="hidden" name="i_output_type" value="0" style="">
+                        <input type="hidden" name="qr_keyword" value="1" style="">
+                        <input type="hidden" name="qr_suggest" value="1" style="">
+                        <input type="hidden" name="qr_sort" value="1" style="">
+                        <button class="slc-search-button"><i class="slc-i-glass-simple"></i></button>
+                        <div id="stock-search-autocomplete" aria-hidden="true" class="slc-search-suggest"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="slc-site-search">
+                    <label class="slc-search-title"><span>サイト</span><span>内検索</span></label>
+                    <div class="slc-site-search-box">
+                      <i class="slc-i-glass-simple slc-search-icon"></i>
+                      <input type="text" id="site-search" placeholder="キーワード" autocomplete="off" enterkeyhint="search" style="">
+                      <button class="slc-search-button"><i class="slc-i-glass-simple"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </li>
+              <li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=bank&amp;sw_param2=top&amp;sw_param3=redirect&amp;_scpr=intpr=hn_bank" class="slc-nav-link" role="menuitem">
+                  <span class="slc-nav-link-title" data-bank-text=""><i class="slc-i-building-columns slc-nav-link-icon"></i>銀行</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li>
+              <li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=insurance&amp;sw_param2=top&amp;_scpr=intpr=hn_insurance" class="slc-nav-link" role="menuitem">
+                  <span class="slc-nav-link-title"><i class="slc-i-hands-holding-heart slc-nav-link-icon"></i>保険</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="slc-header-nav-lower-menu">
+            <ul class="slc-nav-items" role="menubar">
+              <li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETpfR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETpfR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_trade" class="slc-nav-link" role="menuitem">
+                  <i class="slc-i-pie-chart slc-nav-link-icon slc-min-display-md"></i>
+                  <span class="slc-nav-link-title"><i class="slc-i-pie-chart slc-nav-link-icon slc-max-display-sm"></i>ポートフォリオ</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-card slc-nav-link-icon"></i>口座管理</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_acc" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-card slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">口座管理</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=assets&amp;_scpr=intpr=hn_acc_my" class="slc-nav-link">資産残高・推移（My資産）<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;sw_param1=account&amp;sw_param2=assets&amp;sw_param3=profits" class="slc-nav-link">実現損益詳細<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;sw_param1=account&amp;sw_param2=assets&amp;sw_param3=dividends" class="slc-nav-link">配当金・分配金履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916005491_default_task_315536_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_y" class="slc-nav-link">口座(円建)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=foreign&amp;sw_param3=summary&amp;_scpr=intpr=hn_acc_f" class="slc-nav-link">口座(外貨建)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=nisa&amp;_scpr=intpr=hn_acc_nisa" class="slc-nav-link">口座(NISA)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=wrap&amp;_scpr=intpr=hn_acc_wrap" class="slc-nav-link">SBIラップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=StockOption&amp;sw_param1=tradeHistory&amp;cat1=domestic&amp;cat2=none&amp;_scpr=intpr=hn_acc_sbiop" class="slc-nav-link">SBI株オプション<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Ftotal-return&amp;_scpr=intpr=hn_acc_tr" class="slc-nav-link">トータルリターン<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=account&amp;sw_param2=themeInvest&amp;sw_param3=orderHistory&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_acc_theme_his" class="slc-nav-link">テーマ履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR007Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR007Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916005491_default_task_315536_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_trade_his" class="slc-nav-link">取引履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLEThiR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLEThiR001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916108131_default_task_315828_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_order_his" class="slc-nav-link">注文履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Edeliv&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_acc_shishobako" class="slc-nav-link">取引報告書等(電子交付)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-equilibrium slc-nav-link-icon"></i>取引</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733915647974_default_task_314499_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_trade" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-equilibrium slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">取引</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT001Control&amp;_SeqNo=1733915647974_default_task_314499_DefaultPID_DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_trade_dstock" class="slc-nav-link">国内株式<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Ftrade%2Fspot%2Fus&amp;_scpr=intpr=hn_trade_foreign" class="slc-nav-link">外国株式<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Fsearch&amp;_scpr=intpr=hn_trade_fund" class="slc-nav-link">投資信託<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fdomestic%2Fnew&amp;_scpr=intpr=hn_trade_bond_y" class="slc-nav-link">円貨建債券<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fforeign%2Fnew&amp;_scpr=intpr=hn_trade_bond_f" class="slc-nav-link">外貨建債券<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=StockOption&amp;sw_param1=buy&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_trade_sbiop" class="slc-nav-link">SBI株オプション<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl16&amp;_ActionID=NoActionID&amp;sw_param3=trade%2Faccumulation&amp;_scpr=intpr=hn_trade_gbi" class="slc-nav-link">金・銀・プラチナ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=fund&amp;sw_param2=foreign-mmf&amp;sw_param3=buyable&amp;_scpr=intpr=hn_trade_mmf" class="slc-nav-link">外貨建MMF<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=st&amp;sw_param3=newIssueSt&amp;_scpr=intpr=hn_trade_st" class="slc-nav-link">ST(セキュリティ・トークン)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=wrap&amp;_scpr=intpr=hn_trade_wrap" class="slc-nav-link">SBIラップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_trade_exchange" class="slc-nav-link">為替取引<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-yen-equilibrium slc-nav-link-icon"></i>入出金</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_cash" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-yen-equilibrium slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">入出金</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_cash_deposit" class="slc-nav-link">入金<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fwithdrawal&amp;_scpr=intpr=hn_cash_withdraw " class="slc-nav-link">出金<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Ftransfer&amp;_scpr=intpr=hn_cash_fc" class="slc-nav-link">振替<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Factivity-history&amp;_scpr=intpr=hn_cash_fcdw" class="slc-nav-link">入出金・振替 操作履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdetail-history&amp;_scpr=intpr=hn_cash_fcdhis" class="slc-nav-link">入出金明細<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Ffc%2Fdeposit&amp;_scpr=intpr=hn_cash_fcdw" class="slc-nav-link">外貨入出金・振替<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_cash_ex" class="slc-nav-link">為替取引<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=fund&amp;sw_param3=reserve&amp;sw_param4=cardSummary&amp;_scpr=intpr=hn_cash_credit" class="slc-nav-link">クレジットカード管理<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=service-settings%2Fdebit%2Fstatus&amp;_scpr=intpr=hn_cash_debit" class="slc-nav-link">銀行引落サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-partition" role="none"></li>
+              <li class="slc-nav-item slc-announce-container slc-hide" role="none">
+                <a class="slc-nav-link" role="menuitem" aria-expanded="false" target="_blank" href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETmbR001Control&amp;_PageID=WPLETmbR001Rsub15&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmbR001Control&amp;OutSide=on&amp;getFlg=on&amp;category_id=03&amp;_scpr=intpr=hn_infomation">
+                  <i class="slc-i-balloon slc-nav-link-icon"></i>
+                  <span class="slc-nav-link-title">お知らせ</span>
+                </a>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-user-settings slc-nav-link-icon"></i>My設定</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-user-settings slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">My設定</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_asetting" class="slc-nav-link">お客さま情報 設定・変更<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist02&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_info" class="slc-nav-link">お取引関連・口座情報<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist03&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_service" class="slc-nav-link">各種サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist04&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_email" class="slc-nav-link">Eメール通知サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=On&amp;_getFlg=on&amp;sw_param1=account&amp;sw_param2=registinfo&amp;sw_param3=point&amp;sw_param4=top&amp;sw_page=WNS001&amp;_scpr=intpr=hn_myacc_point" class="slc-nav-link">ポイント・外部ID連携<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=service-settings%2Ftop&amp;_scpr=intpr=hn_myacc_ssetting" class="slc-nav-link">サービス設定<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=fund&amp;sw_param3=reserve&amp;sw_param4=cardSummary&amp;_scpr=intpr=hn_myacc_credit" class="slc-nav-link">クレジットカード管理<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item slc-dropdown-menu" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-hand-holding-coin slc-nav-link-icon"></i>サービス</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <button class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-hand-holding-coin slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">サービス<i class="slc-i-angle-down"></i></span>
+                  </button>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">おトクに投資</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=tsumitate&amp;dir=tsumitate&amp;file=home_tsumitate.html&amp;_scpr=intpr=hn_service_tumitate" class="slc-nav-link">クレカ積立について<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_point_01.html&amp;_scpr=intpr=hn_service_point" class="slc-nav-link">ポイントサービスについて<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">ローンサービス</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_service_money_assistant.html&amp;_scpr=int_id%3d240312_sbig_ma01&amp;_scpr=intpr=hn_service_ass" class="slc-nav-link">SBIマネーアシスタント<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">資産に関するお困りごと</p>
+                          <a href="https://go.sbisec.co.jp/consult/?_scpr=intpr=hn_service_trinity" class="slc-nav-link" target="_blank">相続そうだんターミナル<i class="slc-i-external"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl30&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_inheritance.html&amp;_scpr=intpr=hn_service_inheritance" class="slc-nav-link">相続のご相談・お手続きについて<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=shop&amp;dir=shop&amp;file=home_shop.html&amp;_scpr=intpr=hn_service_shop" class="slc-nav-link" data-intermediary-link="shop">資産運用のご相談<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">安心への取り組み</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_security.html&amp;_scpr=intpr=hn_service_sec" class="slc-nav-link">セキュリティ<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=price&amp;dir=price&amp;file=home_price.html&amp;_scpr=intpr=hn_service_price" class="slc-nav-link">手数料<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=lineup&amp;dir=lineup&amp;file=home_lineup.html&amp;_scpr=intpr=hn_service_lineup" class="slc-nav-link">取扱商品のご紹介<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=tool&amp;dir=tool&amp;file=home_tool.html&amp;_scpr=intpr=hn_service_app" class="slc-nav-link">ツール・アプリ<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=learn&amp;dir=learn&amp;file=home_beginner.html&amp;_scpr=intpr=hn_service_learn" class="slc-nav-link">投資を学ぼう<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=seminar&amp;dir=seminar&amp;file=home_seminar_online.html&amp;_scpr=intpr=hn_service_seminar" class="slc-nav-link">セミナー・イベント<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_service.html&amp;_scpr=intpr=hn_service_guide" class="slc-nav-link">各種ご案内<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-headset slc-nav-link-icon"></i>サポート</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=support&amp;file=home_support.html&amp;_scpr=intpr=hn_support" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-headset slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">サポート</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=support&amp;file=home_support.html&amp;_scpr=intpr=hn_support" class="slc-nav-link">お客さまサポート トップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://faq.sbisec.co.jp/?_scpr=intpr=hn_i_support_faq" class="slc-nav-link" target="_blank">よくあるご質問<i class="slc-i-external slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://search.sbisec.co.jp/v2/popwin/guide/trade_guide.html?_scpr=intpr=hn_i_support_guide" class="slc-nav-link" target="_blank">サイト・アプリの操作ガイド<i class="slc-i-external slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Request&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_i_support_request" class="slc-nav-link">ご意見・ご要望<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="slc-nav-partition" role="none"></li>
+              <li class="slc-nav-item" role="none" data-nav-item="login">
+                <a href="https://login.sbisec.co.jp/?_scpr=intpr=hn_login" data-customer-href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETlgR001Control&amp;_PageID=WPLETlgR001Rlgn50&amp;_ActionID=logout&amp;_DataStoreID=DSWPLETlgR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_logout" class="slc-nav-link slc-nav-button" role="menuitem">
+                  <i class="slc-i-login slc-nav-link-icon"></i>
+                  <span class="slc-nav-link-title">ログイン</span>
+                  <i class="slc-i-angle-right"></i>
+                </a>
+              </li>
+              <li class="slc-nav-item" role="none" data-nav-item="account-opening">
+                <a href="https://m.sbisec.co.jp/eatiw011" class="slc-nav-link slc-nav-button" target="_blank" role="menuitem">
+                  <span>口座開設</span>
+                  <i class="slc-i-external"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slc-dots-menu" data-dots-menu="">
+          <div class="slc-nav-item">
+            <label class="slc-dots-switch" data-dots-menu="trigger">
+              <input type="checkbox" autocomplete="off" aria-expanded="false" style="">
+              <span></span>
+            </label>
+            <div class="slc-nav-dropdown slc-slide" data-dots-menu="slide" aria-expanded="false">
+              <ul class="slc-nav-items"><li class="slc-nav-item" role="none" data-nav-item="account-opening">
+                <a href="https://m.sbisec.co.jp/eatiw011" class="slc-nav-link slc-nav-button" target="_blank" role="menuitem">
+                  <span>口座開設</span>
+                  <i class="slc-i-external"></i>
+                </a>
+              </li><li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETpfR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETpfR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_trade" class="slc-nav-link" role="menuitem">
+                  <i class="slc-i-pie-chart slc-nav-link-icon slc-min-display-md"></i>
+                  <span class="slc-nav-link-title"><i class="slc-i-pie-chart slc-nav-link-icon slc-max-display-sm"></i>ポートフォリオ</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li><li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-card slc-nav-link-icon"></i>口座管理</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_acc" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-card slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">口座管理</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=assets&amp;_scpr=intpr=hn_acc_my" class="slc-nav-link">資産残高・推移（My資産）<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;sw_param1=account&amp;sw_param2=assets&amp;sw_param3=profits" class="slc-nav-link">実現損益詳細<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;sw_param1=account&amp;sw_param2=assets&amp;sw_param3=dividends" class="slc-nav-link">配当金・分配金履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916005491_default_task_315536_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_y" class="slc-nav-link">口座(円建)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=foreign&amp;sw_param3=summary&amp;_scpr=intpr=hn_acc_f" class="slc-nav-link">口座(外貨建)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=nisa&amp;_scpr=intpr=hn_acc_nisa" class="slc-nav-link">口座(NISA)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=wrap&amp;_scpr=intpr=hn_acc_wrap" class="slc-nav-link">SBIラップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=StockOption&amp;sw_param1=tradeHistory&amp;cat1=domestic&amp;cat2=none&amp;_scpr=intpr=hn_acc_sbiop" class="slc-nav-link">SBI株オプション<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Ftotal-return&amp;_scpr=intpr=hn_acc_tr" class="slc-nav-link">トータルリターン<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=account&amp;sw_param2=themeInvest&amp;sw_param3=orderHistory&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_acc_theme_his" class="slc-nav-link">テーマ履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR007Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETacR007Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916005491_default_task_315536_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_trade_his" class="slc-nav-link">取引履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLEThiR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLEThiR001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733916108131_default_task_315828_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_acc_order_his" class="slc-nav-link">注文履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Edeliv&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_acc_shishobako" class="slc-nav-link">取引報告書等(電子交付)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-equilibrium slc-nav-link-icon"></i>取引</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733915647974_default_task_314499_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_trade" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-equilibrium slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">取引</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT001Control&amp;_SeqNo=1733915647974_default_task_314499_DefaultPID_DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_trade_dstock" class="slc-nav-link">国内株式<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Ftrade%2Fspot%2Fus&amp;_scpr=intpr=hn_trade_foreign" class="slc-nav-link">外国株式<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Fsearch&amp;_scpr=intpr=hn_trade_fund" class="slc-nav-link">投資信託<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fdomestic%2Fnew&amp;_scpr=intpr=hn_trade_bond_y" class="slc-nav-link">円貨建債券<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fforeign%2Fnew&amp;_scpr=intpr=hn_trade_bond_f" class="slc-nav-link">外貨建債券<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=StockOption&amp;sw_param1=buy&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_trade_sbiop" class="slc-nav-link">SBI株オプション<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl16&amp;_ActionID=NoActionID&amp;sw_param3=trade%2Faccumulation&amp;_scpr=intpr=hn_trade_gbi" class="slc-nav-link">金・銀・プラチナ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=fund&amp;sw_param2=foreign-mmf&amp;sw_param3=buyable&amp;_scpr=intpr=hn_trade_mmf" class="slc-nav-link">外貨建MMF<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=st&amp;sw_param3=newIssueSt&amp;_scpr=intpr=hn_trade_st" class="slc-nav-link">ST(セキュリティ・トークン)<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=wrap&amp;_scpr=intpr=hn_trade_wrap" class="slc-nav-link">SBIラップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_trade_exchange" class="slc-nav-link">為替取引<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-yen-equilibrium slc-nav-link-icon"></i>入出金</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_cash" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-yen-equilibrium slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">入出金</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_cash_deposit" class="slc-nav-link">入金<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fwithdrawal&amp;_scpr=intpr=hn_cash_withdraw " class="slc-nav-link">出金<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Ftransfer&amp;_scpr=intpr=hn_cash_fc" class="slc-nav-link">振替<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Factivity-history&amp;_scpr=intpr=hn_cash_fcdw" class="slc-nav-link">入出金・振替 操作履歴<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdetail-history&amp;_scpr=intpr=hn_cash_fcdhis" class="slc-nav-link">入出金明細<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Ffc%2Fdeposit&amp;_scpr=intpr=hn_cash_fcdw" class="slc-nav-link">外貨入出金・振替<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_cash_ex" class="slc-nav-link">為替取引<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=fund&amp;sw_param3=reserve&amp;sw_param4=cardSummary&amp;_scpr=intpr=hn_cash_credit" class="slc-nav-link">クレジットカード管理<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=service-settings%2Fdebit%2Fstatus&amp;_scpr=intpr=hn_cash_debit" class="slc-nav-link">銀行引落サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-user-settings slc-nav-link-icon"></i>My設定</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-user-settings slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">My設定</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_asetting" class="slc-nav-link">お客さま情報 設定・変更<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist02&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_info" class="slc-nav-link">お取引関連・口座情報<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist03&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_service" class="slc-nav-link">各種サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Regist04&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_myacc_email" class="slc-nav-link">Eメール通知サービス<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=On&amp;_getFlg=on&amp;sw_param1=account&amp;sw_param2=registinfo&amp;sw_param3=point&amp;sw_param4=top&amp;sw_page=WNS001&amp;_scpr=intpr=hn_myacc_point" class="slc-nav-link">ポイント・外部ID連携<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=service-settings%2Ftop&amp;_scpr=intpr=hn_myacc_ssetting" class="slc-nav-link">サービス設定<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=fund&amp;sw_param3=reserve&amp;sw_param4=cardSummary&amp;_scpr=intpr=hn_myacc_credit" class="slc-nav-link">クレジットカード管理<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item slc-nav-accordion-item slc-dropdown-menu" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-hand-holding-coin slc-nav-link-icon"></i>サービス</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <button class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-hand-holding-coin slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">サービス<i class="slc-i-angle-down"></i></span>
+                  </button>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">おトクに投資</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=tsumitate&amp;dir=tsumitate&amp;file=home_tsumitate.html&amp;_scpr=intpr=hn_service_tumitate" class="slc-nav-link">クレカ積立について<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_point_01.html&amp;_scpr=intpr=hn_service_point" class="slc-nav-link">ポイントサービスについて<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">ローンサービス</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_service_money_assistant.html&amp;_scpr=int_id%3d240312_sbig_ma01&amp;_scpr=intpr=hn_service_ass" class="slc-nav-link">SBIマネーアシスタント<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">資産に関するお困りごと</p>
+                          <a href="https://go.sbisec.co.jp/consult/?_scpr=intpr=hn_service_trinity" class="slc-nav-link" target="_blank">相続そうだんターミナル<i class="slc-i-external"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl30&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_inheritance.html&amp;_scpr=intpr=hn_service_inheritance" class="slc-nav-link">相続のご相談・お手続きについて<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=shop&amp;dir=shop&amp;file=home_shop.html&amp;_scpr=intpr=hn_service_shop" class="slc-nav-link" data-intermediary-link="shop">資産運用のご相談<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                        <li>
+                          <p class="slc-nav-title slc-min-display-md">安心への取り組み</p>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_security.html&amp;_scpr=intpr=hn_service_sec" class="slc-nav-link">セキュリティ<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="slc-nav-item">
+                      <ul class="slc-nav-item-contents">
+                        <li>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=price&amp;dir=price&amp;file=home_price.html&amp;_scpr=intpr=hn_service_price" class="slc-nav-link">手数料<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=lineup&amp;dir=lineup&amp;file=home_lineup.html&amp;_scpr=intpr=hn_service_lineup" class="slc-nav-link">取扱商品のご紹介<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=tool&amp;dir=tool&amp;file=home_tool.html&amp;_scpr=intpr=hn_service_app" class="slc-nav-link">ツール・アプリ<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=learn&amp;dir=learn&amp;file=home_beginner.html&amp;_scpr=intpr=hn_service_learn" class="slc-nav-link">投資を学ぼう<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=seminar&amp;dir=seminar&amp;file=home_seminar_online.html&amp;_scpr=intpr=hn_service_seminar" class="slc-nav-link">セミナー・イベント<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                          <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_service.html&amp;_scpr=intpr=hn_service_guide" class="slc-nav-link">各種ご案内<i class="slc-i-angle-right slc-max-display-sm"></i></a>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item slc-nav-accordion-item" role="none" aria-expanded="false" data-nav-item="dropdown">
+                <div class="slc-nav-menu-item" role="menuitem">
+                  <button class="slc-nav-link slc-max-display-sm">
+                    <span class="slc-nav-link-title"><i class="slc-i-headset slc-nav-link-icon"></i>サポート</span>
+                    <label class="slc-plus-switch">
+                      <input type="checkbox" autocomplete="off" style="">
+                      <span></span>
+                    </label>
+                  </button>
+                  <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=support&amp;file=home_support.html&amp;_scpr=intpr=hn_support" class="slc-nav-link slc-min-display-md">
+                    <i class="slc-i-headset slc-nav-link-icon"></i>
+                    <span class="slc-nav-link-title">サポート</span></a>
+                </div>
+                <div class="slc-nav-dropdown">
+                  <ul class="slc-nav-items">
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=support&amp;file=home_support.html&amp;_scpr=intpr=hn_support" class="slc-nav-link">お客さまサポート トップ<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://faq.sbisec.co.jp/?_scpr=intpr=hn_i_support_faq" class="slc-nav-link" target="_blank">よくあるご質問<i class="slc-i-external slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://search.sbisec.co.jp/v2/popwin/guide/trade_guide.html?_scpr=intpr=hn_i_support_guide" class="slc-nav-link" target="_blank">サイト・アプリの操作ガイド<i class="slc-i-external slc-nav-item-icon"></i></a>
+                    </li>
+                    <li class="slc-nav-item">
+                      <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=Request&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_i_support_request" class="slc-nav-link">ご意見・ご要望<i class="slc-i-angle-right slc-nav-item-icon"></i></a>
+                    </li>
+                  </ul>
+                </div>
+              </li><li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=bank&amp;sw_param2=top&amp;sw_param3=redirect&amp;_scpr=intpr=hn_bank" class="slc-nav-link" role="menuitem">
+                  <span class="slc-nav-link-title" data-bank-text=""><i class="slc-i-building-columns slc-nav-link-icon"></i>銀行</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li><li class="slc-nav-item" role="none" data-nav-item="">
+                <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=insurance&amp;sw_param2=top&amp;_scpr=intpr=hn_insurance" class="slc-nav-link" role="menuitem">
+                  <span class="slc-nav-link-title"><i class="slc-i-hands-holding-heart slc-nav-link-icon"></i>保険</span>
+                  <i class="slc-i-angle-right slc-nav-item-icon"></i>
+                </a>
+              </li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </nav>
+</header>
+
+<!-- グロナビ -->
+<nav class="slc-global-nav" role="navigation" data-design="seeds-layout-responsive" data-static-contents="visitor">
+  <div class="slc-global-nav-container">
+    <ul class="slc-nav-items">
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a class="slc-nav-link slc-nav-link-blk-sm" id="home-global-nav" aria-current="false" href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLEThmR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLEThmR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_i_top">ホーム<i class="slc-i-angle-right slc-nav-item-icon slc-max-display-sm"></i></a>
+        <div class="slc-dropdown-content slc-dropdown-right slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item slc-hide" data-intermediary-link="exclusive">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=home&amp;sw_param2=mediation&amp;sw_param3=top&amp;sw_page=WNS001" class="slc-nav-link">仲介専用<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item slc-display-visitor">
+              <a href="https://www.sbisec.co.jp/visitor?_scpr=intpr=hn_i_visitor" class="slc-nav-link" target="_blank">はじめてのお客さま<i class="slc-i-external slc-nav-icon-right slc-global-nav-none"></i><i class="slc-i-external slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_top&amp;cat1=market&amp;cat2=top&amp;dir=tl1-top%7Ctl2-map%7Ctl5-jpn&amp;file=index.html&amp;_scpr=intpr=hn_i_market" class="slc-nav-link"><i class="slc-i-chart-line slc-nav-icon-left slc-global-nav-none"></i>マーケット<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=campaign&amp;dir=campaign&amp;file=home_campaign.html&amp;_scpr=intpr=hn_i_cp" class="slc-nav-link">キャンペーン<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://go.sbisec.co.jp/media/?_scpr=intpr=hn_i_media" class="slc-nav-link" target="_blank">投資情報メディア<i class="slc-i-external slc-nav-icon-right slc-global-nav-none"></i><i class="slc-i-external slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=learn&amp;dir=learn&amp;file=home_financial_literacy.html&amp;_scpr=intpr=hn_i_fl" class="slc-nav-link">SBI証券 金トレ部<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=seminar&amp;dir=seminar&amp;file=home_seminar_online.html&amp;_scpr=intpr=hn_i_service_seminar" class="slc-nav-link">セミナー・イベント<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_top&amp;cat1=market&amp;cat2=top&amp;dir=tl1-top%7Ctl2-map%7Ctl5-jpn&amp;file=index.html&amp;_scpr=intpr=hn_i_top" class="slc-nav-link slc-nav-link-blk-sm" id="market-global-nav" aria-current="false">マーケット<i class="slc-i-angle-right slc-nav-icon"></i></a>
+        <div class="slc-dropdown-content slc-dropdown-right slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_index&amp;cat1=market&amp;cat2=index&amp;dir=tl1%2didx%7ctl2%2dstockIdx&amp;file=index.html&amp;_scpr=intpr=hn_i_market_index" class="slc-nav-link">指数・為替・金利<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_ranking&amp;cat1=market&amp;cat2=ranking&amp;dir=tl1%2drnk%7ctl2%2dstock%7ctl3%2dprice%7ctl4%2duprate%7ctl5%2dpriceview%7ctl7%2dT1&amp;file=index.html&amp;_scpr=intpr=hn_i_market_rank" class="slc-nav-link">ランキング<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_economicCalendar&amp;cat1=market&amp;cat2=economicCalender&amp;dir=tl1%2dcal%7ctl2%2devent%7ctl3%2dweek&amp;file=index.html&amp;_scpr=intpr=hn_i_market_calendar" class="slc-nav-link">経済カレンダー<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl30&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_market&amp;cat1=market&amp;cat2=report&amp;dir=report&amp;file=report_top.html&amp;_scpr=intpr=hn_i_market_report" class="slc-nav-link">レポート<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_morningInfo&amp;cat1=market&amp;cat2=morningInfo&amp;dir=tl1%2dminfo%7ctl2%2dminfo&amp;file=index.html&amp;_scpr=intpr=hn_i_market_morning" class="slc-nav-link">朝イチ情報<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_news&amp;cat1=market&amp;cat2=news&amp;dir=tl1%2dnews%7ctl2%2dmkt%7ctl3%2djpn%7ctl4%2dreuters%7ctl9%2d0&amp;file=index.html&amp;_scpr=intpr=hn_i_market_news" class="slc-nav-link">ニュース<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=nisa&amp;sw_param2=top&amp;_scpr=intpr=hn_i_nisa" data-customer-href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=nisa&amp;_scpr=intpr=hn_i_nisa_acc" class="slc-nav-link" id="nisa-global-nav" aria-current="false">NISA<i class="slc-i-angle-right slc-nav-icon"></i>
+        </a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_ranking&amp;cat1=market&amp;cat2=ranking&amp;dir=tl1-rnk%7Ctl2-nisa%7Ctl3-fund&amp;file=index.html&amp;_scpr=intpr=hn_i_nisa_rank" class="slc-nav-link"><i class="slc-i-chart-line slc-nav-icon-left slc-global-nav-none"></i>ランキング<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=nisa&amp;sw_param3=portfolio&amp;_scpr=intpr=hn_i_nisa_list" class="slc-nav-link">保有銘柄<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=assets&amp;sw_param3=dividends&amp;_scpr=intpr=hn_i_nisa_dividend" class="slc-nav-link">配当金・分配金履歴<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Faccumulation&amp;_scpr=intpr=hn_i_nisa_tumitate" class="slc-nav-link">積立設定一覧<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_i_nisa_deposit" class="slc-nav-link">入金<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a class="slc-nav-link slc-nav-link-blk-sm" id="domestic-global-nav" aria-current="false" href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=noLogin&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=domestic&amp;sw_param2=top&amp;_scpr=intpr=hn_i_ds">国内株式<i class="slc-i-angle-right slc-nav-item-icon slc-max-display-sm"></i></a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_i_ds_trade" class="slc-nav-link">取引<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETstT024Control&amp;_PageID=WPLETstT024Rlst10&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT024Control&amp;_scpr=intpr=hn_i_ds_stock" class="slc-nav-link">積立<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=iris_ranking&amp;cat1=market&amp;cat2=ranking&amp;dir=tl1-rnk%7Ctl2-stock%7Ctl3-price%7Ctl4-uprate%7Ctl5-priceview%7Ctl7-T1&amp;file=index.html&amp;_scpr=intpr=hn_i_ds_rank" class="slc-nav-link"><i class="slc-i-chart-line slc-nav-icon-left slc-global-nav-none"></i>ランキング<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_domestic&amp;cat1=domestic&amp;cat2=ipo&amp;dir=ipo&amp;file=stock_info_ipo.html&amp;_scpr=intpr=hn_i_ds_ipo" class="slc-nav-link">IPO・PO<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=CGSS&amp;cat1=home&amp;cat2=none&amp;sw_param1=&amp;sw_param2=yutai_search&amp;_scpr=intpr=hn_i_ds_yutai" class="slc-nav-link">株主優待<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_ActionID=NoActionID&amp;OutSide=on&amp;_DataStoreID=DSWPLETsmR001Control&amp;getFlg=on&amp;sw_page=LndStk&amp;cat1=home&amp;cat2=none&amp;sw_param1=&amp;sw_param2=lndstk_ratelist&amp;_scpr=intpr=hn_i_ds_ratelist" class="slc-nav-link">貸株<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETacR001Control&amp;_PageID=DefaultPID&amp;_DataStoreID=DSWPLETacR001Control&amp;_SeqNo=1733960326127_default_task_25939_DefaultPID_DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_ActionID=DefaultAID&amp;_scpr=intpr=hn_i_ds_summ" class="slc-nav-link"><i class="slc-i-card slc-nav-icon-left slc-global-nav-none"></i>口座状況<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstR003Control&amp;_PageID=DefaultPID&amp;_DataStoreID=DSWPLETstR003Control&amp;_SeqNo=1733998691548_default_task_23524_DefaultPID_DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_ActionID=DefaultAID&amp;_scpr=intpr=hn_i_ds_acc" class="slc-nav-link">保有銘柄<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETstT013Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETstT013Control&amp;_SeqNo=1736925055536_default_task_313732_DefaultPID_DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_i_ds_ord_his" class="slc-nav-link">注文照会<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETagR001Control&amp;_PageID=DefaultPID&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETagR001Control&amp;OutSide=on&amp;getFlg=on&amp;_SeqNo=1733960179042_default_task_24980_DefaultPID_DefaultAID&amp;_scpr=intpr=hn_i_ds_today" class="slc-nav-link">当日約定一覧<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=noLogin&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=foreign&amp;sw_param2=top&amp;_scpr=intpr=hn_i_fs" data-customer-href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Fhome&amp;_scpr=intpr=hn_i_foreign_ord" class="slc-nav-link slc-nav-link-blk-sm" id="foreign-global-nav" aria-current="false">外国株式<i class="slc-i-angle-right slc-nav-icon"></i>
+        </a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Ftrade%2Fspot%2Fus&amp;_scpr=intpr=hn_i_fs_spot" class="slc-nav-link">取引<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Ftrade%2Fsubscription%2Fus%2Fsettings&amp;_scpr=intpr=hn_i_fs_stock" class="slc-nav-link">米株積立一覧<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Faccount%2Fsummary&amp;_scpr=intpr=hn_i_fs_acc" class="slc-nav-link">口座管理<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Faccount%2Fassets&amp;_scpr=intpr=hn_i_fs_acc_trade" class="slc-nav-link">保有銘柄<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Faccount%2Fmargin%2Fassets&amp;_scpr=intpr=hn_i_fs_position" class="slc-nav-link">信用建玉<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=foreign%2Frefer%2Fus%2Fstock&amp;_scpr=intpr=hn_i_fs_fc" class="slc-nav-link">注文照会<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_i_fs_ex" class="slc-nav-link">為替取引<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Ffc%2Fdetail-history&amp;_scpr=intpr=hn_i_fs_bk_refer" class="slc-nav-link">外貨入出金明細<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETfiR001Control&amp;_PageID=DefaultPID&amp;_DataStoreID=DSWPLETfiR001Control&amp;_ActionID=DefaultAID&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_i_fund_top" data-customer-href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Ftop&amp;_scpr=intpr=hn_i_fund_ord" class="slc-nav-link slc-nav-link-blk-sm" id="fund-global-nav" aria-current="false">投資信託<i class="slc-i-angle-right slc-nav-icon"></i>
+        </a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Fassets&amp;_scpr=intpr=hn_i_fund_list" class="slc-nav-link">保有ファンド<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Frefer%2Forder&amp;_scpr=intpr%3d241004_fund_topmypage_03&amp;_scpr=intpr=hn_i_fund_ord_his" class="slc-nav-link">注文照会<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Ftotal-return&amp;_scpr=intpr=hn_i_fund_return" class="slc-nav-link">損益状況<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=fund%2Faccount%2Faccumulation&amp;_scpr=intpr=hn_i_fund_tumitate" class="slc-nav-link">積立設定<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=account&amp;sw_param2=nisa&amp;_scpr=intpr=hn_i_fund_nisa" class="slc-nav-link"><i class="slc-i-card slc-nav-icon-left slc-global-nav-none"></i>NISA口座管理<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl12&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=WNS001&amp;sw_param1=trade&amp;sw_param2=fund&amp;sw_param3=reserve&amp;sw_param4=cardSummary&amp;_scpr=intpr=hn_i_fund_credit" class="slc-nav-link"><i class="slc-i-user-settings slc-nav-icon-left slc-global-nav-none"></i>クレカ積立<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_DataStoreID=DSWPLETsmR001Control&amp;_ActionID=noLogin&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=bond&amp;sw_param2=top&amp;_scpr=intpr=hn_i_bond_top" data-customer-href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Ftop&amp;_scpr=intpr=hn_i_bond_ord" class="slc-nav-link slc-nav-link-blk-sm" id="bond-global-nav" aria-current="false">債券<i class="slc-i-angle-right slc-nav-icon"></i>
+        </a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fdomestic%2Fnew&amp;_scpr=intpr=hn_i_bond_domestic" class="slc-nav-link">円貨建債券<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Fsearch%2Fforeign%2Fnew&amp;_scpr=intpr=hn_i_bond_foreign" class="slc-nav-link">外貨建債券<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Faccount%2Fassets&amp;_scpr=intpr=hn_i_bond_list" class="slc-nav-link">保有銘柄<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=bond%2Frefer%2Forder-history&amp;_scpr=intpr=hn_i_bond_ord_his" class="slc-nav-link">注文照会<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl18&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=order&amp;_scpr=intpr=hn_i_bond_ex" class="slc-nav-link"><i class="slc-i-yen-equilibrium slc-nav-icon-left slc-global-nav-none"></i>為替取引<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item slc-dropdown-list" data-global-nav-item="dropdown">
+        <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=exchange&amp;sw_param2=top&amp;_scpr=intpr=hn_i_fx" class="slc-nav-link slc-nav-link-blk-sm" id="fx-global-nav" aria-current="false">FX<i class="slc-i-angle-right slc-nav-icon"></i>
+        </a>
+        <div class="slc-dropdown-content slc-min-display-md" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_page=LMFX&amp;cat1=home&amp;cat2=none&amp;_scpr=intpr=hn_i_fx_ord" class="slc-nav-link" target="_blank">取引<i class="slc-i-external slc-nav-icon-right slc-global-nav-none"></i><i class="slc-i-external slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_fx&amp;cat1=fx&amp;cat2=none&amp;dir=info&amp;file=fx_swap.html&amp;_scpr=intpr=hn_i_fx_swap" class="slc-nav-link">スワップ金利<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Fdeposit&amp;_scpr=intpr=hn_i_fx_deposit" class="slc-nav-link"><i class="slc-i-yen-equilibrium slc-nav-icon-left slc-global-nav-none"></i>入金<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl23&amp;_ActionID=NoActionID&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;path=banking%2Fyen%2Ftransfer&amp;_scpr=intpr=hn_i_fx_deposit" class="slc-nav-link"><i class="slc-i-yen-equilibrium slc-nav-icon-left slc-global-nav-none"></i>振替入金<i class="slc-i-angle-right slc-nav-item-icon slc-local-link-none"></i></a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="slc-nav-item" data-global-nav-item="">
+        <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_wrap&amp;cat1=wrap&amp;cat2=none&amp;dir=top&amp;file=wrap_top.html&amp;_scpr=intpr=hn_i_wrap" class="slc-nav-link" id="leave-invest-global-nav" aria-current="false">
+          <span class="slc-badge slc-notice slc-min-display-md">PICK UP</span>
+          <span class="slc-nav-icon-text">
+            おまかせ投資
+            <span class="slc-badge slc-notice slc-max-display-sm">PICK UP</span>
+          </span>
+          <i class="slc-i-angle-right slc-nav-icon"></i></a>
+      </li>
+      <li class="slc-nav-item slc-mega-menu" data-global-nav-item="dropdown">
+        <button class="slc-nav-link" id="others-global-nav" aria-current="false">
+          その他の商品
+          <i class="slc-i-angle-down"></i>
+        </button>
+        <div class="slc-dropdown-content" aria-expanded="false">
+          <ul class="slc-nav-items">
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_domestic&amp;cat1=domestic&amp;cat2=stockop&amp;dir=stockop&amp;file=domestic_stockop.html&amp;_scpr=intpr=hn_i_sbiop" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/deac0eded03df1926e98a00a.svg" alt="">
+                </div>
+                <p class="slc-nav-text">SBI株オプション<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=derivative&amp;sw_param2=top&amp;_scpr=intpr=hn_i_op" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/0a15649fe8a5a8d611128d6a.svg" alt="">
+                </div>
+                <p class="slc-nav-text">先物・オプション<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=derivative&amp;sw_param2=odex&amp;sw_param3=top&amp;_scpr=intpr=hn_i_odex_top" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/45f27c079031c23d07ce4b5c.svg" alt="">
+                </div>
+                <p class="slc-nav-text">商品先物<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=gbi&amp;sw_param2=top&amp;_scpr=intpr=hn_i_gbi_top" class="slc-display-visitor slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/dec10544fd04e09507dc26e1.svg" alt="">
+                </div>
+                <p class="slc-nav-text">金・銀・プラチナ<i class="slc-i-angle-right"></i></p>
+              </a>
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl16&amp;_ActionID=NoActionID&amp;sw_param3=home&amp;_scpr=intpr=hn_i_gbi_top" class="slc-display-customer slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/dec10544fd04e09507dc26e1.svg" alt="">
+                </div>
+                <p class="slc-nav-text">金・銀・プラチナ<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETfiR001Control&amp;_PageID=WPLETfiR001Mlst10&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETfiR001Control&amp;OutSide=on&amp;getFlg=on&amp;_scpr=intpr=hn_i_mmf" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/300194ca68ac76ad7823d377.svg" alt="">
+                </div>
+                <p class="slc-nav-text">外貨建MMF<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=cfdwarrant&amp;sw_param2=top&amp;sw_param3=cfd&amp;_scpr=intpr=hn_i_cfd_top" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/1a435db688d9990c39c71967.svg" alt="">
+                </div>
+                <p class="slc-nav-text">取引所CFD(くりっく株365)<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;sw_param1=cfdwarrant&amp;sw_param2=top&amp;sw_param3=otccfd&amp;_scpr=intpr=hn_i_otccfd_top" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/dc5296bd934e00387f3ff34a.svg" alt="">
+                </div>
+                <p class="slc-nav-text">店頭CFD<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl30&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_st&amp;cat1=st&amp;cat2=none&amp;dir=st&amp;file=home_st.html&amp;_scpr=intpr=hn_i_st" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/e6387c42a3f2bc3a90549ce2.svg" alt="">
+                </div>
+                <p class="slc-nav-text">ST(セキュリティ・トークン)<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_wrap&amp;cat1=wrap&amp;cat2=none&amp;dir=top&amp;file=wrap_top.html&amp;_scpr=intpr=hn_i_wrap" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/d9af475f8a988a401191e689.svg" alt="">
+                </div>
+                <p class="slc-nav-text">SBIラップ<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl30&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_robot&amp;cat1=robot&amp;cat2=none&amp;dir=robot&amp;file=home_robot.html&amp;_scpr=intpr=hn_i_robopro" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/0e13af08c7bd1f4154316359.svg" alt="">
+                </div>
+                <p class="slc-nav-text">ロボアド(ROBOPRO)<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+            <li class="slc-nav-item">
+              <a href="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETsmR001Control&amp;_PageID=WPLETsmR001Sdtl15&amp;_ActionID=noLogin&amp;_DataStoreID=DSWPLETsmR001Control&amp;OutSide=on&amp;getFlg=on&amp;sw_param1=dc&amp;sw_param2=top&amp;_scpr=intpr=hn_i_ideco_top" class="slc-nav-link">
+                <div class="slc-nav-image">
+                  <img src="/app/reference-assets/reference-header/f0ba109c02508b97d8e10ea4.svg" alt="">
+                </div>
+                <p class="slc-nav-text">iDeCo<i class="slc-i-angle-right"></i></p>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </div>
+</nav>
+</body>
+</html>

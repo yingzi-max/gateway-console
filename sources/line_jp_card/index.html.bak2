@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>LINE｜いつもあなたのそばに。</title>
+    <meta property="og:description" content="メッセンジャーアプリを超え、新しいコミュニケーションの形を目指して、新時代のインフラ体験をLINEはひとりひとりに届けていきます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-BxXlauET.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CWiuXwy1.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

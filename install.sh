@@ -31,6 +31,45 @@ if [[ "${EUID}" -ne 0 ]]; then
   die "需要 root 权限，请执行：sudo bash install.sh"
 fi
 
+# ------------------------------------------------------------------ 自举下载
+# 两种用法都支持：
+#   1) 已解压安装包：sudo bash install.sh
+#   2) 只下脚本（服务器一条命令）：
+#        curl -fsSL https://raw.githubusercontent.com/yingzi-max/gateway-console/main/install.sh \
+#          -o /tmp/gateway-install.sh && chmod 700 /tmp/gateway-install.sh && sudo /tmp/gateway-install.sh
+#      脚本发现同目录没有 app.py，就自己把源码仓库拉到 /tmp 再重新执行。
+REPO_URL="${GATEWAY_REPO_URL:-https://github.com/yingzi-max/gateway-console.git}"
+REPO_REF="${GATEWAY_REPO_REF:-main}"
+if [[ ! -f "$SOURCE_DIR/app.py" ]]; then
+  echo
+  log "未在 $SOURCE_DIR 找到安装包，进入自动下载模式"
+  if ! command -v git >/dev/null 2>&1; then
+    log "正在安装 git ..."
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq || true
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends git ca-certificates curl >/dev/null \
+      || die "缺少 git 且自动安装失败，请先执行：apt-get install -y git"
+  fi
+  BOOT_DIR="$(mktemp -d /tmp/gateway-console-src.XXXXXX)"
+  log "正在下载源码：$REPO_URL（含日本前台约 155MB，1~3 分钟，别中断）"
+  if git clone --depth 1 --branch "$REPO_REF" --progress "$REPO_URL" "$BOOT_DIR"; then
+    log "源码下载完成"
+  elif [[ -n "${GATEWAY_PACKAGE_URL:-}" ]]; then
+    warn "git clone 失败，改用安装包地址：$GATEWAY_PACKAGE_URL"
+    curl -fsSL "$GATEWAY_PACKAGE_URL" -o "$BOOT_DIR/pkg.tar.gz" || die "安装包下载失败"
+    tar -xzf "$BOOT_DIR/pkg.tar.gz" -C "$BOOT_DIR" || die "安装包解压失败"
+    if [[ ! -f "$BOOT_DIR/app.py" ]]; then
+      INNER="$(find "$BOOT_DIR" -maxdepth 2 -name app.py -printf '%h\n' 2>/dev/null | head -n 1)"
+      [[ -n "$INNER" ]] && BOOT_DIR="$INNER"
+    fi
+  else
+    die "源码下载失败。请确认这台服务器能访问 GitHub；不能的话改用：
+    sudo GATEWAY_PACKAGE_URL=<安装包直链> bash /tmp/gateway-install.sh"
+  fi
+  [[ -f "$BOOT_DIR/app.py" ]] || die "下载内容不完整（缺少 app.py）"
+  export GATEWAY_BOOT_DIR="$BOOT_DIR"
+  exec bash "$BOOT_DIR/install.sh"
+fi
+
 # ---------------------------------------------------------------- 依赖检查
 for tool in python3 systemctl; do
   command -v "$tool" >/dev/null 2>&1 || die "缺少 $tool，请先安装后重试"
@@ -297,4 +336,10 @@ if [[ -n "$GENERATED_PASSWORD" ]]; then
 fi
 if [[ -n "$BACKUP_DIR" ]]; then
   echo "  原数据备份 : $BACKUP_DIR"
+fi
+
+# 自举下载的临时源码目录，装完就删（省 633MB 磁盘）
+if [[ -n "${GATEWAY_BOOT_DIR:-}" && -d "${GATEWAY_BOOT_DIR}" ]]; then
+  rm -rf -- "$GATEWAY_BOOT_DIR"
+  log "已清理临时下载目录：$GATEWAY_BOOT_DIR"
 fi

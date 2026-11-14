@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>大和証券株式会社</title>
+    <meta property="og:description" content="コンサルティングとネット取引の大和証券。全国のお店とコンタクトセンターで充実のサポート。株式、投資信託、債券、ファンドラップ、預金、年金・保険、FXなど総合証券会社ならではの豊富な商品を取り揃えています。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-BzujI5Sk.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DjM-wroI.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Aplus（エーピースカード）</title>
+    <meta property="og:description" content="SBI新生銀行グループの信販会社。アプラス公式サイトでは、クレジットカード、各種ローンのオンライン申込みを受付しております。Tポイントが貯まるTカード プラス、高還元カード アクシスカードなど、幅広いカードをご用意。集金代行や会社情報・採用情報など。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-B35rpkRJ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CZwP-zEj.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

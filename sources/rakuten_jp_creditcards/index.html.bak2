@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>楽天証券株式会社</title>
+    <meta property="og:description" content="投資信託や確定拠出年金、NISAなら初心者に選ばれる楽天グループの楽天証券。SPUに仲間入りし、ポイント投資で楽天市場のお買い物のポイントが＋1倍！取引や残高に応じて楽天ポイントが貯まる、使える楽天証券でおトクに資産形成を始めよう！">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-CtTN4rZA.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CKjjizGq.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>東京電力｜東京電力グループサイト</title>
+    <meta property="og:description" content="東京電力グループトップページ。電気のご利用案内、需給状況（でんき予報）、停電情報、原子力発電所情報、企業・IR情報など。東京電力は2016年4月1日、ホールディングカンパニー制に移行いたしました。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-CpRx2ydz.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B7cEPpTZ.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

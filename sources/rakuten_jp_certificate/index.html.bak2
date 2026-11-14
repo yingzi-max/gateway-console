@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ログイン‐楽天</title>
+    <meta property="og:description" content="楽天銀行での口座開設は最短で翌営業日に完了！申込書の記載や印鑑不要でスマホやPCから簡単に口座開設のお申込みが可能。1,700万口座を超える日本最大級のインターネット銀行（ネットバンキング）です。住宅ローン、カードローン、外貨預金など豊富な商品をご用意！">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-BPB0S2zY.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-SXzwN5pZ.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

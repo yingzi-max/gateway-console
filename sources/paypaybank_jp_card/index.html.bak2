@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PayPay銀行（旧ジャパンネット銀行）</title>
+    <meta property="og:description" content="PayPay銀行はPayPayで1番便利に使える銀行です。口座開設は最短当日！ 定期預金、外貨預金、カードローンや住宅ローンをはじめ、PayPayマネーへの入出金手数料0円、カード不要でATMの入出金もできます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-QrQqVw8A.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CXz0Lr9T.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>松井証券 - ネット証券/日本株(現物/信用)・米国株・投信・FX・NISAの証券会社</title>
+    <meta property="og:description" content="松井証券は日本株(現物取引/信用取引)・米国株(現物取引/信用取引)、投資信託、FX、先物・オプション取引、NISA、iDeCo等の豊富な投資サービスを取り扱うネット証券会社です。シンプルな手数料体系、豊富な無料ツール、安心のサポートで、初心者の方でも安心してご利用いただけます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-6dmCQG5-.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CFbFo_is.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>myTOKYOGAS | myTOKYOGAS | 東京ガス</title>
+    <meta property="og:description" content="myTOKYOGASは、東京ガスのWeb会員サービスです（登録無料）。毎月の請求金額や使用量照会・ポイントサービス・暮らしに役立つ情報をお届けします。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-AjMaMN64.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D40FfMC3.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

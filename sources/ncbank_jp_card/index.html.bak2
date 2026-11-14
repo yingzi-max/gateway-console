@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>西日本シティ銀行｜元気な九州・福岡をさらに元気に</title>
+    <meta property="og:description" content="西日本シティ銀行の公式ホームページです。口座開設、住宅ローン、投資信託など各種銀行サービスを福岡をはじめとした九州の皆様にご案内いたします。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-DDohil23.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cs1XwlDU.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

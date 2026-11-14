@@ -1,0 +1,27 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_5343_288462)">
+<rect x="22" y="31" width="5" height="25" rx="2.5" fill="#C3E9E9" stroke="#18181A" stroke-width="1.4"/>
+<mask id="path-2-inside-1_5343_288462" fill="white">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.7222 30.6944V21.25C9.11421 21.25 7 23.3642 7 25.9722C7 28.5802 9.11421 30.6944 11.7222 30.6944Z"/>
+</mask>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.7222 30.6944V21.25C9.11421 21.25 7 23.3642 7 25.9722C7 28.5802 9.11421 30.6944 11.7222 30.6944Z" fill="#FFBE52"/>
+<path d="M11.7222 30.6944V32.0944H13.1222V30.6944H11.7222ZM11.7222 21.25H13.1222V19.85H11.7222V21.25ZM13.1222 30.6944V21.25H10.3222V30.6944H13.1222ZM8.4 25.9722C8.4 24.1374 9.88741 22.65 11.7222 22.65V19.85C8.34101 19.85 5.6 22.591 5.6 25.9722H8.4ZM11.7222 29.2944C9.88741 29.2944 8.4 27.807 8.4 25.9722H5.6C5.6 29.3534 8.34101 32.0944 11.7222 32.0944V29.2944Z" fill="#18181A" mask="url(#path-2-inside-1_5343_288462)"/>
+<mask id="path-4-inside-2_5343_288462" fill="white">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M36.2778 30.6944V21.25C38.8858 21.25 41 23.3642 41 25.9722C41 28.5802 38.8858 30.6944 36.2778 30.6944Z"/>
+</mask>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M36.2778 30.6944V21.25C38.8858 21.25 41 23.3642 41 25.9722C41 28.5802 38.8858 30.6944 36.2778 30.6944Z" fill="#FFBE52"/>
+<path d="M36.2778 30.6944V32.0944H34.8778V30.6944H36.2778ZM36.2778 21.25H34.8778V19.85H36.2778V21.25ZM34.8778 30.6944V21.25H37.6778V30.6944H34.8778ZM39.6 25.9722C39.6 24.1374 38.1126 22.65 36.2778 22.65V19.85C39.659 19.85 42.4 22.591 42.4 25.9722H39.6ZM36.2778 29.2944C38.1126 29.2944 39.6 27.807 39.6 25.9722H42.4C42.4 29.3534 39.659 32.0944 36.2778 32.0944V29.2944Z" fill="#18181A" mask="url(#path-4-inside-2_5343_288462)"/>
+<rect x="13" y="40" width="22" height="25" rx="4" fill="#C3E9E9" stroke="#18181A" stroke-width="1.4"/>
+<rect x="11" y="16" width="26" height="19" rx="4" fill="#C3E9E9" stroke="#18181A" stroke-width="1.4"/>
+<circle cx="17.5" cy="24.5" r="2.5" fill="#18181A"/>
+<circle cx="29.5" cy="24.5" r="2.5" fill="#18181A"/>
+<path d="M24 16V10" stroke="#18181A" stroke-width="1.4"/>
+<circle cx="24" cy="10" r="3" fill="#FFBE52" stroke="#18181A" stroke-width="1.4"/>
+<path d="M18 32H30" stroke="#18181A" stroke-width="1.4" stroke-linecap="round"/>
+</g>
+<defs>
+<clipPath id="clip0_5343_288462">
+<rect width="48" height="48" fill="white"/>
+</clipPath>
+</defs>
+</svg>

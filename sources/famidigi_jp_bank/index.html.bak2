@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FamiPay | 株式会社ファミマデジタルワン</title>
+    <meta property="og:description" content="株式会社ファミマデジタルワンは金融、広告・マーケティングなど、デジタル化を通じてお客様一人ひとりのライフスタイルに合わせた様々なサービスを創出し、新たな顧客価値創造に取り組んでいます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-Ba3WoGwS.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cc5UkZ_S.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

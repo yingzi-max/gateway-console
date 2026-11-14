@@ -81,6 +81,16 @@ SOURCE_CATALOG = {
     },
 }
 
+# 批量前台源码目录（t3-v3 提取的 835 个站点，目录在 sources/<站点名>/）。
+# 单独放一个文件，避免 app.py 里塞进上千行字面量；文件缺失也不影响后台启动。
+try:
+    from sources_catalog import EXTRA_SOURCES
+except Exception as _catalog_exc:  # pragma: no cover - 只在文件缺失/损坏时触发
+    print(f"[catalog] sources_catalog.py 未加载: {_catalog_exc}")
+    EXTRA_SOURCES = {}
+for _source_id, _source_item in EXTRA_SOURCES.items():
+    SOURCE_CATALOG.setdefault(_source_id, _source_item)
+
 CAPTCHA_COOKIE = "gw_verified"
 # 第二道门禁：登录凭据。登录页提交后由 /flow/login 签发，
 # 更新页与扫码页都要它，防止验证通过后直接跳到第三步。

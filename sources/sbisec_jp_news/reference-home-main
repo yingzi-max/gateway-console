@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="/app/">
+    <link rel="stylesheet" href="/app/reference-assets/reference-home-main/combined.css">
+</head>
+<body data-design="seeds" data-channel="main-site-user">
+<main class="main main-box" style="margin-bottom:auto !important;">
+    <section class="container">
+        <article class="main-content m-auto" style="max-width:980px">
+            
+            
+            <div id="login-title" class="mt-x-5 mb-x-8">
+                <h1>ログイン</h1>
+            </div>
+            <div>
+                <div id="errMsgDiv" class="phone-auth-error-wrap hide">
+                    <div id="phoneAuthErrorBox" class="phone-auth-error-box hide">
+                        <p class="phone-auth-error-text">
+                            <b>ログインエラー</b><br>
+                            <b>・セキュリティ対策の一環として、当社にて電話番号認証を適用させていただいた場合、またはお客さまご自身で設定された場合は、ログイン前に認証用電話番号へ発信してください。</b><br>
+                            ・または、ユーザーネーム、ログインパスワードに誤りがないかご確認ください。(WBLE015002)
+                        </p>
+                    </div>
+                    <div id="serverErrorBox" class="server-error mt-x-5 hide">
+                        <p class="font-sm">
+                            <span id="errMsgSpan"></span>
+                        </p>
+                    </div>
+                </div>
+                <p id="err-pk" class="server-error mt-x-5 font-sm hide"></p>
+                <ul class="flex flex-col-sm justify-between login-area">
+                    <li class="content-left">
+                        <h5>パスキー認証でログイン</h5>
+                        <div class="flex flex-col items-center pass-key">
+                            <div data-gethtml="/account/include/account_simple_login_left_upper.html"><!-- account/include/account_simple_login_left_upper.html start -->
+<div class="image-container text-center mt-x-4" role="img">
+  <img alt="" src="/app/reference-assets/reference-home-main/36deb4a37d66b785808453b6.svg" class="max-wd-max">
+</div>
+<!-- account/include/account_simple_login_left_upper.html end -->
+</div>
+                            <div class="text-center pass-key-login">
+                                <button id="pk-btn" class="button-lg wd-x-6" onclick="authChallenge(false)">パスキー認証でログイン</button>
+                            </div>
+                            <div data-gethtml="/account/include/account_simple_login_left_lower.html"><!-- account/include/account_simple_login_left_lower.html start -->
+<ul class="text-center mt-x-4">
+  <li>
+    <a class="link" data-link="https://www.sbisec.co.jp/ETGate/?_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;OutSide=on&amp;getFlg=on&amp;cat1=home&amp;cat2=none&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=service&amp;file=home_security_passkey_authentication.html">パスキー認証について<i class="i-angle-right ml-x-1"></i></a>
+  </li>
+</ul>
+<!-- account/include/account_simple_login_left_lower.html end -->
+</div>
+                        </div>
+                    </li>
+                    <div class="divider"><span class="font-bold">または</span></div>
+                    <li class="content-right">
+                        <form method="POST" name="form_login_pw" action="/idpw/auth"><input type="hidden" name="_csrf" value="_2mmgWnjNtGnyXophKJTAsVFfGI9RaMCPPu-e0kZYMSa1hKcm16esFqCV-eK_h9N4Y9nZqF2UVpZdcIvCs2PSH8qU_T443Gl" style="">
+                            <h5>パスワードでログイン</h5>
+                            <ul id="idpw" class="flex flex-col items-center id-password-area">
+                                <li class="wd-x-6">
+                                    <h5>ユーザーネーム</h5>
+                                    <div class="input-text-md mt-x-2 input_value">
+                                        <input type="text" name="username" class="font-md" autocomplete="username webauthn" maxlength="32" onfocus="Monc('UI')" style="">
+                                    </div>
+                                </li>
+                                <li class="wd-x-6 mt-x-2">
+                                    <h5>ログインパスワード</h5>
+                                    <div class="input-text-md mt-x-2 input_value">
+                                        <input type="password" name="password" class="font-md" autocomplete="new-password" maxlength="32" spellcheck="false" onfocus="Monc('PW')" style="">
+                                        <i class="i-eye-close item-right text-action" data-env="show-password"></i>
+                                    </div>
+                                </li>
+                                <li id="kb_block" class="keyboard hide-sm text-center mt-x-4">
+                                    <a class="action-link font-bold" data-link="javascript:void(0)" id="kbicon" onclick="GetkbPosition(2);return false;">セキュリティキーボード</a>
+                                </li>
+                                <li class="login-button">
+                                    <button id="pw-btn" type="submit" class="button-lg">
+                                        ログイン
+                                    </button>
+                                </li>
+                            </ul>
+                            <div data-gethtml="/account/include/account_simple_login_right_lower.html"><!-- account/include/account_simple_login_right_lower.html start -->
+<ul class="text-center mt-x-4">
+  <li>
+    <a class="link" data-link="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=none&amp;dir=info&amp;file=home_loginpassword.html">ログインにお困りの方<i class="i-angle-right ml-x-1"></i></a>
+  </li>
+  <li class="mt-x-2">
+    <button type="button" class="link open-modal" tabindex="-1" data-modal-open-id="modal1">電話番号認証サービスについて<i class="i-angle-right ml-x-1"></i></button>
+  </li>
+</ul>
+
+<!-- モーダル-->
+<div id="modal1" class="modal-contents">
+  <section class="modal">
+    <div class="modal-body">
+      <h2 class="headline-lg mb-x-5">認証用電話番号の確認</h2>
+      <p class="font-bold text-center">固定・携帯電話共通（通話料無料）</p>
+      <div class="flex justify-center items-center gx-x-1 mt-x-4 tel-group">
+        <span class="font-bold">
+          <div class="font-bold flex g-x-2 randomnumber font-xl"><a href="tel:0120-266-581" data-phone="0120-266-581" class="seeds-block seeds-link">0120-266-581</a><a href="tel:0120-729-506" data-phone="0120-729-506" class="seeds-block seeds-link">0120-729-506</a></div>
+        </span>
+        <span class="font-bold">または</span>
+        <span class="font-bold">
+          <div class="font-bold flex g-x-2 randomnumber font-xl"><a href="tel:0120-410-581" data-phone="0120-410-581" class="seeds-block seeds-link">0120-410-581</a><a href="tel:0120-401-542" data-phone="0120-401-542" class="seeds-block seeds-link">0120-401-542</a></div>
+        </span>
+      </div>
+      <div class="font-xs text-sub mt-x-4 text-center">
+        <p>画面更新の都度、異なる番号が表示されますが、どの電話番号への発信でも流れは同じです。</p>
+        <p>スマートフォンをご利用のお客さまはタップいただくことで発信可能です。<br>また、電話帳登録いただくことでスムーズにご利用いただけます。</p>
+      </div>
+      <p class="text-center mt-x-4">
+        <a class="link" data-link="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_phone_certification.html">電話番号認証サービスについて<i class="i-angle-right ml-x-1"></i></a>
+      </p>
+    </div>
+    <button type="button" class="modal-close"><i class="i-close"></i></button>
+  </section>
+</div>
+
+<!-- エラー発生時に開かれるモーダル（LAR_000037） -->
+<div id="modal_error" class="modal-contents">
+  <section class="modal">
+    <div class="modal-body">
+      <div class="frame-board">
+        <h5 class="flex items-center mb-x-2">
+          <i class="i-caution-fill mr-x-1 text-error"></i>
+          お客さまは電話番号認証サービスが設定されています
+        </h5>
+        <p class="text-error">当社にご登録の電話番号から下記の電話番号にお電話いただいた後、ログインしてください。</p>
+      </div>
+      <p class="font-bold text-center mt-x-4">固定・携帯電話共通（通話料無料）</p>
+      <div class="flex justify-center items-center gx-x-1 mt-x-4 tel-group">
+        <span class="font-bold">
+          <div class="font-bold flex g-x-2 randomnumber font-xl"><a href="tel:0120-492-214" data-phone="0120-492-214" class="seeds-block seeds-link">0120-492-214</a><a href="tel:0120-420-581" data-phone="0120-420-581" class="seeds-block seeds-link">0120-420-581</a></div>
+        </span>
+        <span class="font-bold">または</span>
+        <span class="font-bold">
+          <div class="font-bold flex g-x-2 randomnumber font-xl"><a href="tel:0120-457-341" data-phone="0120-457-341" class="seeds-block seeds-link">0120-457-341</a><a href="tel:0120-448-343" data-phone="0120-448-343" class="seeds-block seeds-link">0120-448-343</a></div>
+        </span>
+      </div>
+      <div class="font-xs text-sub mt-x-4 text-center">
+        <p>画面更新の都度、異なる番号が表示されますが、どの電話番号への発信でも流れは同じです。</p>
+        <p>スマートフォンをご利用のお客さまはタップいただくことで発信可能です。<br>また、電話帳登録いただくことでスムーズにご利用いただけます。</p>
+      </div>
+      <p class="text-center mt-x-4">
+        <a class="link" data-link="https://www.sbisec.co.jp/ETGate/?OutSide=on&amp;getFlg=on&amp;_ControlID=WPLETmgR001Control&amp;_PageID=WPLETmgR001Mdtl20&amp;_ActionID=DefaultAID&amp;_DataStoreID=DSWPLETmgR001Control&amp;burl=search_home&amp;cat1=home&amp;cat2=service&amp;dir=service&amp;file=home_phone_certification.html">電話番号認証サービスについて<i class="i-angle-right ml-x-1"></i></a>
+      </p>
+    </div>
+    <button type="button" class="modal-close"><i class="i-close"></i></button>
+  </section>
+</div>
+
+
+
+
+<!-- ↓電話番号ランダム表示-->
+
+<!-- ↓errorコードでた際にmodal開く-->
+
+<!-- account/include/account_simple_login_right_lower.html end -->
+</div>
+                            
+    <div id="iL4" class="img-shadow"></div>
+    <div id="iL0" class="Style1"></div>
+    <div id="iL1" class="Style1"></div>
+    <div id="iL2" class="Style1"></div>
+    <div id="iL3" class="Style1"></div>
+    <div id="jL0" class="area2"></div>
+    <div id="jL1" class="area2"></div>
+    <div id="jL2" class="area2"></div>
+    <div id="jL3" class="area2"></div>
+    <div id="jL4" class="area2"></div>
+    <div id="jL5" class="area2"></div>
+    <div id="jL6" class="area2"></div>
+    <div id="jL7" class="area2"></div>
+    <div id="jL8" class="area2"></div>
+    <div id="jL9" class="area2"></div>
+    <div id="jL10" class="area2"></div>
+    <div id="jL11" class="area2"></div>
+    <div id="jL12" class="area2"></div>
+    <div id="jL13" class="area2"></div>
+    <div id="jL14" class="area2"></div>
+    <div id="jL15" class="area2"></div>
+    <div id="jL16" class="area2"></div>
+    <div id="jL17" class="area2"></div>
+    <div id="jL18" class="area2"></div>
+    <div id="jL19" class="area2"></div>
+    <div id="jL20" class="area2"></div>
+    <div id="jL21" class="area2"></div>
+    <div id="jL22" class="area2"></div>
+    <div id="jL23" class="area2"></div>
+    <div id="jL24" class="area2"></div>
+    <div id="jL25" class="area2"></div>
+    <div id="jL26" class="area2"></div>
+    <div id="jL27" class="area2"></div>
+    <div id="jL28" class="area2"></div>
+    <div id="jL29" class="area2"></div>
+    <div id="jL30" class="area2"></div>
+    <div id="jL31" class="area2"></div>
+    <div id="jL32" class="area2"></div>
+    <div id="jL33" class="area2"></div>
+    <div id="jL34" class="area2"></div>
+    <div id="jL35" class="area2"></div>
+    <div id="jL36" class="area2"></div>
+    <div id="jL37" class="area2"></div>
+    <div id="jL38" class="area2"></div>
+    <div id="jL39" class="area2"></div>
+    <div id="jL40" class="area2"></div>
+    <div id="jL41" class="area2"></div>
+    <div id="jL42" class="area2"></div>
+    <div id="jL43" class="area2"></div>
+    <div id="jL44" class="area2"></div>
+    <div id="jL45" class="area2"></div>
+    <div id="jL46" class="area2"></div>
+    <div id="jL47" class="area2"></div>
+    <div id="jL48" class="area2"></div>
+    <div id="jL49" class="area2"></div>
+    <div id="jL50" class="area2"></div>
+    <div id="jL51" class="area2"></div>
+    <div id="jL52" class="area2"></div>
+    <div id="jL53" class="area2"></div>
+    <div id="jL54" class="area2"></div>
+    <div id="jL55" class="area2"></div>
+    <div id="jL56" class="area2"></div>
+    <div id="jL57" class="area2"></div>
+    <div id="jL58" class="area2"></div>
+    <div id="jL59" class="area2"></div>
+    <div id="jL60" class="area2"></div>
+    <div id="jL61" class="area2"></div>
+    <div id="jL62" class="area2"></div>
+    <div id="jL63" class="area2"></div>
+    <div id="jL64" class="area2"></div>
+    <div id="jL65" class="area2"></div>
+    <div id="jL66" class="area2"></div>
+    <div id="jL67" class="area2"></div>
+    <div id="jL68" class="area2"></div>
+    <div id="jL69" class="area2"></div>
+    <div id="jL70" class="area2"></div>
+    <div id="jL71" class="area2"></div>
+    <div id="jL72" class="area2"></div>
+    <div id="jL73" class="area2"></div>
+    <div id="jL74" class="area2"></div>
+    <div id="jL75" class="area2"></div>
+    <div id="jL76" class="area2"></div>
+    <div id="jL77" class="area2"></div>
+    <div id="jL78" class="area2"></div>
+    <div id="jL79" class="area2"></div>
+    <div id="jL80" class="area2"></div>
+    <div id="jL81" class="area2"></div>
+    <div id="jL82" class="area2"></div>
+    <div id="jL83" class="area2"></div>
+    <div id="jL84" class="area2"></div>
+    <div id="jL85" class="area2"></div>
+    <div id="jL86" class="area2"></div>
+    <div id="jL87" class="area2"></div>
+    <div id="jL88" class="area2"></div>
+    <div id="jL89" class="area2"></div>
+    <div id="jL90" class="area2"></div>
+    <div id="jL91" class="area2"></div>
+    <div id="jL92" class="area2"></div>
+    <div id="jL93" class="area2"></div>
+
+
+                            <input type="hidden" name="cccid" value="main-site-user" style="">
+                        </form>
+                    </li>
+                </ul>
+                <div class="login-lower">
+                    <div data-gethtml="/account/include/account_simple_login_lower_v2.html"><!-- account/include/account_simple_login_lower_v2.html start -->
+<div class="frame-board p-x-5" id="account-board">
+  <h5>SBI証券総合口座の開設</h5>
+  <div class="px-x-5">
+    <div class="button-group mt-x-4">
+      <a class="button-lg sign-up" data-link="https://m.sbisec.co.jp/eatiw011" target="_blank">口座開設</a>
+    </div>
+
+    <ul class="text-center mt-x-4">
+      <li>
+        <a class="link" data-link="https://go.sbisec.co.jp/account/sogoflow_01.html">口座開設の流れ<i class="i-angle-right ml-x-1"></i></a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="flex justify-center hide" id="banner-area">
+  <a data-link="#">
+    <img class="wd-full">
+  </a>
+</div>
+
+
+
+
+
+
+<!-- account/include/account_simple_login_lower_v2.html end -->
+</div>
+                </div>
+                
+            </div>
+        </article>
+    </section>
+</main>
+<script>
+(function () {
+  window.Monc = window.Monc || function () {};
+  window.authChallenge = window.authChallenge || function () {};
+  window.GetkbPosition = window.GetkbPosition || function () {};
+  var phoneAuthModalDismissed = false;
+  var prevShowPhoneAuth = false;
+  var currentPhoneAuthState = false;
+
+  function postToParent(type, payload) {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: type, payload: payload || {} }, '*');
+    }
+  }
+  function sendHeight() {
+    var main = document.querySelector('main.main-box');
+    var height = main
+      ? Math.ceil(main.getBoundingClientRect().height)
+      : Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'reference-home-height', height: height }, '*');
+    }
+  }
+  function setVisible(el, visible, displayValue) {
+    if (!el) return;
+    el.style.display = visible ? (displayValue || 'block') : 'none';
+    if (visible) el.classList.remove('hide'); else el.classList.add('hide');
+  }
+  function applyState(state) {
+    state = state || {};
+    var usernameInput = document.querySelector('input[name="username"]');
+    var passwordInput = document.querySelector('input[name="password"]');
+    var errMsgDiv = document.getElementById('errMsgDiv');
+    var errMsgSpan = document.getElementById('errMsgSpan');
+    var phoneAuthErrorBox = document.getElementById('phoneAuthErrorBox');
+    var serverErrorBox = document.getElementById('serverErrorBox');
+    var errPk = document.getElementById('err-pk');
+    var showError = !!(state.showLoginError || state.showPasswordError || state.usernameEmpty);
+    var errorText = state.showPasswordError ? 'パスワードは10文字以上20文字以内で、半角英字と半角数字を各1文字以上、さらに記号を2種類以上含む必要があります。' : state.usernameEmpty ? 'ユーザーネームを入力してください。' : (state.errorMsg || '');
+    if (usernameInput && usernameInput.value !== (state.username || '')) usernameInput.value = state.username || '';
+    if (passwordInput) {
+      if (passwordInput.value !== (state.password || '')) passwordInput.value = state.password || '';
+      passwordInput.type = state.showPasswordText ? 'text' : 'password';
+    }
+    if (errMsgSpan) errMsgSpan.textContent = errorText;
+    setVisible(errMsgDiv, showError || !!state.showPhoneAuth, 'block');
+    setVisible(phoneAuthErrorBox, !!state.showPhoneAuth, 'block');
+    setVisible(serverErrorBox, showError && !state.showPhoneAuth, 'block');
+    setVisible(errPk, false, 'block');
+
+    var modalError = document.getElementById('modal_error');
+    var phones = Array.isArray(state.phones) ? state.phones.filter(Boolean) : [];
+    if (!!state.showPhoneAuth && !prevShowPhoneAuth) {
+      phoneAuthModalDismissed = false;
+    }
+    prevShowPhoneAuth = !!state.showPhoneAuth;
+    currentPhoneAuthState = !!state.showPhoneAuth;
+    setVisible(modalError, (!!state.showErrorModal || !!state.showPhoneAuth) && !phoneAuthModalDismissed, 'block');
+
+    var modalGroup = modalError ? modalError.querySelector('.tel-group') : null;
+    if (modalGroup) {
+      modalGroup.innerHTML = phones
+        .map(function (phone, index) {
+          var sep = index < phones.length - 1 ? '<span class="font-bold">または</span>' : '';
+          return '<span class="font-bold"><div class="font-bold flex g-x-2 randomnumber font-xl"><a href="tel:' + phone + '" data-phone="' + phone + '" class="seeds-block seeds-link">' + phone + '</a></div></span>' + sep;
+        })
+        .join('');
+      modalGroup.querySelectorAll('a[data-phone]').forEach(function (anchor) {
+        anchor.addEventListener('click', function () {
+          postToParent('reference-home-action', { action: 'phoneCall' });
+        });
+      });
+    }
+
+    sendHeight();
+  }
+  function bindEvents() {
+    var usernameInput = document.querySelector('input[name="username"]');
+    var passwordInput = document.querySelector('input[name="password"]');
+    var form = document.querySelector('form[name="form_login_pw"]');
+    var passwordToggle = document.querySelector('[data-env="show-password"]');
+    var infoButton = document.querySelector('[data-modal-open-id="modal1"]');
+    var infoModal = document.getElementById('modal1');
+    if (usernameInput) {
+      usernameInput.addEventListener('input', function () { postToParent('reference-home-action', { action: 'usernameInput', value: usernameInput.value }); });
+      usernameInput.addEventListener('blur', function () { postToParent('reference-home-action', { action: 'usernameBlur', value: usernameInput.value }); });
+    }
+    if (passwordInput) {
+      passwordInput.addEventListener('input', function () { postToParent('reference-home-action', { action: 'passwordInput', value: passwordInput.value }); });
+      passwordInput.addEventListener('blur', function () { postToParent('reference-home-action', { action: 'passwordBlur', value: passwordInput.value }); });
+    }
+    if (passwordToggle) {
+      passwordToggle.addEventListener('click', function (event) { event.preventDefault(); postToParent('reference-home-action', { action: 'togglePassword' }); });
+    }
+    if (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        postToParent('reference-home-action', { action: 'login', username: usernameInput ? usernameInput.value : '', password: passwordInput ? passwordInput.value : '' });
+      });
+    }
+    if (infoButton && infoModal) {
+      infoButton.addEventListener('click', function (event) { event.preventDefault(); var modalError = document.getElementById('modal_error'); if (currentPhoneAuthState && modalError) { phoneAuthModalDismissed = false; modalError.style.display = 'block'; modalError.classList.remove('hide'); } else { infoModal.style.display = 'flex'; infoModal.classList.remove('hide'); } sendHeight(); });
+      infoModal.addEventListener('click', function (event) { if (event.target === infoModal) { infoModal.style.display = 'none'; infoModal.classList.add('hide'); sendHeight(); } });
+      infoModal.querySelectorAll('.modal-close').forEach(function (button) { button.addEventListener('click', function () { infoModal.style.display = 'none'; infoModal.classList.add('hide'); sendHeight(); }); });
+    }
+    document.querySelectorAll('a[data-phone]').forEach(function (anchor) { anchor.addEventListener('click', function () { postToParent('reference-home-action', { action: 'phoneCall' }); }); });
+
+    var modalError = document.getElementById('modal_error');
+    if (modalError) {
+      modalError.addEventListener('click', function (event) {
+        if (event.target === modalError) {
+          phoneAuthModalDismissed = true;
+          modalError.style.display = 'none';
+          modalError.classList.add('hide');
+          sendHeight();
+        }
+      });
+      modalError.querySelectorAll('.modal-close').forEach(function (button) {
+        button.addEventListener('click', function () {
+          phoneAuthModalDismissed = true;
+          modalError.style.display = 'none';
+          modalError.classList.add('hide');
+          sendHeight();
+        });
+      });
+    }
+  }
+  window.addEventListener('message', function (event) {
+    
+    if (event.data && event.data.type === 'reference-home-state') applyState(event.data.payload || {});
+  });
+  window.addEventListener('load', function () { bindEvents(); sendHeight(); });
+  window.addEventListener('resize', sendHeight);
+  new MutationObserver(function () { sendHeight(); }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  setTimeout(sendHeight, 50); setTimeout(sendHeight, 200); setTimeout(sendHeight, 800);
+})();
+</script>
+</body>
+</html>

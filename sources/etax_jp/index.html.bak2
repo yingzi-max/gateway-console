@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>【e-Tax】国税電子申告・納税システム(イータックス)</title>
+    <meta property="og:description" content="国税電子申告・納税システム(e-Tax)の概要や手続の流れ、法令等に規定する事項など、e-Taxを利用して申告、納税及び申請・届出等を行うために必要な情報やe-Taxについてのお知らせを掲載しています。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-CFSE5gwM.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-LoHSRvYr.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

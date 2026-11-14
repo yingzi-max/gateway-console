@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>みずほ証券</title>
+    <meta property="og:description" content="みずほ証券の「トップページ」です。みずほ証券は、〈みずほ〉が目指す、”総合金融コンサルティンググループ”の唯一の総合証券会社として、銀行・信託・証券の一体運営を推進し、お客さまの幅広い金融ニーズに的確かつスピーディにお応えします。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-nCsfMnvM.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BT1hPlBL.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

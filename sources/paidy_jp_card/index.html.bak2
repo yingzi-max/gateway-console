@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MyPaidy,マイペイディー,まいぺいでぃー</title>
+    <meta property="og:description" content="MyPaidyではお客様のPaidy利用状況、お支払い方法をご確認いただけます。また過去のご利用明細の確認、分割払いへの変更手続き等もMyPaidyよりご利用いただけます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-ItesUNcj.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DH4hnpTk.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

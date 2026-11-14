@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>サイトマップ－ゆうちょ銀行</title>
+    <meta property="og:description" content="这是株式会社邮政储蓄银行的网站。除了定额储蓄和投资信托的信息外，您还可以使用邮政储蓄网上银行（网上银行服务）。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-93IqGE5N.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-HMLeAxx0.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

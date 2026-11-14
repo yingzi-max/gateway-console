@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NHK | 日本放送協会</title>
+    <meta property="og:description" content="NHKの公式ホームページ。ニュースのご紹介をはじめ、朝ドラ・大河ドラマ・紅白歌合戦など多彩な番組、イベント情報、受信契約や経営情報、NHK ONEなどのオンラインサービスもご案内します。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-DohhJbBX.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BZth8Ndr.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

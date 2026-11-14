@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>任天堂ホームページ</title>
+    <meta property="og:description" content="任天堂株式会社の公式サイトです。Nintendo Switchをはじめとした各種製品やサービスのほか、さまざまなキャラクターの情報、サポート、企業・IR・採用情報などをご紹介します。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index--n3Fu85y.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C5ep4EP1.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

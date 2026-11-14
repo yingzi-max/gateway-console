@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Apple IDを管理</title>
+    <meta property="og:description" content="革新に満ちたAppleの世界へようこそ。AppleのウェブサイトではiPhoneからiPad、Apple Watch、Mac、Apple TVまで、すべての製品の購入ができます。アクセサリやエンターテインメントを探す時も、専任スペシャリストによるデバイスのサポートが必要な時もこのサイトでどうぞ。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-BqOBZTaF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C_r06ofO.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

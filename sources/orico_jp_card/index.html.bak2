@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>オリコ｜その夢の一歩先へ</title>
+    <meta property="og:description" content="クレジットカードならオリコカード。年会費無料のクレジットカードや、ワンランク上のゴールドカードなどお客さまに合ったクレジットカードをご用意しております。オリコカードでは利便性の高いポイントサービスや各種キャンペーンをお申込みいただけます。">
+    <meta property="og:image" content="/public/favicon.ico">
+    <script type="module" crossorigin src="./assets/index-fZWtMxxU.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Bs28Z2UU.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>
