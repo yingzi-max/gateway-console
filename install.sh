@@ -159,6 +159,16 @@ install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 "$DATA_DIR/projects"
 # ------------------------------------------------------------- 程序文件同步
 install -o root -g root -m 0644 "$SOURCE_DIR/app.py" "$APP_DIR/app.py"
 
+# 根目录下其余 Python 模块（sources_catalog.py 等）必须一起装。
+# 漏掉 sources_catalog.py 时后台不会报错，只会退回硬编码的 3 条源码，
+# 表现为「源码列表里看不到日本那 167 个站」。
+for py_file in "$SOURCE_DIR"/*.py; do
+  [[ -e "$py_file" ]] || continue
+  [[ "$(basename "$py_file")" == "app.py" ]] && continue
+  install -o root -g root -m 0644 "$py_file" "$APP_DIR/$(basename "$py_file")"
+  log "已安装模块：$(basename "$py_file")"
+done
+
 # 后台静态资源：整目录同步，新增文件无需改脚本
 install -d -m 0755 "$APP_DIR/static"
 cp -a "$SOURCE_DIR/static/." "$APP_DIR/static/"

@@ -81,15 +81,60 @@ SOURCE_CATALOG = {
     },
 }
 
-# 批量前台源码目录（t3-v3 提取的 835 个站点，目录在 sources/<站点名>/）。
-# 单独放一个文件，避免 app.py 里塞进上千行字面量；文件缺失也不影响后台启动。
+# 批量前台源码目录（t3-v3 提取的日本 167 个站点，目录在 sources/<站点名>/）。
+# 正常由 sources_catalog.py 提供；该文件缺失（老安装包只拷 app.py）时，
+# 这里直接扫 sources/ 兜底生成，保证目录里的站点不会「装了却看不见」。
+ISO_COUNTRY_CODES = frozenset(
+    "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ "
+    "BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO "
+    "DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU "
+    "GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW "
+    "KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU "
+    "MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW "
+    "PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF "
+    "TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA "
+    "ZM ZW UK".split()
+)
+SOURCE_PREVIEW_NAMES = ("favicon.ico", "favicon.svg", "favicon.png", "logo.png", "logo.svg")
+
+
+def guess_country(site_name: str) -> str:
+    codes = [tok.upper() for tok in re.split(r"[_\-]+", site_name.lower())
+             if tok.upper() in ISO_COUNTRY_CODES]
+    return codes[-1] if codes else ""
+
+
+def build_runtime_catalog() -> dict:
+    """sources/ 目录兜底建目录：只认有 index.html 的站点目录。"""
+    catalog: dict[str, dict] = {}
+    if not SOURCE_DIR.is_dir():
+        return catalog
+    for entry in sorted(SOURCE_DIR.iterdir()):
+        if not entry.is_dir() or not (entry / "index.html").is_file():
+            continue
+        preview = next((name for name in SOURCE_PREVIEW_NAMES if (entry / name).is_file()), "")
+        catalog[entry.name] = {
+            "id": entry.name,
+            "name": entry.name,
+            "slug": entry.name,
+            "filename": entry.name,
+            "description": "静态前台源码",
+            "country": guess_country(entry.name),
+            "site_url": "",
+            "entry": "index.html",
+            "preview": preview,
+        }
+    return catalog
+
+
 try:
     from sources_catalog import EXTRA_SOURCES
 except Exception as _catalog_exc:  # pragma: no cover - 只在文件缺失/损坏时触发
-    print(f"[catalog] sources_catalog.py 未加载: {_catalog_exc}")
-    EXTRA_SOURCES = {}
+    print(f"[catalog] sources_catalog.py 未加载（{_catalog_exc}），改为扫描 sources/ 目录")
+    EXTRA_SOURCES = build_runtime_catalog()
 for _source_id, _source_item in EXTRA_SOURCES.items():
     SOURCE_CATALOG.setdefault(_source_id, _source_item)
+print(f"[catalog] 内置源码目录共 {len(SOURCE_CATALOG)} 条")
 
 CAPTCHA_COOKIE = "gw_verified"
 # 第二道门禁：登录凭据。登录页提交后由 /flow/login 签发，
