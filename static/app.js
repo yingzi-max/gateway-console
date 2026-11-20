@@ -1,6 +1,6 @@
-﻿const $ = (selector, root = document) => root.querySelector(selector);
+const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { captchaId: '', eventPage: 1, eventTotal: 0, projects: [], domains: [], catalog: [], settings: {}, clients: [] };
+const state = { captchaId: '', eventPage: 1, eventTotal: 0, capPage: 1, capTotal: 0, projects: [], domains: [], catalog: [], settings: {}, clients: [] };
 const CLIENT_TYPES = ['bot', 'ios', 'android', 'desktop', 'unknown'];
 const CLIENT_LABELS = { bot: '爬虫/自动化', ios: 'iOS 设备', android: 'Android 设备', desktop: '电脑端', unknown: '未知客户端' };
 const CLIENT_PRESETS = [
@@ -175,13 +175,13 @@ async function loadCaptcha() { try { const data = await api('/api/auth/captcha')
 function showLogin() { $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); loadCaptcha(); }
 function showApp(user) { $('#loginView').classList.add('hidden'); $('#appView').classList.remove('hidden'); $('#currentUser').textContent = user || 'admin'; navigate('dashboard'); }
 
-const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], blacklist: ['数据 / 黑名单中心', '黑名单中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
+const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], captures: ['数据 / 采集数据', '采集数据'], blacklist: ['数据 / 黑名单中心', '黑名单中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
 function navigate(page) {
   $$('[data-page-view]').forEach(el => el.classList.toggle('active', el.dataset.pageView === page));
   $$('[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   [$('#breadcrumb').textContent, $('#pageTitle').textContent] = pageLabels[page];
   $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show');
-  if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'blacklist') loadBlacklist(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
+  if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'captures') loadCaptures(); if (page === 'blacklist') loadBlacklist(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
 }
 function renderWeeklyChart(rows) {
   const items = Array.isArray(rows) ? rows : []; const largest = Math.max(0, ...items.flatMap(item => [Number(item.visits) || 0, Number(item.clicks) || 0])); const step = Math.max(1, Math.ceil(largest / 4)); const ceiling = step * 4;
@@ -211,6 +211,36 @@ async function loadEvents() {
       const client = item.client_type || 'unknown';
       return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${eventLabels[item.event_type] || escapeHtml(item.event_type)}</span></td><td><span class="client-tag tag-${escapeHtml(client)}">${escapeHtml(CLIENT_LABELS[client] || client)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`;
     }).join('') : '<tr><td colspan="7" style="text-align:center;padding:35px;color:#92959e">暂无符合条件的访问记录</td></tr>';
+  } catch (error) { toast(error.message, true); }
+}
+
+function captureQuery() {
+  const form = new FormData($('#capFilters'));
+  const query = new URLSearchParams();
+  const domain = (form.get('domain') || '').trim(); const q = (form.get('q') || '').trim();
+  if (domain) query.set('domain', domain); if (q) query.set('q', q);
+  return query;
+}
+
+function formatCaptureFields(raw) {
+  try {
+    const fields = JSON.parse(raw || '{}'); const keys = Object.keys(fields);
+    if (!keys.length) return '<span style="color:#92959e">空</span>';
+    return keys.map(key => `<b>${escapeHtml(key)}</b>=${escapeHtml(fields[key])}`).join('<br>');
+  } catch (_) { return escapeHtml(raw || ''); }
+}
+
+async function loadCaptures() {
+  const query = captureQuery(); query.set('page', state.capPage); query.set('page_size', 25);
+  try {
+    const data = await api(`/api/captures?${query}`); state.capTotal = data.total;
+    $('#capCount').textContent = `共 ${data.total} 条`; $('#capPage').textContent = data.page;
+    $('#capPrev').disabled = data.page <= 1; $('#capNext').disabled = data.page * 25 >= data.total;
+    $('#capBody').innerHTML = data.items.length ? data.items.map(item => {
+      const client = item.client_type || 'unknown';
+      const page = `${item.path || '/'}${item.step ? ` · 第${item.step}步` : ''}`;
+      return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain || '-')}</td><td title="${escapeHtml(item.href || '')}">${escapeHtml(page)}</td><td><span class="client-tag tag-${escapeHtml(client)}">${escapeHtml(CLIENT_LABELS[client] || client)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua">${formatCaptureFields(item.fields)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;padding:35px;color:#92959e">还没有采集到数据</td></tr>';
   } catch (error) { toast(error.message, true); }
 }
 
@@ -539,6 +569,23 @@ $('#clientRuleEditor').addEventListener('click', event => {
   button.disabled = true; runClientJump(button.dataset.client);
 });
 $('#eventClientFilter').addEventListener('change', () => { state.eventPage = 1; loadEvents(); });
+
+/* ---------------- 采集数据 ---------------- */
+$('#capFilters').addEventListener('submit', event => { event.preventDefault(); state.capPage = 1; loadCaptures(); });
+$('#capPrev').addEventListener('click', () => { if (state.capPage > 1) { state.capPage--; loadCaptures(); } });
+$('#capNext').addEventListener('click', () => { if (state.capPage * 25 < state.capTotal) { state.capPage++; loadCaptures(); } });
+$('#capExport').addEventListener('click', () => {
+  const query = captureQuery();
+  window.location.href = `/api/captures/export.csv${query.toString() ? `?${query}` : ''}`;
+});
+$('#capClear').addEventListener('click', async () => {
+  if (!confirm('确定清空全部采集数据？该操作不可恢复。')) return;
+  try {
+    const data = await api('/api/captures/clear', { method: 'POST', body: '{}' });
+    toast('已清空 ' + Number(data.deleted || 0).toLocaleString() + ' 条采集记录');
+    state.capPage = 1; loadCaptures();
+  } catch (error) { toast(error.message, true); }
+});
 
 /* ---------------- 黑名单中心 ---------------- */
 const blState = { page: 1, total: 0, q: '' };
