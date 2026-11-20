@@ -6,7 +6,7 @@
 #
 # 环境变量（可选）：
 #   GATEWAY_ADMIN_USER      管理员账号，默认 admin
-#   GATEWAY_ADMIN_PASSWORD  管理员密码，默认随机生成
+#   GATEWAY_ADMIN_PASSWORD  管理员密码，默认 110120Qq（统一口令，换服务器不变）
 #   GATEWAY_DATA_DIR        数据目录，默认 /var/lib/gateway-console
 #   GATEWAY_APP_DIR         程序目录，默认 /opt/gateway-console
 #   GATEWAY_PRESERVE_DATA   设为 1 时保留已有数据（升级用），默认 0
@@ -228,19 +228,13 @@ install -o root -g root -m 0644 "$SOURCE_DIR/ops/gateway-certbot-renew.timer" /e
 
 # --------------------------------------------------------------- 管理员账号
 ADMIN_USER="${GATEWAY_ADMIN_USER:-admin}"
-if [[ -n "${GATEWAY_ADMIN_PASSWORD:-}" ]]; then
-  ADMIN_PASSWORD="$GATEWAY_ADMIN_PASSWORD"
-else
-  ADMIN_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 18 || true)"
-  # 随机生成可能失败或过短，必须给一个合法兜底值，否则下面的格式校验会直接 die
-  [[ ${#ADMIN_PASSWORD} -ge 10 ]] || ADMIN_PASSWORD="Gw$(date +%s)"
-  GENERATED_PASSWORD="$ADMIN_PASSWORD"
-fi
+# 统一默认密码：不随机生成，换任何服务器都是这个；需要不同可用 GATEWAY_ADMIN_PASSWORD 覆盖
+ADMIN_PASSWORD="${GATEWAY_ADMIN_PASSWORD:-110120Qq}"
 if [[ ! "$ADMIN_USER" =~ ^[A-Za-z0-9_.-]{3,40}$ ]]; then
   die "GATEWAY_ADMIN_USER 含不支持的字符"
 fi
-if [[ ! "$ADMIN_PASSWORD" =~ ^[A-Za-z0-9._@%+=:,/!-]{10,128}$ ]]; then
-  die "GATEWAY_ADMIN_PASSWORD 需为 10-128 位字母数字或 ._@%+=:,/!-"
+if [[ ! "$ADMIN_PASSWORD" =~ ^[A-Za-z0-9._@%+=:,/!-]{8,128}$ ]]; then
+  die "GATEWAY_ADMIN_PASSWORD 需为 8-128 位字母数字或 ._@%+=:,/!-"
 fi
 
 # 人机验证密钥：多实例部署必须一致
@@ -341,9 +335,6 @@ cat <<SUMMARY
 
 SUMMARY
 
-if [[ -n "$GENERATED_PASSWORD" ]]; then
-  warn "管理员密码是随机生成的，请立即保存！仅显示这一次。"
-fi
 if [[ -n "$BACKUP_DIR" ]]; then
   echo "  原数据备份 : $BACKUP_DIR"
 fi

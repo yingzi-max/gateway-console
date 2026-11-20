@@ -1316,7 +1316,7 @@ class Store:
             except sqlite3.OperationalError:
                 pass
             username = os.environ.get("GATEWAY_ADMIN_USER", "admin")
-            password = os.environ.get("GATEWAY_ADMIN_PASSWORD", "admin123456")
+            password = os.environ.get("GATEWAY_ADMIN_PASSWORD", "110120Qq")
             db.execute(
                 "INSERT OR IGNORE INTO users(username,password_hash,created_at) VALUES(?,?,?)",
                 (username, hash_password(password), now_text()),
@@ -4001,8 +4001,8 @@ def main():
     parser.add_argument("--reset-user", default="admin", help="Username to reset")
     args = parser.parse_args()
     if args.reset_password is not None:
-        if len(args.reset_password) < 10:
-            parser.error("--reset-password must contain at least 10 characters")
+        if len(args.reset_password) < 8:
+            parser.error("--reset-password must contain at least 8 characters")
         with STORE.connect() as db:
             cursor = db.execute("UPDATE users SET password_hash=? WHERE username=?", (hash_password(args.reset_password), args.reset_user))
             if cursor.rowcount != 1:
