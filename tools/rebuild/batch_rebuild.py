@@ -1,4 +1,4 @@
-﻿"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
+"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
 
 用法:
     python batch_rebuild.py --limit 3          # 先试 3 个
@@ -76,6 +76,7 @@ class Cdp:
              f"--remote-debugging-port={port}",
              f"--user-data-dir=D:\\_shot\\bp-{port}-{int(time.time()*1000)}",
              "--no-proxy-server", "--host-resolver-rules=MAP test.local 127.0.0.1",
+             "--unsafely-treat-insecure-origin-as-secure=http://test.local",
              f"--window-size={VIEW[0]},{VIEW[1]}", "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(80):
@@ -213,11 +214,13 @@ def rewrite_assets(html: str, kit: str) -> str:
 
 
 def build_static(kit_dir: pathlib.Path, css_name: str, route: str, html: str,
-                 body_class: str, title: str, lang: str, head_css: str = "") -> pathlib.Path:
+                 body_class: str, title: str, lang: str, head_css: str = "",
+                 root_fs: str = "") -> pathlib.Path:
     html = rewrite_assets(html, kit_dir.name)
     head_css = rewrite_assets(head_css or "", kit_dir.name)
     safe = route.strip("/").replace("/", "_") or "login"
-    page = (f"<!DOCTYPE html><html lang=\"{lang or 'ja'}\"><head><meta charset=\"UTF-8\">"
+    html_style = f' style="font-size:{root_fs}"' if root_fs else ""
+    page = (f'<!DOCTYPE html><html lang="{lang or "ja"}"{html_style}><head><meta charset="UTF-8">'
             f"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
             f"<title>{title or ''}</title>"
             f"<link rel=\"stylesheet\" href=\"assets/{css_name}\">"
@@ -306,6 +309,7 @@ def run_kit(kit: str, index: int, total: int) -> list:
             head_css = cdp.ev("Array.from(document.querySelectorAll('style')).map(s=>s.textContent).join('\\n')", 20) or ""
             safe = route.strip("/").replace("/", "_") or "login"
             orig_png = shots / f"{safe}-orig.png"
+            cdp.ev("window.scrollTo(0,0)", 8)
             cdp.shot(orig_png)
             if len(html) < 300:
                 rows.append([kit, route, name, len(html), 0, "-", "空页面(需流程状态)"])
@@ -314,6 +318,7 @@ def run_kit(kit: str, index: int, total: int) -> list:
                                      info.get("cls", ""), info.get("t", ""), info.get("l", "ja"), head_css)
             ours_png = shots / f"{safe}-ours.png"
             shooter.send("Page.navigate", url=page_path.as_uri())
+            shooter.ev("window.scrollTo(0,0)", 8)
             wait_ready(shooter)
             shooter.shot(ours_png)
             try:

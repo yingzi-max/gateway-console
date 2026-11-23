@@ -1,6 +1,7 @@
 ﻿"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
 import csv
 import json
+import os
 import pathlib
 import sqlite3
 import subprocess
@@ -27,6 +28,9 @@ def load_targets():
 
 def main() -> int:
     targets = load_targets()
+    if os.environ.get("REPAIR_ONLY"):
+        wanted = {s.strip() for s in os.environ["REPAIR_ONLY"].split(",") if s.strip()}
+        targets = {k: v for k, v in targets.items() if k in wanted}
     if not targets:
         print("没有需要补跑的页面")
         return 0
@@ -85,20 +89,29 @@ def main() -> int:
                     except ValueError:
                         info = {}
                     html = cdp.ev("document.querySelector('#app').innerHTML", 30) or ""
+                    root_fs = cdp.ev("getComputedStyle(document.documentElement).fontSize", 10) or ""
                     head_css = cdp.ev("Array.from(document.querySelectorAll('style'))"
                                       ".map(s=>s.textContent).join('\\n')", 20) or ""
                     safe = route.strip("/").replace("/", "_") or "login"
                     orig = OUTROOT / kit / "shots" / f"{safe}-orig.png"
+                    cdp.ev("window.scrollTo(0,0)", 8)
+                    time.sleep(0.4)
+                    cdp.ev("document.activeElement&&document.activeElement.blur();window.scrollTo(0,0)", 8)
+                    time.sleep(0.3)
                     cdp.shot(orig)
                     if len(html) < 300:
                         writer.writerow([kit, route, "-", len(html), 0, "-", "补跑:空页面"])
                         fh.flush()
                         continue
+                    has_scroll = cdp.ev("document.documentElement.scrollHeight > window.innerHeight", 10)
                     page = build_static(kit_dir, css_name, route, html, info.get("cls", ""),
-                                        info.get("t", ""), info.get("l", "ja"), head_css)
+                                        info.get("t", ""), info.get("l", "ja"), (head_css + ("<style>html{overflow-y:scroll}</style>" if has_scroll else "")), root_fs)
                     ours = OUTROOT / kit / "shots" / f"{safe}-ours.png"
                     shooter.send("Page.navigate", url=page.as_uri())
                     time.sleep(1.5)
+                    shooter.ev("window.scrollTo(0,0)", 8)
+                    time.sleep(0.4)
+                    shooter.ev("window.scrollTo(0,0)", 8)
                     shooter.shot(ours)
                     ratio = diff_ratio(orig, ours) if ours.exists() else -1
                     status = "OK" if 0 <= ratio < 0.5 else ("差异大" if ratio > 0 else "截图失败")
