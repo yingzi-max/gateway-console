@@ -1,4 +1,4 @@
-"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
+﻿"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
 import csv
 import json
 import os
@@ -114,6 +114,7 @@ def main() -> int:
                         writer.writerow([kit, route, "-", len(html), 0, "-", "补跑:空页面"])
                         fh.flush()
                         continue
+                    doc_h = cdp.ev("document.documentElement.scrollHeight", 10)
                     layout = cdp.ev("""JSON.stringify((()=>{const b=getComputedStyle(document.body);
                       const a=document.querySelector('#app'); const ac=a?getComputedStyle(a):null;
                       return {bh:b.height,bo:b.overflow,bov:b.overflowY,
