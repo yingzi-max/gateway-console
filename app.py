@@ -3621,8 +3621,18 @@ class Handler(BaseHTTPRequestHandler):
         is_document = raw_path in ("", entry)
         relative = entry if not raw_path else raw_path
         file_path = (root / relative).resolve()
-        if (root not in file_path.parents and file_path != root) or not file_path.is_file():
+        if root not in file_path.parents and file_path != root:
             return self.send_error(404)
+        if not file_path.is_file():
+            # 入口伪装：后台把入口设成 logo.gif / info.txt 这类文件名时，站点里
+            # 通常并没有这个文件（原平台也是服务端伪装出来的）。命中入口就回落到
+            # index.html，URL 保留伪装后缀，响应仍按 HTML 输出，不再 404 白屏。
+            fallback = (root / "index.html").resolve()
+            if relative == entry and fallback.is_file():
+                file_path = fallback
+                is_document = True
+            else:
+                return self.send_error(404)
         # Any HTML page — not just the entry — is a document the visitor could
         # have typed in by hand, so the verification gate must cover all of them.
         is_html_page = mimetypes.guess_type(str(file_path))[0] == "text/html"
