@@ -1,4 +1,4 @@
-"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
+﻿"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
 
 用法:
     python batch_rebuild.py --limit 3          # 先试 3 个
@@ -8,6 +8,7 @@ import argparse
 import base64
 import csv
 import json
+import re
 import pathlib
 import shutil
 import sqlite3
@@ -161,14 +162,27 @@ def wait_ready(shooter: "Cdp", max_wait: float = 3.0) -> None:
 
 
 def wait_unlock(cdp: Cdp, seconds=60) -> int:
+    """等页面真正渲染。
+
+    判据不是"内容足够长"（未混淆的小包整页才 1KB 左右），而是：
+    没有加载遮罩 .white-overlay-loading，且 #app 有内容。
+    """
     end = time.time() + seconds
     last = -1
     while time.time() < end:
-        time.sleep(2)
-        val = cdp.ev("(document.querySelector('#app')||{}).innerHTML ? "
-                     "document.querySelector('#app').innerHTML.length : -1", 12)
+        time.sleep(1.2)
+        info = cdp.ev("JSON.stringify({len:(document.querySelector('#app')||{}).innerHTML"
+                      "? document.querySelector('#app').innerHTML.length : -1,"
+                      "loader:!!document.querySelector('.white-overlay-loading')})", 12)
+        try:
+            data = json.loads(info or "{}")
+        except ValueError:
+            data = {}
+        val = data.get("len", -1)
         if isinstance(val, int):
             last = val
+            if val > 200 and not data.get("loader"):
+                return val
             if val > 2000:
                 return val
     return last
@@ -190,6 +204,7 @@ def normalize_css_files(kit_dir: pathlib.Path, kit: str) -> int:
 def rewrite_assets(html: str, kit: str) -> str:
     """/sites/<kit>/xxx 这类绝对资源路径改成静态页可用的相对路径。"""
     for prefix in (f"/sites/{kit}/", "/sites/" + kit + "/"):
+        html = re.sub(r"https?://[^/\x22]*" + re.escape(prefix), "", html)
         html = html.replace(prefix, "")
     for attr in ("src", "href", "data-src", "poster"):
         html = html.replace(f'{attr}="/assets/', f'{attr}="assets/')
@@ -233,7 +248,10 @@ def run_kit(kit: str, index: int, total: int) -> list:
         shutil.rmtree(kit_dir)
     (kit_dir / "assets").mkdir(parents=True)
     shots.mkdir(parents=True, exist_ok=True)
-    for item in (SOURCES / kit / "assets").iterdir():
+    source_assets = SOURCES / kit / "assets"
+    if not source_assets.is_dir():
+        return [[kit, "-", "-", 0, 0, "-", "无assets目录"]]
+    for item in source_assets.iterdir():
         if item.is_file() and item.suffix.lower() != ".js":
             shutil.copy2(item, kit_dir / "assets" / item.name)
     css_files = [p.name for p in (kit_dir / "assets").iterdir() if p.suffix == ".css"]

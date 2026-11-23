@@ -1,4 +1,4 @@
-"""修复已生成站点的 CSS 绝对路径，并重新截图比对（不需要 console，纯离线）。"""
+﻿"""修复已生成站点的 CSS 绝对路径，并重新截图比对（不需要 console，纯离线）。"""
 import argparse
 import json
 import pathlib
@@ -10,6 +10,33 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from batch_rebuild import OUTROOT, Cdp, diff_ratio
 
 HTML_RE = re.compile(r'<div id="app">(.*)</div></body>', re.S)
+
+
+def _flush(report: pathlib.Path, rows) -> None:
+    import csv
+    with report.open("w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["站点", "页面", "差异率%", "状态"])
+        writer.writerows(rows)
+
+
+def load_needs_recheck() -> set:
+    """主批/补跑里未达标的站点：即使 CSS 已无绝对路径，也要重截验证，否则合并报表会回退成未达标。"""
+    import csv
+    need = set()
+    for name in ("report.csv", "report_repair.csv"):
+        path = OUTROOT / name
+        if not path.exists():
+            continue
+        with path.open(encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                status = row.get("状态", "")
+                if status != "OK" and "条件页" not in status and "空页面" not in status:
+                    need.add(row.get("站点", ""))
+    return need
+
+
+NEEDS_RECHECK = load_needs_recheck()
 
 
 def normalize_css(path: pathlib.Path, kit: str) -> int:
@@ -39,10 +66,14 @@ def main() -> int:
     shooter = Cdp(25000)
     shooter.send("Runtime.enable")
     shooter.send("Page.enable")
+    report = OUTROOT / "report_cssfix.csv"
     rows = []
     try:
         for site in sites:
             fixed = sum(normalize_css(p, site.name) for p in (site / "assets").glob("*.css"))
+            if fixed == 0 and site.name not in NEEDS_RECHECK:
+                print(f"[{site.name}] CSS 无绝对路径且无未达标页，跳过", flush=True)
+                continue
             pages = sorted((site / "shots").glob("*-orig.png"))
             for orig in pages:
                 safe = orig.name[:-len("-orig.png")]
@@ -70,10 +101,11 @@ def main() -> int:
                 rows.append([site.name, safe, f"{ratio:.3f}", status])
                 print(f"  {site.name:28} {safe:22} {ratio:.3f}% {status}", flush=True)
             print(f"[{site.name}] CSS 替换 {fixed} 处绝对路径", flush=True)
+            _flush(report, rows)
     finally:
         shooter.close()
 
-    report = OUTROOT / "report_cssfix.csv"
+    _flush(report, rows)
     with report.open("w", newline="", encoding="utf-8-sig") as fh:
         import csv
         writer = csv.writer(fh)

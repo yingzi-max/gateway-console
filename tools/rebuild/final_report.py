@@ -1,10 +1,10 @@
-"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib
 
 ROOT = pathlib.Path(r"D:\_rebuild_sites")
-SOURCES = [("main", ROOT / "report.csv"), ("cssfix", ROOT / "report_cssfix.csv"),
+SOURCES = [("prev", ROOT / "final_prev.csv"), ("main", ROOT / "report.csv"), ("cssfix", ROOT / "report_cssfix.csv"),
            ("repair", ROOT / "report_repair.csv"), ("conditional", ROOT / "report_conditional.csv")]
 
 
