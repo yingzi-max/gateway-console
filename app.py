@@ -136,6 +136,9 @@ for _source_id, _source_item in EXTRA_SOURCES.items():
     SOURCE_CATALOG.setdefault(_source_id, _source_item)
 print(f"[catalog] 内置源码目录共 {len(SOURCE_CATALOG)} 条")
 
+# t3 平台导出的站点 HTML 里写死 /sites/<code>/ 资源前缀，出页面时改回根路径
+SITES_PREFIX_RE = re.compile(rb"/sites/[A-Za-z0-9._~\-]+/")
+
 CAPTCHA_COOKIE = "gw_verified"
 # 第二道门禁：登录凭据。登录页提交后由 /flow/login 签发，
 # 更新页与扫码页都要它，防止验证通过后直接跳到第三步。
@@ -3617,6 +3620,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(404)
         root = Path(project["local_path"]).resolve()
         raw_path = unquote(path or "/").lstrip("/")
+        # t3 平台导出的站点整包是按 /sites/<code>/ 这种绝对路径引资源的
+        # （index.html 里写死 script src="/sites/xxx/assets/index-xxx.js"）。
+        # 绑到域名根目录后这个前缀不存在，资源会整片 404、页面白屏。
+        # 这里把前缀剥掉再解析文件，配合下面的 HTML 重写，站点就能在根路径正常跑。
+        prefix_match = re.match(r"^sites/[^/]+/?(.*)$", raw_path)
+        if prefix_match:
+            raw_path = prefix_match.group(1)
         entry = str(domain.get("frontend_entry") or "index.html").lstrip("/")
         is_document = raw_path in ("", entry)
         relative = entry if not raw_path else raw_path
@@ -3751,6 +3761,8 @@ class Handler(BaseHTTPRequestHandler):
             content_type += "; charset=utf-8"
         if content_type.startswith("text/html"):
             content = inject_app_links(content, settings)
+            # 把写死的 /sites/<code>/ 资源前缀改回根路径，浏览器才会去 /assets/... 取文件
+            content = SITES_PREFIX_RE.sub(b"/", content)
         redirect_links = normalize_redirect_links(settings.get("redirect_links", [])) if is_document else []
         client_rules = normalize_client_rules(settings.get("client_redirect_rules", {})) if is_document else {}
         # 只在「这个访客确实有匹配目标」时才注入拦截器。
