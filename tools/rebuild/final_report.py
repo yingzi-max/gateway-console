@@ -1,4 +1,4 @@
-"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib
@@ -27,12 +27,15 @@ def main() -> int:
             safe = route.strip("/").replace("/", "_") or "login"
             key = (site, safe)
             prev = merged.get(key)
+            new_status = (row.get("状态", "") or "").replace("补跑:", "")
+            if prev and prev["状态"] == "OK" and new_status != "OK":
+                continue  # 同一页已有达标记录，不让抖动的复测结果覆盖
             merged[key] = {
                 "站点": site,
                 "路由": row.get("路由") or prev.get("路由") if prev else (row.get("路由") or safe),
                 "页面": row.get("页面", ""),
                 "差异率%": row.get("差异率%", "-"),
-                "状态": row.get("状态", ""),
+                "状态": (row.get("状态", "") or "").replace("补跑:", ""),
                 "来源": tag,
             }
 

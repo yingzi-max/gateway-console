@@ -36,7 +36,7 @@ aupay_jp_card,11,11,0,0,0.000
 auto_jp_custom,1,0,0,1,0.000
 binance_jp_creditcards,14,7,0,7,0.000
 bitflyer_jp_creditcards,12,12,0,0,0.121
-bybit_jp_creditcards,12,11,0,1,0.366
+bybit_jp_creditcards,12,12,0,0,0.366
 coin_jp_creditcards,12,12,0,0,0.016
 daiwa_jp_creditcards,11,11,0,0,0.000
 dmm_jp_card,10,10,0,0,0.000
@@ -62,7 +62,7 @@ gmo_jp_creditcards,11,11,0,0,0.000
 gmo_jp_news,1,0,0,1,0.000
 gmoaozora_jp_bank,13,13,0,0,0.141
 gmoaozora_jp_bank1,13,13,0,0,0.141
-interactivebrokers_jp_creditcards,10,10,0,0,0.395
+interactivebrokers_jp_creditcards,10,10,0,0,0.000
 jabank_jp_bank2,13,13,0,0,0.022
 jabank_jp_bank3,13,13,0,0,0.022
 jaccs_jp_card,9,9,0,0,0.000
@@ -141,7 +141,7 @@ sanjinVpass_jp_creditcards3,13,13,0,0,0.003
 sanjinVpass_jp_creditcards4,12,12,0,0,0.000
 sanjinVpass_jp_creditcards5,12,12,0,0,0.000
 sbisec_jp_creditcards,15,15,0,0,0.037
-sbisec_jp_news,17,16,0,1,0.000
+sbisec_jp_news,17,17,0,0,0.000
 scmufg_jp_creditcards,11,11,0,0,0.000
 smartex_jp_card,10,10,0,0,0.000
 smbc_jp_bank,9,9,0,0,0.000

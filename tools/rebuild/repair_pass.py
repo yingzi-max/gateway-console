@@ -1,4 +1,4 @@
-"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
+﻿"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
 import csv
 import json
 import pathlib
@@ -8,7 +8,7 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from batch_rebuild import (DATA, OUTROOT, REPO, SOURCES, Cdp, build_static, diff_ratio,
+from batch_rebuild import (DATA, OUTROOT, REPO, SOURCES, Cdp, build_static, diff_ratio, normalize_css_files,
                            set_domain, wait_unlock)
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -51,6 +51,7 @@ def main() -> int:
             if not css:
                 continue
             css_name = css[0]
+            normalize_css_files(kit_dir, kit)
             set_domain(kit)
             cdp = Cdp(23000 + index % 300)
             shooter = None
