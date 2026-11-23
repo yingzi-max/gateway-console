@@ -2451,6 +2451,47 @@ def _csv_cell(value) -> str:
     return text
 
 
+WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+WS_LOG = DATA_DIR / "ws.log"
+
+
+def ws_accept_key(client_key: str) -> str:
+    digest = hashlib.sha1((client_key + WS_GUID).encode()).digest()
+    return base64.b64encode(digest).decode()
+
+
+def ws_read_frame(rfile):
+    """读一帧；返回 (opcode, payload) 或 None（连接结束）。"""
+    header = rfile.read(2)
+    if len(header) < 2:
+        return None
+    opcode = header[0] & 0x0F
+    masked = bool(header[1] & 0x80)
+    length = header[1] & 0x7F
+    if length == 126:
+        length = struct.unpack(">H", rfile.read(2))[0]
+    elif length == 127:
+        length = struct.unpack(">Q", rfile.read(8))[0]
+    mask = rfile.read(4) if masked else b""
+    payload = rfile.read(length) if length else b""
+    if masked and mask:
+        payload = bytes(byte ^ mask[i % 4] for i, byte in enumerate(payload))
+    return opcode, payload
+
+
+def ws_send_frame(wfile, payload: bytes, opcode: int = 0x1) -> None:
+    header = bytes([0x80 | opcode])
+    size = len(payload)
+    if size < 126:
+        header += bytes([size])
+    elif size < 65536:
+        header += bytes([126]) + struct.pack(">H", size)
+    else:
+        header += bytes([127]) + struct.pack(">Q", size)
+    wfile.write(header + payload)
+    wfile.flush()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GatewayConsole/1.0"
     # Set per-request by the /__preview/<domain>/ local preview route.
@@ -2515,6 +2556,9 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+        # 前台站点启动时连 msgsocket: 连不上就一直卡在加载遮罩
+        if path == "/ws" and "websocket" in (self.headers.get("Upgrade") or "").lower():
+            return self.ws_channel()
         if path.startswith("/__preview/"):
             # Local preview: pretend the Host header is the domain in the URL so
             # the normal public pipeline runs without editing the hosts file.
@@ -2645,6 +2689,34 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(200, STORE.get_settings())
             return self.json(404, {"error": "request failed"})
         return self.serve_static(path)
+
+    def ws_channel(self):
+        """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。"""
+        key = self.headers.get("Sec-WebSocket-Key", "")
+        self.send_response(101, "Switching Protocols")
+        self.send_header("Upgrade", "websocket")
+        self.send_header("Connection", "Upgrade")
+        self.send_header("Sec-WebSocket-Accept", ws_accept_key(key))
+        self.end_headers()
+        try:
+            with WS_LOG.open("a", encoding="utf-8") as log:
+                log.write(f"\n[{now_text()}] connect host={self.headers.get('Host')} "
+                          f"origin={self.headers.get('Origin')}\n")
+                log.flush()
+                while True:
+                    frame = ws_read_frame(self.rfile)
+                    if frame is None:
+                        break
+                    opcode, payload = frame
+                    text = payload.decode("utf-8", "replace")
+                    log.write(f"  op={opcode} len={len(payload)} {text[:1000]}\n")
+                    log.flush()
+                    if opcode == 0x9:
+                        ws_send_frame(self.wfile, payload, opcode=0xA)
+                    elif opcode == 0x8:
+                        break
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
 
     def do_OPTIONS(self):
         if urlparse(self.path).path in ("/track/visit", "/track/click", "/guard/check"):
