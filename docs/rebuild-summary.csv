@@ -15,7 +15,7 @@ amazon_pc_jp2,11,11,0,0,0.155
 amazon_pc_jp3,11,11,0,0,0.155
 amazon_pc_jp_hq,11,11,0,0,0.155
 amazon_pc_jp_noaddress,11,11,0,0,0.155
-amazon_pc_jp_noaddress_checkdate,1,0,0,1,0.000
+amazon_pc_jp_noaddress_checkdate,1,0,1,0,0.000
 americanexpress_jp_card,9,9,0,0,0.435
 americanexpress_jp_card1,9,9,0,0,0.435
 anaco_jp_card,9,9,0,0,0.000
@@ -33,7 +33,7 @@ au_jp_certificate,8,8,0,0,0.041
 au_jp_point,12,12,0,0,0.000
 auone_jp_bank,10,9,1,0,0.007
 aupay_jp_card,11,11,0,0,0.000
-auto_jp_custom,1,0,0,1,0.000
+auto_jp_custom,1,0,1,0,0.000
 binance_jp_creditcards,14,14,0,0,0.354
 bitflyer_jp_creditcards,12,12,0,0,0.121
 bybit_jp_creditcards,12,12,0,0,0.325
@@ -44,7 +44,7 @@ docomo_jp_bank,11,11,0,0,0.000
 docomo_jp_card,9,9,0,0,0.000
 ekinet_jp_card,9,9,0,0,0.000
 ekinet_jp_card1,10,10,0,0,0.000
-eplusjp,1,0,0,1,0.000
+eplusjp,1,0,1,0,0.000
 epos_jp_creditcards,10,10,0,0,0.000
 eposcard_jp_card,10,10,0,0,0.000
 eposcard_jp_card_checkout,10,10,0,0,0.000
@@ -59,7 +59,7 @@ fukuokabank_jp_bank,9,9,0,0,0.113
 gate_jp_creditcards,12,12,0,0,0.000
 globaljcb_jp_card,10,10,0,0,0.000
 gmo_jp_creditcards,11,11,0,0,0.414
-gmo_jp_news,1,0,0,1,0.000
+gmo_jp_news,1,0,1,0,0.000
 gmoaozora_jp_bank,13,13,0,0,0.141
 gmoaozora_jp_bank1,13,13,0,0,0.141
 interactivebrokers_jp_creditcards,10,10,0,0,0.447
@@ -77,7 +77,7 @@ jcbup_jp_creditcards_nocard,13,13,0,0,0.002
 jp_jaccs,1,0,0,1,0.000
 jp_nissenren,1,1,0,0,0.288
 jp_rakuten,1,1,0,0,0.000
-jp_vandle,1,0,0,1,0.000
+jp_vandle,1,0,1,0,0.000
 jppost_jp_card,10,10,0,0,0.000
 jppost_jp_card1,10,10,0,0,0.000
 kuronekoyamato_jp,10,10,0,0,0.000

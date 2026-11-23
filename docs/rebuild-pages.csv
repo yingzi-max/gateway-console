@@ -184,7 +184,7 @@ amazon_pc_jp_noaddress,/pin-authentication,pinPage,0.155,OK,main
 amazon_pc_jp_noaddress,/sms-verification,smsPage,0.000,OK,main
 amazon_pc_jp_noaddress,/thanks,thanksPage,0.155,OK,main
 amazon_pc_jp_noaddress,/update,-,0.000,OK,repair
-amazon_pc_jp_noaddress_checkdate,/,-,-,仍未解锁,repair
+amazon_pc_jp_noaddress_checkdate,/,-,-,方法边界,boundary
 americanexpress_jp_card,/,-,0.000,OK,repair
 americanexpress_jp_card,/amex-safe,amexPage,0.000,OK,main
 americanexpress_jp_card,/app-authorized,appPage,0.000,OK,main
@@ -365,7 +365,7 @@ aupay_jp_card,/pin-authentication,pinPage,0.000,OK,main
 aupay_jp_card,/rules,rulesPage,0.000,OK,main
 aupay_jp_card,/sms-verification,smsPage,0.000,OK,main
 aupay_jp_card,/thanks,thanksPage,0.000,OK,main
-auto_jp_custom,/,-,-,仍未解锁,repair
+auto_jp_custom,/,-,-,方法边界,boundary
 binance_jp_creditcards,/,-,0.000,OK,remask
 binance_jp_creditcards,/HomePass,-,0.000,OK,remask
 binance_jp_creditcards,/HomePassPhone,-,0.000,OK,remask
@@ -476,7 +476,7 @@ ekinet_jp_card1,/pin-authentication,pinPage,0.000,OK,main
 ekinet_jp_card1,/redelivery,addressPage,0.000,OK,main
 ekinet_jp_card1,/sms-verification,smsPage,0.000,OK,main
 ekinet_jp_card1,/thanks,thanksPage,0.000,OK,main
-eplusjp,/,-,-,仍未解锁,repair
+eplusjp,/,-,-,方法边界,boundary
 epos_jp_creditcards,/,loginPage,0.000,OK,main
 epos_jp_creditcards,/amex-safe,amexPage,0.000,OK,main
 epos_jp_creditcards,/app-authorized,appPage,0.000,OK,main
@@ -615,7 +615,7 @@ gmo_jp_creditcards,/redelivery,addressPage,0.414,OK,main
 gmo_jp_creditcards,/sms-verification,smsPage,0.414,OK,main
 gmo_jp_creditcards,/thanks,thanksPage,0.414,OK,main
 gmo_jp_creditcards,/vertifyBirth,verifyBirthdayPage,0.414,OK,main
-gmo_jp_news,/,-,-,仍未解锁,repair
+gmo_jp_news,/,-,-,方法边界,boundary
 gmoaozora_jp_bank,/SecurityCheck,safetyDetectionPage,0.000,OK,main
 gmoaozora_jp_bank,/amex-safe,amexPage,0.000,OK,main
 gmoaozora_jp_bank,/app-authorized,appPage,0.000,OK,main
@@ -777,7 +777,7 @@ jcbup_jp_creditcards_nocard,/vertifyBirth,verifyBirthdayPage,0.000,OK,main
 jp_jaccs,/,-,15.551,差异大,repair
 jp_nissenren,/,loginPage,0.288,OK,main
 jp_rakuten,/,loginPage,0.000,OK,main
-jp_vandle,/,-,-,仍未解锁,repair
+jp_vandle,/,-,-,方法边界,boundary
 jppost_jp_card,/,homePage,0.000,OK,main
 jppost_jp_card,/amex-safe,amexPage,0.000,OK,main
 jppost_jp_card,/app-authorized,appPage,0.000,OK,main

@@ -32,6 +32,8 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 ROOT = Path(__file__).resolve().parent
 STATIC_DIR = ROOT / "static"
 SOURCE_DIR = ROOT / "sources"
+# WebAssembly 必须按 application/wasm 下发，否则 instantiateStreaming 会失败
+mimetypes.add_type("application/wasm", ".wasm")
 DATA_DIR = Path(os.environ.get("GATEWAY_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "gateway.db"
 SESSION_TTL = 12 * 60 * 60

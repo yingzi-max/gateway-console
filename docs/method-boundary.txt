@@ -1,0 +1,9 @@
+# 方法边界：这些包依赖 t3 后端的加密模板下发，无法只靠前端包静态化
+# 证据：控制台报 `Failed to load template` + crypto.subtle.decrypt OperationError
+#      （浏览器侧 secure context 与 subtle 均已确认可用：secure=true, subtle=true）
+# 判定日期：2026-11-24
+eplusjp
+gmo_jp_news
+jp_vandle
+auto_jp_custom
+amazon_pc_jp_noaddress_checkdate

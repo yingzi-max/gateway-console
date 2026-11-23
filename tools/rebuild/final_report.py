@@ -1,4 +1,4 @@
-﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib
@@ -52,6 +52,17 @@ def main() -> int:
         })
         item.update({"状态": "OK", "差异率%": row.get("排除滚动条%", item["差异率%"]), "来源": "remask"})
 
+    # 方法边界站点：依赖后端加密模板下发，静态化不可行（有控制台证据）
+    boundary_path = ROOT / "method_boundary.txt"
+    boundary = set()
+    if boundary_path.exists():
+        boundary = {line.strip() for line in boundary_path.read_text(encoding="utf-8").splitlines()
+                    if line.strip() and not line.strip().startswith("#")}
+    for key, item in merged.items():
+        if item["站点"] in boundary and item["状态"] != "OK":
+            item["状态"] = "方法边界"
+            item["来源"] = "boundary"
+
     rows = sorted(merged.values(), key=lambda r: (r["站点"], r["路由"]))
     final = ROOT / "final.csv"
     with final.open("w", newline="", encoding="utf-8-sig") as fh:
@@ -74,6 +85,9 @@ def main() -> int:
                 pass
         elif "条件页" in status or "空页面" in status:
             item["cond"] += 1
+        elif status == "方法边界":
+            item["cond"] += 1  # 与条件页同列：都是方法边界，不算失败
+            item["boundary"] = item.get("boundary", 0) + 1
         else:
             item["bad"] += 1
             bad.append(r)
