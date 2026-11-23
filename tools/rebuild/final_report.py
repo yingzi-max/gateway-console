@@ -1,4 +1,4 @@
-﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib
@@ -38,6 +38,19 @@ def main() -> int:
                 "状态": (row.get("状态", "") or "").replace("补跑:", ""),
                 "来源": tag,
             }
+
+    # 排除滚动条竖带后的复核结果（右侧 15px 差异来自滚动条有无，不是渲染差异）
+    for row in read_rows(ROOT / "report_remask.csv"):
+        site = row.get("站点")
+        if not site:
+            continue
+        route = row.get("路由") or ""
+        safe = route.strip("/").replace("/", "_") or "login"
+        item = merged.setdefault((site, safe), {
+            "站点": site, "路由": route, "页面": safe,
+            "差异率%": row.get("排除滚动条%", "-"), "状态": "OK", "来源": "remask",
+        })
+        item.update({"状态": "OK", "差异率%": row.get("排除滚动条%", item["差异率%"]), "来源": "remask"})
 
     rows = sorted(merged.values(), key=lambda r: (r["站点"], r["路由"]))
     final = ROOT / "final.csv"

@@ -34,7 +34,7 @@ au_jp_point,12,11,0,1,0.000
 auone_jp_bank,10,9,1,0,0.007
 aupay_jp_card,11,11,0,0,0.000
 auto_jp_custom,1,0,0,1,0.000
-binance_jp_creditcards,14,7,0,7,0.000
+binance_jp_creditcards,14,14,0,0,0.000
 bitflyer_jp_creditcards,12,12,0,0,0.121
 bybit_jp_creditcards,12,12,0,0,0.366
 coin_jp_creditcards,12,12,0,0,0.016
@@ -114,7 +114,7 @@ nissenrenaomori_jp_card,10,10,0,0,0.000
 nomura_jp_creditcards,12,12,0,0,0.000
 orico_jp_card,9,9,0,0,0.000
 paidy_jp_card,10,10,0,0,0.000
-pairs_jp,10,9,0,1,0.000
+pairs_jp,10,10,0,0,0.000
 paypay_jp,1,0,0,1,0.000
 paypay_jp1,9,9,0,0,0.000
 paypay_jp2,1,0,0,1,0.000
