@@ -115,9 +115,9 @@ nomura_jp_creditcards,12,12,0,0,0.000
 orico_jp_card,9,9,0,0,0.000
 paidy_jp_card,10,10,0,0,0.000
 pairs_jp,10,10,0,0,0.000
-paypay_jp,1,0,0,1,0.000
+paypay_jp,1,1,0,0,0.000
 paypay_jp1,9,9,0,0,0.000
-paypay_jp2,1,0,0,1,0.000
+paypay_jp2,1,1,0,0,0.000
 paypaybank_jp_bank,13,12,1,0,0.051
 paypaybank_jp_card,10,9,1,0,0.000
 pocketcard_jp_card,10,10,0,0,0.000

@@ -1,4 +1,4 @@
-﻿"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
+"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
 import csv
 import json
 import os
@@ -65,7 +65,7 @@ def main() -> int:
                 cdp.send("Emulation.setUserAgentOverride", userAgent=UA, acceptLanguage="ja-JP")
                 cdp.send("Page.navigate", url="http://test.local/")
                 unlocked = wait_unlock(cdp, 60)
-                if not isinstance(unlocked, int) or unlocked <= 2000:
+                if not isinstance(unlocked, int) or unlocked <= 200:
                     for route in sorted(routes):
                         writer.writerow([kit, route, "-", unlocked, 0, "-", "仍未解锁"])
                     fh.flush()
@@ -88,12 +88,23 @@ def main() -> int:
                         info = json.loads(nav or "{}")
                     except ValueError:
                         info = {}
-                    html = cdp.ev("document.querySelector('#app').innerHTML", 30) or ""
+                    html = cdp.ev("""(()=>{const root=document.querySelector('#app');
+                      if(!root) return '';
+                      root.querySelectorAll('*').forEach(el=>{
+                        const cs=getComputedStyle(el);
+                        if(cs.display==='none'||cs.visibility==='hidden'||cs.opacity==='0'){
+                          el.setAttribute('data-gw-hidden','1');
+                        }
+                      });
+                      return root.innerHTML;})()""", 30) or ""
                     root_fs = cdp.ev("getComputedStyle(document.documentElement).fontSize", 10) or ""
                     head_css = cdp.ev("Array.from(document.querySelectorAll('style'))"
                                       ".map(s=>s.textContent).join('\\n')", 20) or ""
                     safe = route.strip("/").replace("/", "_") or "login"
                     orig = OUTROOT / kit / "shots" / f"{safe}-orig.png"
+                    # 先滚到底触发懒加载，再回顶部截图，避免原站截图里图片还没加载
+                    cdp.ev("window.scrollTo(0, document.body.scrollHeight)", 8)
+                    time.sleep(0.8)
                     cdp.ev("window.scrollTo(0,0)", 8)
                     time.sleep(0.4)
                     cdp.ev("document.activeElement&&document.activeElement.blur();window.scrollTo(0,0)", 8)
@@ -103,9 +114,24 @@ def main() -> int:
                         writer.writerow([kit, route, "-", len(html), 0, "-", "补跑:空页面"])
                         fh.flush()
                         continue
-                    has_scroll = cdp.ev("document.documentElement.scrollHeight > window.innerHeight", 10)
+                    layout = cdp.ev("""JSON.stringify((()=>{const b=getComputedStyle(document.body);
+                      const a=document.querySelector('#app'); const ac=a?getComputedStyle(a):null;
+                      return {bh:b.height,bo:b.overflow,bov:b.overflowY,
+                              ah:ac?ac.height:null,ao:ac?ac.overflow:null};})())""", 12) or "{}"
+                    try:
+                        lay = json.loads(layout)
+                    except ValueError:
+                        lay = {}
+                    clip = ""
+                    if lay.get("bo", "").startswith("hidden") or lay.get("bov") == "hidden":
+                        body_h = lay.get("bh") or ""
+                        if body_h and body_h not in ("auto", "0px"):
+                            clip = (f"<style>body{{overflow:hidden;height:{body_h}}}"
+                                    "#app{overflow:hidden;height:100%}</style>")
                     page = build_static(kit_dir, css_name, route, html, info.get("cls", ""),
-                                        info.get("t", ""), info.get("l", "ja"), (head_css + ("<style>html{overflow-y:scroll}</style>" if has_scroll else "")), root_fs)
+                                        info.get("t", ""), info.get("l", "ja"),
+                                        "<style>[data-gw-hidden]{display:none !important}</style>" + head_css + clip,
+                                        root_fs)
                     ours = OUTROOT / kit / "shots" / f"{safe}-ours.png"
                     shooter.send("Page.navigate", url=page.as_uri())
                     time.sleep(1.5)

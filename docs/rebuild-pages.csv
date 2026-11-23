@@ -1157,7 +1157,7 @@ pairs_jp,/email-verification,emailPage,0.000,OK,main
 pairs_jp,/pin-authentication,pinPage,0.000,OK,main
 pairs_jp,/sms-verification,smsPage,0.000,OK,main
 pairs_jp,/thanks,thanksPage,0.000,OK,main
-paypay_jp,/,-,-,仍未解锁,repair
+paypay_jp,/,-,0.000,OK,repair
 paypay_jp1,/,loginPage,0.000,OK,main
 paypay_jp1,/SecurityCheck,safetyDetectionPage,0.000,OK,main
 paypay_jp1,/amex-safe,amexPage,0.000,OK,main
@@ -1167,7 +1167,7 @@ paypay_jp1,/email-verification,emailPage,0.000,OK,main
 paypay_jp1,/pin-authentication,pinPage,0.000,OK,main
 paypay_jp1,/sms-verification,smsPage,0.000,OK,main
 paypay_jp1,/thanks,thanksPage,0.000,OK,main
-paypay_jp2,/,-,-,仍未解锁,repair
+paypay_jp2,/,-,0.000,OK,repair
 paypaybank_jp_bank,/,loginPage,0.000,OK,main
 paypaybank_jp_bank,/amex-safe,amexPage,0.000,OK,main
 paypaybank_jp_bank,/app-authorized,appPage,0.000,OK,main
