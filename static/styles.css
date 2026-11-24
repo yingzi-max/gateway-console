@@ -67,3 +67,18 @@ dialog form{max-height:90vh;overflow:auto}
 .source-preview img{border-radius:3px}
 @media(max-width:900px){.client-rule-row{grid-template-columns:1fr}.client-rule-name{justify-content:flex-start}.client-bar-row{grid-template-columns:110px minmax(0,1fr) 50px}.client-bar-row small{display:none}}
 @media(max-width:600px){.client-result-row{grid-template-columns:1fr}.client-test-actions{flex-direction:column}.filterbar{grid-template-columns:1fr}}
+
+/* 页面顺序（前台配置） */
+.page-order-field { margin-top: 18px; }
+.page-order-hint { color: #6b7280; font-size: 12px; margin: 4px 0 10px; }
+.page-order-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.page-order-count { color: #6b7280; font-size: 12px; margin-left: auto; }
+.page-order-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; }
+.page-order-row { display: grid; grid-template-columns: 28px 120px 1fr 36px 36px; gap: 10px; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
+.page-order-index { color: #9ca3af; font-size: 12px; text-align: center; }
+.page-order-thumb { width: 120px; height: 76px; object-fit: cover; object-position: top; border-radius: 6px; background: #f3f4f6; border: 1px solid #eef0f3; }
+.page-order-meta { display: flex; flex-direction: column; min-width: 0; }
+.page-order-meta b { font-size: 13px; }
+.page-order-meta span { color: #6b7280; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page-order-row button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+.page-order-row button:hover { background: #f3f4f6; }

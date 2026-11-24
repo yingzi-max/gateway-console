@@ -461,6 +461,7 @@ function ensureRedirectLinksField(form) {
   const summary = document.createElement('section');
   summary.className = 'config-panel config-summary-panel hidden';
   grid.append(panel, summary);
+  appendPageOrderBlock(panel);
   panel.addEventListener('click', event => {
     if (event.target.closest('.open-redirect-import')) { $('.redirect-import-panel', panel).classList.remove('hidden'); $('.redirect-import-input', panel).focus(); return; }
     if (event.target.closest('.cancel-redirect-import')) { $('.redirect-import-panel', panel).classList.add('hidden'); return; }
@@ -750,3 +751,73 @@ $('#catalogList').addEventListener('click', async event => {
 });
 $('#menuBtn').addEventListener('click', () => { $('.sidebar').classList.add('open'); $('#mobileBackdrop').classList.add('show'); }); $('#mobileBackdrop').addEventListener('click', () => { $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show'); });
 api('/api/auth/me').then(data => data.authenticated ? showApp(data.user) : showLogin()).catch(showLogin);
+
+/* 页面顺序（无人值守跳转顺序）——前台配置第 2 步 */
+function appendPageOrderBlock(panel) {
+  const wrap = document.createElement('div');
+  wrap.className = 'field page-order-field';
+  wrap.innerHTML = [
+    '<label>页面顺序（无人值守按此顺序自动推进）</label>',
+    '<div class="page-order-hint">下面列出该前台的每个静态页面、缩略预览与跳转顺序；改完立即保存生效。</div>',
+    '<div class="page-order-toolbar">',
+    '  <select class="page-order-project"></select>',
+    '  <button type="button" class="page-order-reload">刷新</button>',
+    '  <span class="page-order-count"></span>',
+    '</div>',
+    '<div class="page-order-list"></div>'
+  ].join('');
+  panel.append(wrap);
+
+  const select = wrap.querySelector('.page-order-project');
+  const list = wrap.querySelector('.page-order-list');
+  const count = wrap.querySelector('.page-order-count');
+  let pages = [];
+
+  const render = () => {
+    count.textContent = pages.length ? pages.length + ' 个页面' : '暂无页面';
+    list.innerHTML = pages.map((page, index) => [
+      '<div class="page-order-row" data-file="' + page.file + '">',
+      '  <span class="page-order-index">' + (index + 1) + '</span>',
+      '  <img class="page-order-thumb" loading="lazy" alt="" src="/api/pages/preview?project=' +
+           encodeURIComponent(select.value) + '&file=' + encodeURIComponent(page.file) + '">',
+      '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
+      '  <button type="button" class="page-order-up" title="上移">↑</button>',
+      '  <button type="button" class="page-order-down" title="下移">↓</button>',
+      '</div>'
+    ].join('')).join('');
+  };
+
+  const load = async () => {
+    if (!select.value) return;
+    const res = await api('/api/pages?project=' + encodeURIComponent(select.value));
+    pages = res.pages || [];
+    render();
+  };
+
+  list.addEventListener('click', async event => {
+    const row = event.target.closest('.page-order-row');
+    if (!row) return;
+    const index = pages.findIndex(page => page.file === row.dataset.file);
+    if (index < 0) return;
+    if (event.target.closest('.page-order-up') && index > 0) {
+      [pages[index - 1], pages[index]] = [pages[index], pages[index - 1]];
+    } else if (event.target.closest('.page-order-down') && index < pages.length - 1) {
+      [pages[index + 1], pages[index]] = [pages[index], pages[index + 1]];
+    } else {
+      return;
+    }
+    render();
+    await api('/api/pages/order', {
+      method: 'POST',
+      body: JSON.stringify({ project: select.value, order: pages.map(page => page.file) })
+    });
+    toast('页面顺序已保存');
+  });
+
+  select.addEventListener('change', load);
+  wrap.querySelector('.page-order-reload').addEventListener('click', load);
+
+  const projects = (state && state.projects) || [];
+  select.innerHTML = projects.map(item => '<option value="' + item.slug + '">' + item.slug + '</option>').join('');
+  load();
+}
