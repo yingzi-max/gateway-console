@@ -2323,10 +2323,33 @@ def site_flow_script(slug: str) -> bytes:
   function apply(list){
     order = list || [];
     idx = order.indexOf(current());
+    if (idx < 0 && order.length) {
+      // 入口地址（/ 或 /logo.gif 这类伪装入口）实际渲染的就是第一页
+      var p = (location.pathname || "/").toLowerCase();
+      var isEntry = (p === "/" || p === "" || current() === "index.html" || /\/logo\.[a-z]+$/.test(p));
+      if (isEntry) idx = 0;
+    }
     window.__gwFlow = { order: order, current: current(), next: nextPage() };
+    retargetForms();
     var mode = localStorage.getItem("unattended");
     var nx = nextPage();
     if (mode && mode !== "0" && nx) setTimeout(function(){ location.replace("/" + nx); }, 3000);
+  }
+  function retargetForms(){
+    var nx = nextPage();
+    if (!nx) return;
+    try {
+      var forms = document.querySelectorAll("form");
+      for (var i = 0; i < forms.length; i++) {
+        var f = forms[i];
+        if (f.getAttribute("data-gw-flow")) continue;
+        f.setAttribute("data-gw-flow", "1");
+        if (!f.getAttribute("action")) {
+          f.setAttribute("action", "/" + nx);
+          f.setAttribute("method", "get");
+        }
+      }
+    } catch (e) {}
   }
   function goNext(){
     var nx = nextPage();
