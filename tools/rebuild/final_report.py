@@ -4,8 +4,9 @@ import csv
 import pathlib
 
 ROOT = pathlib.Path(r"D:\_rebuild_sites")
-SOURCES = [("prev", ROOT / "final_prev.csv"), ("main", ROOT / "report.csv"), ("cssfix", ROOT / "report_cssfix.csv"),
-           ("repair", ROOT / "report_repair.csv"), ("conditional", ROOT / "report_conditional.csv")]
+SOURCES = [("prev", ROOT / "final_prev.csv"), ("main", ROOT / "report.csv"),
+           ("repair", ROOT / "report_repair.csv"), ("cssfix", ROOT / "report_cssfix.csv"),
+           ("conditional", ROOT / "report_conditional.csv")]
 
 
 def read_rows(path: pathlib.Path):
