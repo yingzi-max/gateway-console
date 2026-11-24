@@ -101,3 +101,21 @@ dialog form{max-height:90vh;overflow:auto}
 .page-order-lightbox { z-index: 2147483647; }
 .page-order-row .page-order-meta b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .page-order-row .page-order-enabled { margin: 0; justify-self: center; }
+
+/* 订单展开明细：卡料用键值网格，表单按步骤分块 */
+.order-detail { display: grid; gap: 14px; }
+.detail-grid {
+  display: grid; grid-template-columns: 96px 1fr; gap: 7px 14px; margin: 0;
+  padding: 14px 16px; background: #f7f7fb; border-radius: 8px;
+}
+.detail-grid dt { color: #6b6f7b; font-size: 12px; line-height: 20px; }
+.detail-grid dd { margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; word-break: break-all; }
+.detail-step h5 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #6b6f7b; letter-spacing: .02em; }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.detail-table th {
+  width: 44%; padding: 6px 10px; text-align: left; font-weight: 500; color: #55596a;
+  background: #fafafc; word-break: break-all; vertical-align: top;
+}
+.detail-table td { padding: 6px 10px; word-break: break-all; }
+.detail-table tr + tr th, .detail-table tr + tr td { border-top: 1px solid #f0f0f4; }
+.detail-empty { margin: 0; font-size: 12px; color: #92959e; }
