@@ -757,8 +757,8 @@ function appendPageOrderBlock(panel, projectId) {
   const wrap = document.createElement('div');
   wrap.className = 'field page-order-field';
   wrap.innerHTML = [
-    '<label>页面顺序（无人值守按此顺序自动推进）</label>',
-    '<div class="page-order-hint">下面是当前这个前台的页面。勾选=启用，没勾选的不参与无人值守自动推进；上下箭头调顺序，改完立即保存。</div>',
+    '<label>页面顺序（点登录/下一步时按此顺序进入下一页）</label>',
+    '<div class="page-order-hint">下面是当前这个前台的页面。勾选=启用，没勾选的不参与跳转；上下箭头调顺序，改完立即保存。</div>',
     '<div class="page-order-toolbar">',
     '  <span class="page-order-current"></span>',
     '  <button type="button" class="page-order-reload">刷新</button>',
