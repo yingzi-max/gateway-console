@@ -1,4 +1,4 @@
-﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib

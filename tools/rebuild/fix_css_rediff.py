@@ -1,16 +1,12 @@
-﻿"""修复已生成站点的 CSS 绝对路径，并重新截图比对（不需要 console，纯离线）。"""
+"""修复已生成站点的 CSS 绝对路径，并重新截图比对（不需要 console，纯离线）。"""
 import argparse
 import json
 import pathlib
-import re
 import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from batch_rebuild import OUTROOT, Cdp, diff_ratio
-
-HTML_RE = re.compile(r'<div id="app">(.*)</div></body>', re.S)
-
 
 def _flush(report: pathlib.Path, rows) -> None:
     import csv

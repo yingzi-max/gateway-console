@@ -9,15 +9,13 @@
 """
 import argparse
 import json
-import pathlib
-import shutil
 import sqlite3
 import subprocess
 import sys
 import time
 
-from batch_rebuild import (DATA, OUTROOT, REPO, SOURCES, STATE, Cdp, append_report,
-                           build_static, diff_ratio, load_state, save_state, wait_unlock)
+from batch_rebuild import (DATA, OUTROOT, REPO, SOURCES, Cdp, append_report,
+                           build_static, diff_ratio, load_state, wait_unlock)
 
 PAGES = [
     ("/VerifyHumanMachine", "robotPage",

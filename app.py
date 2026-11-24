@@ -452,6 +452,9 @@ body:JSON.stringify({token:%%TOKEN%%,tz:d.tz,langs:d.ls})})
 def rate_hit_and_exceed(ip: str, window: int, limit: int) -> bool:
     """Record one page request for this IP; True when over the window limit."""
     now = time.time()
+    # RATE_HITS 每个新 IP 加一个 key，长期运行必须回收，否则无限增长
+    if len(RATE_HITS) > 1000:
+        prune_rate_hits(window)
     with ENV_LOCK:
         dq = RATE_HITS.setdefault(ip, collections.deque())
         while dq and dq[0] < now - window:
@@ -468,6 +471,9 @@ COLLECT_LOCK = threading.Lock()
 def collect_rate_ok(ip: str, window: int = 60, limit: int = 60) -> bool:
     now = time.time()
     with COLLECT_LOCK:
+        if len(COLLECT_HITS) > 1000:  # 同上：回收过期的 IP 键，避免字典无限增长
+            for key in [k for k, dq in COLLECT_HITS.items() if not dq or dq[-1] < now - window]:
+                COLLECT_HITS.pop(key, None)
         dq = COLLECT_HITS.setdefault(ip, collections.deque())
         while dq and dq[0] < now - window:
             dq.popleft()
@@ -1025,7 +1031,6 @@ def classify_client(ua: str) -> tuple[str, list[str]]:
     """
     ua_text = str(ua or "")
     lowered = ua_text.lower()
-    reasons: list[str] = []
 
     if not lowered.strip():
         return CLIENT_UNKNOWN, ["ua_missing"]

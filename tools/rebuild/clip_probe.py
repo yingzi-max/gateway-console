@@ -1,4 +1,4 @@
-﻿import json, subprocess, time, urllib.request
+import json, subprocess, time, urllib.request
 import websocket
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 P = 9410

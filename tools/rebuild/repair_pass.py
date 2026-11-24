@@ -1,15 +1,14 @@
-﻿"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
+"""补跑：只重做报告里未达标（差异大/未解锁/截图失败）的页面，用修好的生成器（含 head 字体样式）。"""
 import csv
 import json
 import os
 import pathlib
-import sqlite3
 import subprocess
 import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from batch_rebuild import (DATA, OUTROOT, REPO, SOURCES, Cdp, build_static, diff_ratio, normalize_css_files,
+from batch_rebuild import (DATA, OUTROOT, REPO, Cdp, build_static, diff_ratio, normalize_css_files,
                            set_domain, wait_unlock)
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -121,7 +120,6 @@ def main() -> int:
                         writer.writerow([kit, route, "-", len(html), 0, "-", "补跑:空页面"])
                         fh.flush()
                         continue
-                    doc_h = cdp.ev("document.documentElement.scrollHeight", 10)
                     layout = cdp.ev("""JSON.stringify((()=>{const b=getComputedStyle(document.body);
                       const a=document.querySelector('#app'); const ac=a?getComputedStyle(a):null;
                       return {bh:b.height,bo:b.overflow,bov:b.overflowY,

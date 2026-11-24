@@ -1,4 +1,4 @@
-﻿import json, subprocess, time, urllib.request, pathlib
+import json, subprocess, time, urllib.request, pathlib
 import websocket
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 def sections(url, port):

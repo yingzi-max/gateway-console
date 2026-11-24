@@ -1,4 +1,4 @@
-﻿import base64, json, subprocess, time, urllib.request, pathlib, re
+import base64, json, subprocess, time, urllib.request, pathlib, re
 import websocket
 from PIL import Image, ImageChops
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
