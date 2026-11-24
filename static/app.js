@@ -80,17 +80,23 @@ function initEnvPicker(root) {
     : TZ_LIST.map(tz => ({ code: tz, label: tz }));
   const input = root.querySelector('input[type="hidden"]');
   const render = () => {
-    const selected = String(input.value || '').split(/[\s,]+/).filter(Boolean);
-    input.value = selected.join(',');
-    const chips = root.querySelector('.country-chips');
-    chips.innerHTML = selected.length
-      ? selected.map(v => '<button type="button" class="country-chip" data-env-code="' + escapeHtml(v) + '" title="移除 ' + escapeHtml(v) + '">' + escapeHtml(v) + '<span>×</span></button>').join('')
-      : '<span class="country-placeholder">' + (kind === 'lang' ? '选择放行的浏览器语言' : '选择放行的浏览器时区') + '</span>';
-    const query = (root.querySelector('.country-search').value || '').trim().toLowerCase();
-    const options = items.filter(it => it.code.toLowerCase().includes(query) || it.label.toLowerCase().includes(query));
-    root.querySelector('.country-options').innerHTML = options.length
-      ? options.map(it => '<button type="button" class="country-option' + (selected.includes(it.code) ? ' selected' : '') + '" data-env-option="' + escapeHtml(it.code) + '" role="option" aria-selected="' + selected.includes(it.code) + '"><span><b>' + escapeHtml(kind === 'lang' ? it.code : envTzLabel(it.code)) + '</b><small>' + escapeHtml(it.label) + '</small></span><i>' + (selected.includes(it.code) ? '✓' : '') + '</i></button>').join('')
-      : '<p class="country-empty">没有匹配的选项</p>';
+    count.textContent = pages.length ? pages.length + ' 个页面' : '暂无页面';
+    const enabledCount = pages.filter(page => page.enabled !== false).length;
+    count.textContent += pages.length ? '（启用 ' + enabledCount + '）' : '';
+    list.innerHTML = pages.length ? pages.map((page, index) => {
+      const src = '/api/pages/preview?project=' + encodeURIComponent(slug) + '&file=' + encodeURIComponent(page.file);
+      return [
+        '<div class="page-order-row' + (page.enabled === false ? ' off' : '') + '" data-file="' + page.file + '">',
+        '  <input type="checkbox" class="page-order-enabled" ' + (page.enabled === false ? '' : 'checked') + ' title="选用这个页面">',
+        '  <span class="page-order-index">' + (index + 1) + '</span>',
+        '  <img class="page-order-thumb" loading="lazy" alt="" data-full="' + src + '" src="' + src + '">',
+        '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
+        '  <button type="button" class="page-order-up" title="上移">↑</button>',
+        '  <button type="button" class="page-order-down" title="下移">↓</button>',
+        '</div>'
+      ].join('');
+    }).join('') : '<p class="page-order-empty">这个前台暂时没有可列出的页面。</p>';
+    bindThumbs();
   };
   const control = root.querySelector('.country-control');
   root._envClose = () => {
@@ -758,7 +764,7 @@ function appendPageOrderBlock(panel, projectId) {
   wrap.className = 'field page-order-field';
   wrap.innerHTML = [
     '<label>页面顺序（无人值守按此顺序自动推进）</label>',
-    '<div class="page-order-hint">下面是当前这个前台的全部页面。不调整时按默认顺序自动推进；调整后立即保存。</div>',
+    '<div class="page-order-hint">下面是当前这个前台的页面。勾选=启用，没勾选的不参与无人值守自动推进；上下箭头调顺序，改完立即保存。</div>',
     '<div class="page-order-toolbar">',
     '  <span class="page-order-current"></span>',
     '  <button type="button" class="page-order-reload">刷新</button>',
@@ -817,9 +823,25 @@ function appendPageOrderBlock(panel, projectId) {
     if (!slug) return;
     await api('/api/pages/order', {
       method: 'POST',
-      body: JSON.stringify({ project: slug, order: pages.map(page => page.file) })
+      body: JSON.stringify({
+        project: slug,
+        order: pages.map(page => page.file),
+        hidden: pages.filter(page => page.enabled === false).map(page => page.file)
+      })
     });
     toast('页面顺序已保存');
+  };
+
+  const openLightbox = src => {
+    const box = document.createElement('div');
+    box.className = 'page-order-lightbox';
+    box.innerHTML = '<img alt="">';
+    box.querySelector('img').src = src;
+    const close = () => box.remove();
+    box.addEventListener('click', close);
+    const onKey = event => { if (event.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+    document.body.append(box);
   };
 
   list.addEventListener('click', async event => {
@@ -827,7 +849,14 @@ function appendPageOrderBlock(panel, projectId) {
     if (!row) return;
     const index = pages.findIndex(page => page.file === row.dataset.file);
     if (index < 0) return;
-    if (event.target.closest('.page-order-up') && index > 0) {
+    if (event.target.closest('.page-order-thumb')) {
+      const full = event.target.closest('.page-order-thumb').dataset.full;
+      if (full) openLightbox(full);
+      return;
+    }
+    if (event.target.closest('.page-order-enabled')) {
+      pages[index].enabled = event.target.checked;
+    } else if (event.target.closest('.page-order-up') && index > 0) {
       [pages[index - 1], pages[index]] = [pages[index], pages[index - 1]];
     } else if (event.target.closest('.page-order-down') && index < pages.length - 1) {
       [pages[index + 1], pages[index]] = [pages[index], pages[index + 1]];

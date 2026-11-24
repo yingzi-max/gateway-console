@@ -82,3 +82,17 @@ dialog form{max-height:90vh;overflow:auto}
 .page-order-meta span { color: #6b7280; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .page-order-row button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
 .page-order-row button:hover { background: #f3f4f6; }
+
+
+/* 页面顺序：选用开关 + 缩略图放大 */
+.page-order-row.off { opacity: .45; filter: grayscale(1); }
+.page-order-enabled { width: 16px; height: 16px; margin-right: 6px; cursor: pointer; }
+.page-order-thumb { cursor: zoom-in; }
+.page-order-lightbox {
+  position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.82);
+  display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+}
+.page-order-lightbox img {
+  max-width: 94vw; max-height: 92vh; border-radius: 8px; box-shadow: 0 12px 48px rgba(0,0,0,.6);
+  background: #fff;
+}

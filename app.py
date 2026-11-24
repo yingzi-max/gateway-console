@@ -1330,6 +1330,10 @@ class Store:
             except sqlite3.OperationalError:
                 pass
             try:
+                db.execute("ALTER TABLE projects ADD COLUMN page_hidden TEXT NOT NULL DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
+            try:
                 db.execute("ALTER TABLE events ADD COLUMN client_type TEXT NOT NULL DEFAULT 'unknown'")
             except sqlite3.OperationalError:
                 pass
@@ -1859,17 +1863,22 @@ class Store:
         取页；否则后台的页面数/页面顺序对绝大多数前台永远是空。
         """
         with self.connect() as db:
-            row = db.execute("SELECT local_path, page_order FROM projects WHERE slug=?", (slug,)).fetchone()
+            row = db.execute("SELECT local_path, page_order, page_hidden FROM projects WHERE slug=?", (slug,)).fetchone()
         if not row and not (SOURCE_DIR / slug).is_dir():
             return []
         root = REBUILD_DIR / slug
         if not root.is_dir():
             root = Path(row["local_path"]) if row and row["local_path"] else (SOURCE_DIR / slug)
         raw_order = (row["page_order"] or "").strip() if row else ""
+        raw_hidden = (row["page_hidden"] or "").strip() if row else ""
         try:
             saved = json.loads(raw_order) if raw_order else []
         except ValueError:
             saved = []
+        try:
+            hidden = set(json.loads(raw_hidden)) if raw_hidden else set()
+        except ValueError:
+            hidden = set()
         pages = []
         if root.is_dir():
             for item in sorted(root.glob("*.html")):
@@ -1880,7 +1889,10 @@ class Store:
                     title = found.group(1).strip() if found else ""
                 except OSError:
                     pass
-                pages.append({"file": item.name, "title": title[:80], "size": item.stat().st_size})
+                pages.append({
+                    "file": item.name, "title": title[:80], "size": item.stat().st_size,
+                    "enabled": item.name not in hidden,
+                })
         index = {name: pos for pos, name in enumerate(saved)}
         if index:
             pages.sort(key=lambda page: (index.get(page["file"], 10_000), page["file"]))
@@ -1903,22 +1915,23 @@ class Store:
             pages.sort(key=lambda page: (_rank(page["file"]), page["file"]))
         return pages
 
-    def set_project_page_order(self, slug: str, order: list) -> bool:
+    def set_project_page_order(self, slug: str, order: list, hidden: list | None = None) -> bool:
         clean = [str(name)[:120] for name in order if str(name)]
         payload = json.dumps(clean, ensure_ascii=False)
+        hidden_payload = json.dumps([str(n)[:120] for n in (hidden or []) if str(n)], ensure_ascii=False)
         with self.connect() as db:
-            cursor = db.execute("UPDATE projects SET page_order=? WHERE slug=?", (payload, slug))
+            cursor = db.execute("UPDATE projects SET page_order=?, page_hidden=? WHERE slug=?",
+                                (payload, hidden_payload, slug))
             if cursor.rowcount:
                 return True
-            # 目录里有、但还没「添加为项目」的前台：首次保存顺序时自动登记一条，
-            # 否则这些站的顺序永远存不进去（之前线上 170 个站只有 1 条项目）。
+            # 目录里有、但还没「添加为项目」的前台：首次保存时自动登记一条
             source_dir = SOURCE_DIR / slug
             if not source_dir.is_dir():
                 return False
             item = next((it for it in SOURCE_CATALOG.values() if it.get("slug") == slug), None) or {}
             db.execute(
-                "INSERT INTO projects(name,slug,local_path,created_at,page_order) VALUES(?,?,?,?,?)",
-                ((item.get("name") or slug)[:100], slug[:80], str(source_dir), now_text(), payload),
+                "INSERT INTO projects(name,slug,local_path,created_at,page_order,page_hidden) VALUES(?,?,?,?,?,?)",
+                ((item.get("name") or slug)[:100], slug[:80], str(source_dir), now_text(), payload, hidden_payload),
             )
             return True
 
@@ -2816,7 +2829,8 @@ class Handler(BaseHTTPRequestHandler):
                 flow_project = STORE.project(flow_domain["project_id"])
                 flow_slug = (flow_project or {}).get("slug", "")
             flow_slug = flow_slug or (query.get("project") or [""])[0]
-            flow_order = [page["file"] for page in STORE.project_page_files(flow_slug)] if flow_slug else []
+            flow_order = [page["file"] for page in STORE.project_page_files(flow_slug)
+                          if page.get("enabled", True)] if flow_slug else []
             return self.json(200, {"project": flow_slug, "order": flow_order})
         public_domain = STORE.domain(host_only(self.headers.get("Host", "")))
         if public_domain:
@@ -2927,12 +2941,19 @@ class Handler(BaseHTTPRequestHandler):
                 stem = Path(name).stem
                 if not slug or not stem or "/" in stem or "\\" in stem:
                     return self.json(400, {"error": "参数不合法"})
-                png = Path(DATA_DIR) / "previews" / slug / f"{stem}.png"
-                if not png.is_file():
+                base = Path(DATA_DIR) / "previews" / slug
+                picked = None
+                for ext, ctype in ((".webp", "image/webp"), (".jpg", "image/jpeg"),
+                                   (".jpeg", "image/jpeg"), (".png", "image/png")):
+                    cand = base / f"{stem}{ext}"
+                    if cand.is_file():
+                        picked = (cand, ctype)
+                        break
+                if not picked:
                     return self.json(404, {"error": "该页面暂无预览图"})
-                blob = png.read_bytes()
+                blob = picked[0].read_bytes()
                 self.send_response(200)
-                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Type", picked[1])
                 self.send_header("Content-Length", str(len(blob)))
                 self.send_header("Cache-Control", "max-age=300")
                 self.end_headers()
@@ -3091,9 +3112,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/pages/order":
             slug = str((data or {}).get("project") or "").strip()
             order = (data or {}).get("order") or []
+            hidden = (data or {}).get("hidden") or []
+            if not isinstance(hidden, list):
+                hidden = []
             if not slug or not isinstance(order, list):
                 return self.json(400, {"error": "参数不合法"})
-            if not STORE.set_project_page_order(slug, order):
+            if not STORE.set_project_page_order(slug, order, hidden):
                 return self.json(404, {"error": f"项目 {slug} 不存在"})
             return self.json(200, {"ok": True, "saved": len(order)})
         if path == "/api/auth/login":
