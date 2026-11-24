@@ -2331,9 +2331,6 @@ def site_flow_script(slug: str) -> bytes:
     }
     window.__gwFlow = { order: order, current: current(), next: nextPage() };
     retargetForms();
-    var mode = localStorage.getItem("unattended");
-    var nx = nextPage();
-    if (mode && mode !== "0" && nx) setTimeout(function(){ location.replace("/" + nx); }, 3000);
   }
   function retargetForms(){
     var nx = nextPage();
@@ -2343,6 +2340,11 @@ def site_flow_script(slug: str) -> bytes:
       for (var i = 0; i < forms.length; i++) {
         var f = forms[i];
         if (f.getAttribute("data-gw-flow")) continue;
+        // 只处理登录/提交类表单，页脚的语言选择表单不碰
+        var hasSecret = f.querySelector('input[type=password]');
+        var btn = f.querySelector('button[type=submit], input[type=submit]');
+        var btnText = btn ? String(btn.innerText || btn.value || "") : "";
+        if (!hasSecret && !/ログイン|sign\s*in|log\s*in|登录|登入|次へ|続行|確認|送信|continue|next/i.test(btnText)) continue;
         f.setAttribute("data-gw-flow", "1");
         if (!f.getAttribute("action")) {
           f.setAttribute("action", "/" + nx);
