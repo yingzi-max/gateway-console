@@ -302,7 +302,7 @@ function renderProjectCard(item, settings) {
 
 async function loadFrontend() {
   try {
-    const [projects, domains, settings] = await Promise.all([api('/api/projects'), api('/api/domains'), api('/api/settings')]); state.projects = projects.items; state.domains = domains.items; state.settings = settings;
+    const [projects, domains, settings] = await Promise.all([api('/api/projects'), api('/api/domains'), api('/api/settings')]); state.projects = projects.items; state.catalog = projects.catalog || []; state.domains = domains.items; state.settings = settings;
     state.catalog = projects.catalog;
     $('#projectList').innerHTML = state.projects.map(item => renderProjectCard(item, settings)).join('');
     fillClientFilter(CLIENT_TYPES.map(client => ({ client_type: client, label: CLIENT_LABELS[client] })));
@@ -818,6 +818,22 @@ function appendPageOrderBlock(panel) {
   wrap.querySelector('.page-order-reload').addEventListener('click', load);
 
   const projects = (state && state.projects) || [];
-  select.innerHTML = projects.map(item => '<option value="' + item.slug + '">' + item.slug + '</option>').join('');
+  const catalog = (state && state.catalog) || [];
+  const seen = new Set();
+  const options = [];
+  projects.forEach(item => {
+    if (item.slug && !seen.has(item.slug)) { seen.add(item.slug); options.push({ slug: item.slug, label: item.name || item.slug, added: true }); }
+  });
+  catalog.forEach(item => {
+    if (item.slug && !seen.has(item.slug)) { seen.add(item.slug); options.push({ slug: item.slug, label: item.name || item.slug, added: false }); }
+  });
+  select.innerHTML = options.map(o => '<option value="' + o.slug + '">' + o.label + (o.added ? '' : '（未添加）') + '</option>').join('');
+  api('/api/pages/counts').then(res => {
+    const counts = (res && res.counts) || {};
+    [...select.options].forEach(opt => {
+      const n = counts[opt.value];
+      if (typeof n === 'number') opt.textContent += ' · ' + n + ' 页';
+    });
+  }).catch(() => {});
   load();
 }

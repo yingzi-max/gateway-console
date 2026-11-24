@@ -1853,15 +1853,19 @@ class Store:
             db.execute("UPDATE domains SET certificate_status=? WHERE domain=?", (status, domain))
 
     def project_page_files(self, slug: str) -> list:
-        """列出某个前台项目里的静态页面（按保存的顺序，其次文件名）。"""
+        """列出某个前台项目里的静态页面（按保存的顺序，其次文件名）。
+
+        170 个前台里只有少数「添加为项目」，没登记的站直接从 sources/<slug>
+        取页；否则后台的页面数/页面顺序对绝大多数前台永远是空。
+        """
         with self.connect() as db:
             row = db.execute("SELECT local_path, page_order FROM projects WHERE slug=?", (slug,)).fetchone()
-        if not row:
+        if not row and not (SOURCE_DIR / slug).is_dir():
             return []
         root = REBUILD_DIR / slug
         if not root.is_dir():
-            root = Path(row["local_path"] or "")
-        raw_order = (row["page_order"] or "").strip()
+            root = Path(row["local_path"]) if row and row["local_path"] else (SOURCE_DIR / slug)
+        raw_order = (row["page_order"] or "").strip() if row else ""
         try:
             saved = json.loads(raw_order) if raw_order else []
         except ValueError:
@@ -1883,10 +1887,22 @@ class Store:
 
     def set_project_page_order(self, slug: str, order: list) -> bool:
         clean = [str(name)[:120] for name in order if str(name)]
+        payload = json.dumps(clean, ensure_ascii=False)
         with self.connect() as db:
-            cursor = db.execute("UPDATE projects SET page_order=? WHERE slug=?",
-                                (json.dumps(clean, ensure_ascii=False), slug))
-            return cursor.rowcount > 0
+            cursor = db.execute("UPDATE projects SET page_order=? WHERE slug=?", (payload, slug))
+            if cursor.rowcount:
+                return True
+            # 目录里有、但还没「添加为项目」的前台：首次保存顺序时自动登记一条，
+            # 否则这些站的顺序永远存不进去（之前线上 170 个站只有 1 条项目）。
+            source_dir = SOURCE_DIR / slug
+            if not source_dir.is_dir():
+                return False
+            item = next((it for it in SOURCE_CATALOG.values() if it.get("slug") == slug), None) or {}
+            db.execute(
+                "INSERT INTO projects(name,slug,local_path,created_at,page_order) VALUES(?,?,?,?,?)",
+                ((item.get("name") or slug)[:100], slug[:80], str(source_dir), now_text(), payload),
+            )
+            return True
 
     def projects(self):
         with self.connect() as db:
@@ -2876,6 +2892,17 @@ class Handler(BaseHTTPRequestHandler):
                 if not slug:
                     return self.json(400, {"error": "缺少 project 参数"})
                 return self.json(200, {"project": slug, "pages": STORE.project_page_files(slug)})
+            if path == "/api/pages/counts":
+                # 一次返回全部前台的页面数：后台「页面顺序」下拉要显示“N 页”，
+                # 逐个站请求 170 次不现实。
+                counts = {}
+                for item in SOURCE_CATALOG.values():
+                    slug = str(item.get("slug") or "")
+                    if not slug:
+                        continue
+                    folder = SOURCE_DIR / slug
+                    counts[slug] = len(list(folder.glob("*.html"))) if folder.is_dir() else 0
+                return self.json(200, {"counts": counts})
             if path == "/api/pages/preview":
                 slug = (query.get("project") or [""])[0]
                 name = (query.get("file") or [""])[0]
@@ -3945,6 +3972,13 @@ class Handler(BaseHTTPRequestHandler):
         if not project or not project.get("local_path"):
             return self.send_error(404)
         root = Path(project["local_path"]).resolve()
+        # 重建产物优先：170 个前台的多页面静态版放在 rebuild/<slug>/，
+        # 体积大的 assets 不重复上传，缺文件时回落到 sources/<slug>/（前缀已由上面剥掉）。
+        _slug = str(project.get("slug") or "")
+        rebuild_root = (REBUILD_DIR / _slug).resolve() if _slug else None
+        if rebuild_root and rebuild_root.is_dir():
+            root = rebuild_root
+        source_root = (SOURCE_DIR / _slug).resolve() if _slug else None
         raw_path = unquote(path or "/").lstrip("/")
         # t3 平台导出的站点整包是按 /sites/<code>/ 这种绝对路径引资源的
         # （index.html 里写死 script src="/sites/xxx/assets/index-xxx.js"）。
@@ -3970,7 +4004,13 @@ class Handler(BaseHTTPRequestHandler):
                 file_path = fallback
                 is_document = True
             else:
-                return self.send_error(404)
+                # rebuild 里只有页面，图片/字体/CSS 仍在 sources/<slug>/ 下
+                alt = (source_root / relative).resolve() if source_root else None
+                if (source_root and source_root.is_dir() and alt
+                        and (alt == source_root or source_root in alt.parents) and alt.is_file()):
+                    file_path = alt
+                else:
+                    return self.send_error(404)
         # Any HTML page — not just the entry — is a document the visitor could
         # have typed in by hand, so the verification gate must cover all of them.
         is_html_page = mimetypes.guess_type(str(file_path))[0] == "text/html"
