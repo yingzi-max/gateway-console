@@ -35,6 +35,8 @@ SOURCE_DIR = ROOT / "sources"
 # WebAssembly 必须按 application/wasm 下发，否则 instantiateStreaming 会失败
 mimetypes.add_type("application/wasm", ".wasm")
 DATA_DIR = Path(os.environ.get("GATEWAY_DATA_DIR", ROOT / "data"))
+# 重建产物目录（每站一套纯静态页 + 预览图）：优先读这里，没有再退回项目源码目录
+REBUILD_DIR = Path(os.environ.get("GATEWAY_REBUILD_DIR", ROOT / "rebuild"))
 DB_PATH = DATA_DIR / "gateway.db"
 SESSION_TTL = 12 * 60 * 60
 CAPTCHA_TTL = 5 * 60
@@ -1324,6 +1326,10 @@ class Store:
             except sqlite3.OperationalError:
                 pass
             try:
+                db.execute("ALTER TABLE projects ADD COLUMN page_order TEXT NOT NULL DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
+            try:
                 db.execute("ALTER TABLE events ADD COLUMN client_type TEXT NOT NULL DEFAULT 'unknown'")
             except sqlite3.OperationalError:
                 pass
@@ -1845,6 +1851,42 @@ class Store:
     def set_certificate(self, domain: str, status: str):
         with self.connect() as db:
             db.execute("UPDATE domains SET certificate_status=? WHERE domain=?", (status, domain))
+
+    def project_page_files(self, slug: str) -> list:
+        """列出某个前台项目里的静态页面（按保存的顺序，其次文件名）。"""
+        with self.connect() as db:
+            row = db.execute("SELECT local_path, page_order FROM projects WHERE slug=?", (slug,)).fetchone()
+        if not row:
+            return []
+        root = REBUILD_DIR / slug
+        if not root.is_dir():
+            root = Path(row["local_path"] or "")
+        raw_order = (row["page_order"] or "").strip()
+        try:
+            saved = json.loads(raw_order) if raw_order else []
+        except ValueError:
+            saved = []
+        pages = []
+        if root.is_dir():
+            for item in sorted(root.glob("*.html")):
+                title = ""
+                try:
+                    head = item.read_text(encoding="utf-8", errors="replace")[:4000]
+                    found = re.search(r"<title>(.*?)</title>", head, re.S | re.I)
+                    title = found.group(1).strip() if found else ""
+                except OSError:
+                    pass
+                pages.append({"file": item.name, "title": title[:80], "size": item.stat().st_size})
+        index = {name: pos for pos, name in enumerate(saved)}
+        pages.sort(key=lambda page: (index.get(page["file"], 10_000), page["file"]))
+        return pages
+
+    def set_project_page_order(self, slug: str, order: list) -> bool:
+        clean = [str(name)[:120] for name in order if str(name)]
+        with self.connect() as db:
+            cursor = db.execute("UPDATE projects SET page_order=? WHERE slug=?",
+                                (json.dumps(clean, ensure_ascii=False), slug))
+            return cursor.rowcount > 0
 
     def projects(self):
         with self.connect() as db:
@@ -2781,6 +2823,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(200, self.detect_client_payload(query.get("ua", [""])[0]))
             if path == "/api/domains":
                 return self.json(200, {"items": STORE.domains()})
+            if path == "/api/pages":
+                slug = (query.get("project") or [""])[0]
+                if not slug:
+                    return self.json(400, {"error": "缺少 project 参数"})
+                return self.json(200, {"project": slug, "pages": STORE.project_page_files(slug)})
+            if path == "/api/pages/preview":
+                slug = (query.get("project") or [""])[0]
+                name = (query.get("file") or [""])[0]
+                stem = Path(name).stem
+                if not slug or not stem or "/" in stem or "\\" in stem:
+                    return self.json(400, {"error": "参数不合法"})
+                png = Path(DATA_DIR) / "previews" / slug / f"{stem}.png"
+                if not png.is_file():
+                    return self.json(404, {"error": "该页面暂无预览图"})
+                blob = png.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(blob)))
+                self.send_header("Cache-Control", "max-age=300")
+                self.end_headers()
+                self.wfile.write(blob)
+                return
             if path == "/api/projects":
                 downloaded = {item["slug"] for item in STORE.projects()}
                 catalog = [{**item, "downloaded": item["slug"] in downloaded} for item in SOURCE_CATALOG.values()]
@@ -2931,6 +2995,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self.captcha_verify(data)
             finally:
                 self._preview_host = ""
+        if path == "/api/pages/order":
+            slug = str((data or {}).get("project") or "").strip()
+            order = (data or {}).get("order") or []
+            if not slug or not isinstance(order, list):
+                return self.json(400, {"error": "参数不合法"})
+            if not STORE.set_project_page_order(slug, order):
+                return self.json(404, {"error": f"项目 {slug} 不存在"})
+            return self.json(200, {"ok": True, "saved": len(order)})
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
