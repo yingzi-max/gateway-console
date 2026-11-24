@@ -96,6 +96,13 @@ def main() -> int:
                           el.setAttribute('data-gw-hidden','1');
                         }
                       });
+                      root.querySelectorAll('input').forEach(el=>{
+                        if(el.checked) el.setAttribute('checked',''); else el.removeAttribute('checked');
+                      });
+                      root.querySelectorAll('option').forEach(el=>{
+                        if(el.selected) el.setAttribute('selected',''); else el.removeAttribute('selected');
+                      });
+                      root.querySelectorAll('textarea').forEach(el=>{el.textContent=el.value;});
                       return root.innerHTML;})()""", 30) or ""
                     root_fs = cdp.ev("getComputedStyle(document.documentElement).fontSize", 10) or ""
                     head_css = cdp.ev("Array.from(document.querySelectorAll('style'))"

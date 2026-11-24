@@ -824,7 +824,7 @@ letian_jp_creditcards,/,loginPage,0.000,OK,main
 letian_jp_creditcards,/HomePass,loginPagePass,0.000,OK,main
 letian_jp_creditcards,/amex-safe,amexPage,0.000,OK,main
 letian_jp_creditcards,/app-authorized,appPage,0.000,OK,main
-letian_jp_creditcards,/associatedBank,-,2.830,差异大,repair
+letian_jp_creditcards,/associatedBank,-,0.000,OK,repair
 letian_jp_creditcards,/checkout,checkoutPage,0.000,OK,main
 letian_jp_creditcards,/email-verification,emailPage,0.000,OK,main
 letian_jp_creditcards,/pin-authentication,pinPage,0.000,OK,main
