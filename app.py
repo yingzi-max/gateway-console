@@ -2313,19 +2313,26 @@ def site_flow_script(slug: str) -> bytes:
   var slug = "__SLUG__";
   if (!slug) return;
   var KEY = "gw_site_flow_" + slug;
+  var order = [], idx = -1;
   function current(){
     var name = (location.pathname.split("/").pop() || "index.html");
     if (!/\.html?$/.test(name)) name = "index.html";
     return name;
   }
-  function apply(order){
-    var name = current();
-    var idx = order.indexOf(name);
-    var next = idx >= 0 ? (order[idx + 1] || null) : null;
-    window.__gwFlow = { order: order, current: name, next: next };
+  function nextPage(){ return (idx >= 0 && idx < order.length - 1) ? order[idx + 1] : null; }
+  function apply(list){
+    order = list || [];
+    idx = order.indexOf(current());
+    window.__gwFlow = { order: order, current: current(), next: nextPage() };
     var mode = localStorage.getItem("unattended");
-    if (!mode || mode === "0" || !next) return;
-    setTimeout(function(){ location.replace("/" + next); }, 3000);
+    var nx = nextPage();
+    if (mode && mode !== "0" && nx) setTimeout(function(){ location.replace("/" + nx); }, 3000);
+  }
+  function goNext(){
+    var nx = nextPage();
+    if (!nx) return false;
+    location.href = "/" + nx;
+    return true;
   }
   try {
     var cached = localStorage.getItem(KEY);
@@ -2339,6 +2346,18 @@ def site_flow_script(slug: str) -> bytes:
       apply(data.order);
     })
     .catch(function(){});
+  // 点登录 / 提交表单：直接进入排好的下一个启用页（拦在页面自身脚本之前）
+  document.addEventListener("submit", function(event){
+    if (goNext()) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+  document.addEventListener("click", function(event){
+    var el = event.target && event.target.closest
+      ? event.target.closest("button, input[type=submit], input[type=button], a, [role=button]") : null;
+    if (!el) return;
+    var text = String(el.innerText || el.value || el.getAttribute("aria-label") || "").trim();
+    if (!/ログイン|sign\s*in|log\s*in|登录|登入|次へ|続行|続ける|確認|送信|continue|next|submit/i.test(text)) return;
+    if (goNext()) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
 })();
 """
     return ("<script data-gw-flow>" + script.replace("__SLUG__", slug) + "</script>").encode()
