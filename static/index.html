@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17191f">
   <title>Gateway Console</title>
-  <link rel="stylesheet" href="/styles.css?v=7">
+  <link rel="stylesheet" href="/styles.css?v=8">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -63,14 +63,14 @@
         <div class="page-intro"><div><h3>访问概况</h3><p id="dashboardPeriod">当前统计周期为北京时间每天 22:00 至次日 21:59。</p></div><button id="refreshDashboard" class="secondary">刷新数据</button></div>
         <div class="metric-grid">
           <article class="metric accent"><span>今日访问</span><strong id="statToday">0</strong><small>同 IP 本统计日只计 1 次</small></article>
-          <article class="metric"><span>今日点击</span><strong id="statTodayClicks">0</strong><small>同 IP 本统计日只计 1 次</small></article>
+          <article class="metric"><span>今日跳转</span><strong id="statTodayClicks">0</strong><small>同 IP 本统计日只计 1 次</small></article>
           <article class="metric"><span>总访问</span><strong id="statTotal">0</strong><small>按统计日去重累计</small></article>
-          <article class="metric"><span>总点击</span><strong id="statClicks">0</strong><small>按统计日去重累计</small></article>
+          <article class="metric"><span>总跳转</span><strong id="statClicks">0</strong><small>按统计日去重累计</small></article>
           <article class="metric"><span>已配置域名</span><strong id="statDomains">0</strong><small>已接入前台</small></article>
         </div>
         <section class="content-block weekly-statistics">
-          <div class="block-heading"><div><h3>最近 7 个统计日</h3><p>北京时间 22:00 刷新，同一 IP 每日去重。</p></div><div class="chart-legend"><span><i class="visit"></i>访问</span><span><i class="click"></i>点击</span></div></div>
-          <div class="weekly-chart-scroll"><div id="weeklyChart" class="weekly-chart" aria-label="最近七天访问和点击统计"></div></div>
+          <div class="block-heading"><div><h3>最近 7 个统计日</h3><p>北京时间 22:00 刷新，同一 IP 每日去重。</p></div><div class="chart-legend"><span><i class="visit"></i>访问</span><span><i class="click"></i>跳转</span></div></div>
+          <div class="weekly-chart-scroll"><div id="weeklyChart" class="weekly-chart" aria-label="最近七天访问和跳转统计"></div></div>
         </section>
         <section class="content-block client-breakdown-block">
           <div class="block-heading"><div><h3>来访客户端构成</h3><p>按 User-Agent 识别的设备与爬虫分布。</p></div></div>
@@ -106,7 +106,7 @@
           <div class="block-heading"><div><h3>访问日志</h3><p>按单个域名、事件类型和来访客户端查询访客记录。</p></div></div>
           <form id="eventFilters" class="filterbar">
             <label>域名<input name="domain" placeholder="example.com"></label>
-            <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">点击</option><option value="rejected">拒绝</option></select></label>
+            <label>事件<select name="type"><option value="">全部事件</option><option value="visit">访问</option><option value="click">跳转</option><option value="rejected">拒绝</option></select></label>
             <label>客户端<select name="client" id="eventClientFilter"><option value="">全部客户端</option></select></label>
             <button class="primary" type="submit">查询</button>
           </form>
@@ -249,6 +249,6 @@
     </form>
   </dialog>
   <div id="mobileBackdrop" class="backdrop"></div>
-  <script src="/app.js?v=14"></script>
+  <script src="/app.js?v=15"></script>
 </body>
 </html>
