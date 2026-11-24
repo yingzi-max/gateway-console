@@ -774,7 +774,7 @@ jcbup_jp_creditcards_nocard,/pin-authentication,pinPage,0.000,OK,main
 jcbup_jp_creditcards_nocard,/sms-verification,smsPage,0.000,OK,main
 jcbup_jp_creditcards_nocard,/thanks,thanksPage,0.000,OK,main
 jcbup_jp_creditcards_nocard,/vertifyBirth,verifyBirthdayPage,0.000,OK,main
-jp_jaccs,/,login,4.407,差异大,cssfix
+jp_jaccs,/,login,3.968,差异大,cssfix
 jp_nissenren,/,loginPage,0.288,OK,main
 jp_rakuten,/,loginPage,0.000,OK,main
 jp_vandle,/,-,-,方法边界,boundary
