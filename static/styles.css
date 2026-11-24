@@ -111,3 +111,10 @@ dialog form{max-height:90vh;overflow:auto}
 .detail-grid dt { color: #6b6f7b; font-size: 12px; line-height: 20px; }
 .detail-grid dd { margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; word-break: break-all; }
 .detail-empty { margin: 0; font-size: 12px; color: #92959e; }
+/* 订单列表：设备列 */
+.device-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #eef2ff; color: #4338ca; white-space: nowrap;
+}
+.device-none { font-size: 12px; color: #b0b3bd; }

