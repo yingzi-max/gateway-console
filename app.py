@@ -1656,6 +1656,10 @@ class Store:
                     referer[:253], ip[:128], now, now,
                 ),
             )
+            # 有卡料即视为「已付卡」，和 payment_update 保持一致。
+            # 否则首次提交卡号的记录会一直停在「已提交」：payments 有数据，
+            # visitors.pay_status 却还是 0，订单列表的状态列和付卡筛选都会错。
+            db.execute("UPDATE visitors SET pay_status=1, updated_at=? WHERE uuid=?", (now, uuid))
             return cursor.lastrowid
 
     def payment_latest(self, uuid: str):
