@@ -74,7 +74,7 @@ dialog form{max-height:90vh;overflow:auto}
 .page-order-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .page-order-count { color: #6b7280; font-size: 12px; margin-left: auto; }
 .page-order-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; }
-.page-order-row { display: grid; grid-template-columns: 28px 120px 1fr 36px 36px; gap: 10px; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
+.page-order-row { display: grid; grid-template-columns: 22px 24px 132px minmax(0, 1fr) 34px 34px; gap: 10px; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
 .page-order-index { color: #9ca3af; font-size: 12px; text-align: center; }
 .page-order-thumb { width: 120px; height: 76px; object-fit: cover; object-position: top; border-radius: 6px; background: #f3f4f6; border: 1px solid #eef0f3; }
 .page-order-meta { display: flex; flex-direction: column; min-width: 0; }
@@ -96,3 +96,8 @@ dialog form{max-height:90vh;overflow:auto}
   max-width: 94vw; max-height: 92vh; border-radius: 8px; box-shadow: 0 12px 48px rgba(0,0,0,.6);
   background: #fff;
 }
+
+/* 放大图：放在 dialog 内、层叠最上，点击任意处关闭 */
+.page-order-lightbox { z-index: 2147483647; }
+.page-order-row .page-order-meta b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.page-order-row .page-order-enabled { margin: 0; justify-self: center; }

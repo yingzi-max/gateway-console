@@ -840,7 +840,7 @@ function appendPageOrderBlock(panel, projectId) {
     box.addEventListener('click', close);
     const onKey = event => { if (event.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
     document.addEventListener('keydown', onKey);
-    document.body.append(box);
+    (document.querySelector('dialog[open]') || document.body).append(box);
   };
 
   list.addEventListener('click', async event => {
