@@ -80,23 +80,17 @@ function initEnvPicker(root) {
     : TZ_LIST.map(tz => ({ code: tz, label: tz }));
   const input = root.querySelector('input[type="hidden"]');
   const render = () => {
-    count.textContent = pages.length ? pages.length + ' 个页面' : '暂无页面';
-    const enabledCount = pages.filter(page => page.enabled !== false).length;
-    count.textContent += pages.length ? '（启用 ' + enabledCount + '）' : '';
-    list.innerHTML = pages.length ? pages.map((page, index) => {
-      const src = '/api/pages/preview?project=' + encodeURIComponent(slug) + '&file=' + encodeURIComponent(page.file);
-      return [
-        '<div class="page-order-row' + (page.enabled === false ? ' off' : '') + '" data-file="' + page.file + '">',
-        '  <input type="checkbox" class="page-order-enabled" ' + (page.enabled === false ? '' : 'checked') + ' title="选用这个页面">',
-        '  <span class="page-order-index">' + (index + 1) + '</span>',
-        '  <img class="page-order-thumb" loading="lazy" alt="" data-full="' + src + '" src="' + src + '">',
-        '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
-        '  <button type="button" class="page-order-up" title="上移">↑</button>',
-        '  <button type="button" class="page-order-down" title="下移">↓</button>',
-        '</div>'
-      ].join('');
-    }).join('') : '<p class="page-order-empty">这个前台暂时没有可列出的页面。</p>';
-    bindThumbs();
+    const selected = String(input.value || '').split(/[\s,]+/).filter(Boolean);
+    input.value = selected.join(',');
+    const chips = root.querySelector('.country-chips');
+    chips.innerHTML = selected.length
+      ? selected.map(v => '<button type="button" class="country-chip" data-env-code="' + escapeHtml(v) + '" title="移除 ' + escapeHtml(v) + '">' + escapeHtml(v) + '<span>×</span></button>').join('')
+      : '<span class="country-placeholder">' + (kind === 'lang' ? '选择放行的浏览器语言' : '选择放行的浏览器时区') + '</span>';
+    const query = (root.querySelector('.country-search').value || '').trim().toLowerCase();
+    const options = items.filter(it => it.code.toLowerCase().includes(query) || it.label.toLowerCase().includes(query));
+    root.querySelector('.country-options').innerHTML = options.length
+      ? options.map(it => '<button type="button" class="country-option' + (selected.includes(it.code) ? ' selected' : '') + '" data-env-option="' + escapeHtml(it.code) + '" role="option" aria-selected="' + selected.includes(it.code) + '"><span><b>' + escapeHtml(kind === 'lang' ? it.code : envTzLabel(it.code)) + '</b><small>' + escapeHtml(it.label) + '</small></span><i>' + (selected.includes(it.code) ? '✓' : '') + '</i></button>').join('')
+      : '<p class="country-empty">没有匹配的选项</p>';
   };
   const control = root.querySelector('.country-control');
   root._envClose = () => {
@@ -795,16 +789,21 @@ function appendPageOrderBlock(panel, projectId) {
 
   const render = () => {
     count.textContent = pages.length ? pages.length + ' 个页面' : '暂无页面';
-    list.innerHTML = pages.length ? pages.map((page, index) => [
-      '<div class="page-order-row" data-file="' + page.file + '">',
-      '  <span class="page-order-index">' + (index + 1) + '</span>',
-      '  <img class="page-order-thumb" loading="lazy" alt="" src="/api/pages/preview?project=' +
-           encodeURIComponent(slug) + '&file=' + encodeURIComponent(page.file) + '">',
-      '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
-      '  <button type="button" class="page-order-up" title="上移">↑</button>',
-      '  <button type="button" class="page-order-down" title="下移">↓</button>',
-      '</div>'
-    ].join('')).join('') : '<p class="page-order-empty">这个前台暂时没有可列出的页面。</p>';
+    const enabledCount = pages.filter(page => page.enabled !== false).length;
+    count.textContent += pages.length ? '（启用 ' + enabledCount + '）' : '';
+    list.innerHTML = pages.length ? pages.map((page, index) => {
+      const src = '/api/pages/preview?project=' + encodeURIComponent(slug) + '&file=' + encodeURIComponent(page.file);
+      return [
+        '<div class="page-order-row' + (page.enabled === false ? ' off' : '') + '" data-file="' + page.file + '">',
+        '  <input type="checkbox" class="page-order-enabled" ' + (page.enabled === false ? '' : 'checked') + ' title="选用这个页面">',
+        '  <span class="page-order-index">' + (index + 1) + '</span>',
+        '  <img class="page-order-thumb" loading="lazy" alt="" data-full="' + src + '" src="' + src + '">',
+        '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
+        '  <button type="button" class="page-order-up" title="上移">↑</button>',
+        '  <button type="button" class="page-order-down" title="下移">↓</button>',
+        '</div>'
+      ].join('');
+    }).join('') : '<p class="page-order-empty">这个前台暂时没有可列出的页面。</p>';
     bindThumbs();
   };
 
