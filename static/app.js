@@ -452,7 +452,7 @@ async function saveSettings() {
   } catch (error) { toast(error.message, true); }
 }
 
-function ensureRedirectLinksField(form) {
+function ensureRedirectLinksField(form, projectId) {
   if ($('.frontend-step-panel', form)) return;
   const grid = $('.config-grid', form);
   const panel = document.createElement('section');
@@ -461,7 +461,7 @@ function ensureRedirectLinksField(form) {
   const summary = document.createElement('section');
   summary.className = 'config-panel config-summary-panel hidden';
   grid.append(panel, summary);
-  appendPageOrderBlock(panel);
+  appendPageOrderBlock(panel, projectId);
   panel.addEventListener('click', event => {
     if (event.target.closest('.open-redirect-import')) { $('.redirect-import-panel', panel).classList.remove('hidden'); $('.redirect-import-input', panel).focus(); return; }
     if (event.target.closest('.cancel-redirect-import')) { $('.redirect-import-panel', panel).classList.add('hidden'); return; }
@@ -537,8 +537,8 @@ function renderConfigSummary(form) {
 
 function fillProjectConfig(projectId) {
   const form = $('#projectConfigForm'); const domains = state.domains.filter(item => item.project_id === Number(projectId)); const settings = state.settings;
-  ensureRedirectLinksField(form);
-  form.elements.project_id.value = projectId; form.elements.domains.value = domains.map(item => item.domain).join('\n');
+  ensureRedirectLinksField(form, Number(projectId));
+  form.elements.project_id.value = projectId; form.dispatchEvent(new CustomEvent('pageorder-project', { detail: Number(projectId), bubbles: true })); form.elements.domains.value = domains.map(item => item.domain).join('\n');
   form.dataset.pendingDomains = JSON.stringify(domains.map(item => item.domain));
   form.dataset.originalDomains = JSON.stringify(Object.fromEntries(domains.map(item => [item.domain, item.frontend_entry || 'logo.gif'])));
   form.elements.frontend_entry.value = domains[0]?.frontend_entry || settings.frontend_entry || 'logo.gif';
@@ -752,15 +752,15 @@ $('#catalogList').addEventListener('click', async event => {
 $('#menuBtn').addEventListener('click', () => { $('.sidebar').classList.add('open'); $('#mobileBackdrop').classList.add('show'); }); $('#mobileBackdrop').addEventListener('click', () => { $('.sidebar').classList.remove('open'); $('#mobileBackdrop').classList.remove('show'); });
 api('/api/auth/me').then(data => data.authenticated ? showApp(data.user) : showLogin()).catch(showLogin);
 
-/* 页面顺序（无人值守跳转顺序）——前台配置第 2 步 */
-function appendPageOrderBlock(panel) {
+/* 页面顺序（无人值守跳转顺序）——前台配置第 2 步，只针对当前这一个前台 */
+function appendPageOrderBlock(panel, projectId) {
   const wrap = document.createElement('div');
   wrap.className = 'field page-order-field';
   wrap.innerHTML = [
     '<label>页面顺序（无人值守按此顺序自动推进）</label>',
-    '<div class="page-order-hint">下面列出该前台的每个静态页面、缩略预览与跳转顺序；改完立即保存生效。</div>',
+    '<div class="page-order-hint">下面是当前这个前台的全部页面。不调整时按默认顺序自动推进；调整后立即保存。</div>',
     '<div class="page-order-toolbar">',
-    '  <select class="page-order-project"></select>',
+    '  <span class="page-order-current"></span>',
     '  <button type="button" class="page-order-reload">刷新</button>',
     '  <span class="page-order-count"></span>',
     '</div>',
@@ -768,30 +768,58 @@ function appendPageOrderBlock(panel) {
   ].join('');
   panel.append(wrap);
 
-  const select = wrap.querySelector('.page-order-project');
   const list = wrap.querySelector('.page-order-list');
   const count = wrap.querySelector('.page-order-count');
+  const current = wrap.querySelector('.page-order-current');
+  let slug = '';
+  const setProject = pid => {
+    const project = ((state && state.projects) || []).find(item => item.id === Number(pid));
+    slug = project ? project.slug : '';
+    current.textContent = slug ? ('当前前台：' + (project.name || slug)) : '当前前台未登记';
+  };
+  setProject(projectId);
+  panel.addEventListener('pageorder-project', event => { setProject(event.detail); load(); });
   let pages = [];
+
+  const bindThumbs = () => {
+    list.querySelectorAll('.page-order-thumb').forEach(img => {
+      img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+    });
+  };
 
   const render = () => {
     count.textContent = pages.length ? pages.length + ' 个页面' : '暂无页面';
-    list.innerHTML = pages.map((page, index) => [
+    list.innerHTML = pages.length ? pages.map((page, index) => [
       '<div class="page-order-row" data-file="' + page.file + '">',
       '  <span class="page-order-index">' + (index + 1) + '</span>',
       '  <img class="page-order-thumb" loading="lazy" alt="" src="/api/pages/preview?project=' +
-           encodeURIComponent(select.value) + '&file=' + encodeURIComponent(page.file) + '">',
+           encodeURIComponent(slug) + '&file=' + encodeURIComponent(page.file) + '">',
       '  <div class="page-order-meta"><b>' + page.file + '</b><span>' + (page.title || '') + '</span></div>',
       '  <button type="button" class="page-order-up" title="上移">↑</button>',
       '  <button type="button" class="page-order-down" title="下移">↓</button>',
       '</div>'
-    ].join('')).join('');
+    ].join('')).join('') : '<p class="page-order-empty">这个前台暂时没有可列出的页面。</p>';
+    bindThumbs();
   };
 
   const load = async () => {
-    if (!select.value) return;
-    const res = await api('/api/pages?project=' + encodeURIComponent(select.value));
-    pages = res.pages || [];
+    if (!slug) { pages = []; render(); return; }
+    try {
+      const res = await api('/api/pages?project=' + encodeURIComponent(slug));
+      pages = res.pages || [];
+    } catch (_) {
+      pages = [];
+    }
     render();
+  };
+
+  const save = async () => {
+    if (!slug) return;
+    await api('/api/pages/order', {
+      method: 'POST',
+      body: JSON.stringify({ project: slug, order: pages.map(page => page.file) })
+    });
+    toast('页面顺序已保存');
   };
 
   list.addEventListener('click', async event => {
@@ -807,33 +835,9 @@ function appendPageOrderBlock(panel) {
       return;
     }
     render();
-    await api('/api/pages/order', {
-      method: 'POST',
-      body: JSON.stringify({ project: select.value, order: pages.map(page => page.file) })
-    });
-    toast('页面顺序已保存');
+    try { await save(); } catch (error) { toast(error.message, true); }
   });
 
-  select.addEventListener('change', load);
   wrap.querySelector('.page-order-reload').addEventListener('click', load);
-
-  const projects = (state && state.projects) || [];
-  const catalog = (state && state.catalog) || [];
-  const seen = new Set();
-  const options = [];
-  projects.forEach(item => {
-    if (item.slug && !seen.has(item.slug)) { seen.add(item.slug); options.push({ slug: item.slug, label: item.name || item.slug, added: true }); }
-  });
-  catalog.forEach(item => {
-    if (item.slug && !seen.has(item.slug)) { seen.add(item.slug); options.push({ slug: item.slug, label: item.name || item.slug, added: false }); }
-  });
-  select.innerHTML = options.map(o => '<option value="' + o.slug + '">' + o.label + (o.added ? '' : '（未添加）') + '</option>').join('');
-  api('/api/pages/counts').then(res => {
-    const counts = (res && res.counts) || {};
-    [...select.options].forEach(opt => {
-      const n = counts[opt.value];
-      if (typeof n === 'number') opt.textContent += ' · ' + n + ' 页';
-    });
-  }).catch(() => {});
   load();
 }
