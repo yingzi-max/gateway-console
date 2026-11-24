@@ -816,7 +816,10 @@ function appendPageOrderBlock(panel, projectId) {
     current.textContent = slug ? ('当前前台：' + (project.name || slug)) : '当前前台未登记';
   };
   setProject(projectId);
-  panel.addEventListener('pageorder-project', event => { setProject(event.detail); load(); });
+  // 事件是 form 派发的（fillProjectConfig 每次打开都发一次），而 panel 是 form 的
+  // 子元素 —— 绑在 panel 上收不到（冒泡只往上走）。必须绑到 form 或更外层。
+  const host = wrap.closest('form') || panel;
+  host.addEventListener('pageorder-project', event => { setProject(event.detail); load(); });
   let pages = [];
 
   const bindThumbs = () => {
