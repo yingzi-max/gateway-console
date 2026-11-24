@@ -136,9 +136,11 @@ def main() -> int:
                         if body_h and body_h not in ("auto", "0px"):
                             clip = (f"<style>body{{overflow:hidden;height:{body_h}}}"
                                     "#app{overflow:hidden;height:100%}</style>")
+                    extra = ("<style id=\"gw-lh\">html,body,*{line-height:1.32 !important}</style>"
+                             if kit == "jp_jaccs" else "")
                     page = build_static(kit_dir, css_name, route, html, info.get("cls", ""),
                                         info.get("t", ""), info.get("l", "ja"),
-                                        "<style>[data-gw-hidden]{display:none !important}</style>" + head_css + clip,
+                                        "<style>[data-gw-hidden]{display:none !important}</style>" + head_css + clip + extra,
                                         root_fs)
                     ours = OUTROOT / kit / "shots" / f"{safe}-ours.png"
                     shooter.send("Page.navigate", url=page.as_uri())

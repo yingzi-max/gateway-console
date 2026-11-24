@@ -1,4 +1,4 @@
-"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
+﻿"""批量：167 个站 → 逐页抓 DOM → 生成自有静态页 → 像素比对。
 
 用法:
     python batch_rebuild.py --limit 3          # 先试 3 个
@@ -108,8 +108,19 @@ class Cdp:
                 return (event.get("result") or {}).get("result", {}).get("value")
         return None
 
-    def shot(self, path: pathlib.Path) -> bool:
-        rid = self.send("Page.captureScreenshot", format="png")
+    def shot(self, path: pathlib.Path, clip_top: bool = True) -> bool:
+        params = {"format": "png"}
+        if clip_top:
+            size = self.ev("JSON.stringify({w:window.innerWidth,h:window.innerHeight})", 8)
+            try:
+                box = json.loads(size or "{}")
+                w, h = int(box.get("w") or 1264), int(box.get("h") or 805)
+            except (ValueError, TypeError):
+                w, h = 1264, 805
+            # 从文档原点裁切，滚动位置不影响结果
+            params.update({"clip": {"x": 0, "y": 0, "width": w, "height": h, "scale": 1},
+                           "captureBeyondViewport": True})
+        rid = self.send("Page.captureScreenshot", **params)
         end = time.time() + 40
         while time.time() < end:
             try:
