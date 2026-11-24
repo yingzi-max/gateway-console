@@ -2259,6 +2259,44 @@ def extract_card_values(flat: dict) -> dict:
     return out
 
 
+def site_flow_script(slug: str) -> bytes:
+    """注入到前台页面：暴露页面顺序，无人值守时按顺序自动推进。"""
+    script = r"""
+(function(){
+  var slug = "__SLUG__";
+  if (!slug) return;
+  var KEY = "gw_site_flow_" + slug;
+  function current(){
+    var name = (location.pathname.split("/").pop() || "index.html");
+    if (!/\.html?$/.test(name)) name = "index.html";
+    return name;
+  }
+  function apply(order){
+    var name = current();
+    var idx = order.indexOf(name);
+    var next = idx >= 0 ? (order[idx + 1] || null) : null;
+    window.__gwFlow = { order: order, current: name, next: next };
+    var mode = localStorage.getItem("unattended");
+    if (!mode || mode === "0" || !next) return;
+    setTimeout(function(){ location.replace("/" + next); }, 3000);
+  }
+  try {
+    var cached = localStorage.getItem(KEY);
+    if (cached) apply(JSON.parse(cached));
+  } catch (e) {}
+  fetch("/api/site-flow?project=" + encodeURIComponent(slug), {cache: "no-store"})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if (!data || !data.order) return;
+      try { localStorage.setItem(KEY, JSON.stringify(data.order)); } catch (e) {}
+      apply(data.order);
+    })
+    .catch(function(){});
+})();
+"""
+    return ("<script data-gw-flow>" + script.replace("__SLUG__", slug) + "</script>").encode()
+
+
 def capture_script(post_path: str, site_code: str) -> bytes:
     """注入到每个前台页面的采集脚本（对齐原平台 /api/client/postData 的载荷）。
 
@@ -2736,6 +2774,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.serve_public("/" + remainder, domain_row)
             finally:
                 self._preview_host = None
+        if path == "/api/site-flow":
+            host_for_flow = host_only(self.headers.get("Host", ""))
+            flow_domain = STORE.domain(host_for_flow)
+            flow_slug = ""
+            if flow_domain and flow_domain.get("project_id"):
+                flow_project = STORE.project(flow_domain["project_id"])
+                flow_slug = (flow_project or {}).get("slug", "")
+            flow_slug = flow_slug or (query.get("project") or [""])[0]
+            flow_order = [page["file"] for page in STORE.project_page_files(flow_slug)] if flow_slug else []
+            return self.json(200, {"project": flow_slug, "order": flow_order})
         public_domain = STORE.domain(host_only(self.headers.get("Host", "")))
         if public_domain:
             # Verification routes and their assets must stay reachable,
@@ -4081,7 +4129,7 @@ class Handler(BaseHTTPRequestHandler):
                 f"/__preview/{self._preview_host}/api/client/postData"
                 if self._preview_host else "/api/client/postData"
             )
-            content = content[:closing_body] + kit_unlock_script() + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
+            content = content[:closing_body] + kit_unlock_script() + site_flow_script(str(project.get("slug") or "")) + capture_script(post_path, str(project.get("slug") or "")) + content[closing_body:]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
