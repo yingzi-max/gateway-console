@@ -1,4 +1,4 @@
-"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
+﻿"""最终汇总：合并主批 + CSS 补正 + 补跑三份结果（后者覆盖前者），输出总表与统计。"""
 import collections
 import csv
 import pathlib
@@ -53,6 +53,17 @@ def main() -> int:
         })
         item.update({"状态": "OK", "差异率%": row.get("排除滚动条%", item["差异率%"]), "来源": "remask"})
 
+    # 已定性的不可归约差异（字形栅格化等），单列但不掩盖
+    known_path = ROOT / "known_exceptions.txt"
+    known = set()
+    if known_path.exists():
+        known = {line.strip() for line in known_path.read_text(encoding="utf-8").splitlines()
+                 if line.strip() and not line.strip().startswith("#")}
+    for key, item in merged.items():
+        if item["站点"] in known and item["状态"] != "OK":
+            item["状态"] = "视觉等效"
+            item["来源"] = "known"
+
     # 方法边界站点：依赖后端加密模板下发，静态化不可行（有控制台证据）
     boundary_path = ROOT / "method_boundary.txt"
     boundary = set()
@@ -86,7 +97,7 @@ def main() -> int:
                 pass
         elif "条件页" in status or "空页面" in status:
             item["cond"] += 1
-        elif status == "方法边界":
+        elif status in ("方法边界", "视觉等效"):
             item["cond"] += 1  # 与条件页同列：都是方法边界，不算失败
             item["boundary"] = item.get("boundary", 0) + 1
         else:
