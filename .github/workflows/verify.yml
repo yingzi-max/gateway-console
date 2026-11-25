@@ -21,13 +21,19 @@ jobs:
       - name: Check systemd unit syntax
         run: |
           mkdir -p /tmp/gateway-units
+          # @APP_DIR@ / @DATA_DIR@ 是安装器在装的时候替换的占位符；
+          # 这里必须一起换掉，否则 WorkingDirectory=@APP_DIR@ 会被 systemd
+          # 判成 "path is not absolute" 直接 fatal。
           sed -e 's|^ExecStart=.*|ExecStart=/bin/true|' \
               -e 's|^EnvironmentFile=|EnvironmentFile=-|' \
+              -e 's|@APP_DIR@|/opt/gateway-console|g' \
+              -e 's|@DATA_DIR@|/var/lib/gateway-console|g' \
               ops/gateway-console.service > /tmp/gateway-units/gateway-console.service
           sed -e 's|^ExecStart=.*|ExecStart=/bin/true|' \
               -e 's|^ExecStartPost=.*|ExecStartPost=/bin/true|' \
               ops/gateway-certbot-renew.service > /tmp/gateway-units/gateway-certbot-renew.service
           cp ops/gateway-certbot-renew.timer /tmp/gateway-units/gateway-certbot-renew.timer
+          chmod 644 /tmp/gateway-units/gateway-certbot-renew.timer
           systemd-analyze verify /tmp/gateway-units/gateway-console.service \
             /tmp/gateway-units/gateway-certbot-renew.service \
             /tmp/gateway-units/gateway-certbot-renew.timer
