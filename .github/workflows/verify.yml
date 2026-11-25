@@ -41,18 +41,19 @@ jobs:
       - name: Run application tests
         run: python3 -m unittest discover -s tests -v
 
-      - name: Validate Nginx templates
+      # nginx 校验拆成独立步骤：失败时 Actions 页面直接显示是哪一小步，
+      # 不用翻整段日志。
+      - name: Install nginx
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq nginx
           sudo rm -f /etc/nginx/sites-enabled/default
-          mkdir -p /tmp/gateway-site /tmp/gateway-certs
-          echo '<html>ok</html>' > /tmp/gateway-site/index.html
-          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-            -subj '/CN=example.com' \
-            -keyout /tmp/gateway-certs/privkey.pem \
-            -out /tmp/gateway-certs/fullchain.pem >/dev/null 2>&1
+          nginx -v
 
+      - name: Nginx template - plain
+        run: |
+          mkdir -p /tmp/gateway-site
+          echo '<html>ok</html>' > /tmp/gateway-site/index.html
           sed -e 's|__DOMAIN__|example.com|g' \
               -e 's|__ROOT__|/tmp/gateway-site|g' \
               -e 's|__ENTRY__|dahsio|g' \
@@ -60,6 +61,8 @@ jobs:
           sudo cp /tmp/gateway-site.conf /etc/nginx/sites-enabled/gateway-test.conf
           sudo nginx -t
 
+      - name: Nginx template - two hosts
+        run: |
           sed -e 's|__DOMAIN__|second.example.com|g' \
               -e 's|__ROOT__|/tmp/gateway-site|g' \
               -e 's|__ENTRY__|dahsio|g' \
@@ -67,6 +70,8 @@ jobs:
           sudo cp /tmp/gateway-site-two.conf /etc/nginx/sites-enabled/gateway-test-two.conf
           sudo nginx -t
 
+      - name: Domain helper - configure-static
+        run: |
           sudo install -d -m 0755 /opt/gateway-console/ops /var/lib/gateway-console/projects/landing-page
           sudo cp ops/nginx-static-site.conf ops/nginx-static-site-ssl.conf /opt/gateway-console/ops/
           sudo cp /tmp/gateway-site/index.html /var/lib/gateway-console/projects/landing-page/index.html
@@ -77,6 +82,13 @@ jobs:
           sudo ops/gateway-domain-helper reload
           sudo nginx -t
 
+      - name: Nginx template - ssl
+        run: |
+          mkdir -p /tmp/gateway-certs
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=example.com' \
+            -keyout /tmp/gateway-certs/privkey.pem \
+            -out /tmp/gateway-certs/fullchain.pem >/dev/null 2>&1
           sed -e 's|__CERT_DIR__/config/live/__DOMAIN__|/tmp/gateway-certs|g' \
               -e 's|__DOMAIN__|example.com|g' \
               -e 's|__ROOT__|/tmp/gateway-site|g' \
@@ -85,5 +97,7 @@ jobs:
           sudo cp /tmp/gateway-site.conf /etc/nginx/sites-enabled/gateway-test.conf
           sudo nginx -t
 
+      - name: Nginx template - admin
+        run: |
           sudo cp ops/admin-nginx.conf /etc/nginx/sites-enabled/gateway-test.conf
           sudo nginx -t
