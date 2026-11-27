@@ -4354,14 +4354,28 @@ class Handler(BaseHTTPRequestHandler):
             return fallback, "redirect_url"
         return None, "none"
 
-    def detect_client_payload(self, ua: str):
-        """Preview classification + the URL a given UA would be routed to.
+    def resolve_enter_split(self, client_type: str, settings: dict):
+        """进入时分流的目标地址：分流开关 + 该端地址（iOS/Android 可回落 unknown）。
 
-        Used by the admin "test" buttons so operators can see the outcome
-        without issuing a real click that burns a rotation slot.
+        返回 (target, rule)；爬虫、分流关闭、该端未配地址时返回 ("", "none")。
         """
+        if client_type == CLIENT_BOT or not settings.get("client_redirect_enabled"):
+            return "", "none"
+        rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
+        candidates = [rules.get(client_type, {})]
+        if client_type in (CLIENT_IOS, CLIENT_ANDROID):
+            candidates.append(rules.get(CLIENT_UNKNOWN, {}))
+        for rule in candidates:
+            target = safe_target_url((rule or {}).get("url"))
+            if target:
+                return target, f"enter_split:{client_type}"
+        return "", "none"
+
+    def detect_client_payload(self, ua: str):
+        """Preview classification + where this UA would be sent when entering the site."""
         client_type, client_reasons = classify_client(ua)
-        target, rule = self.pick_click_target({}, client_type)
+        settings = STORE.get_settings()
+        target, rule = self.resolve_enter_split(client_type, settings)
         return {
             "ua": str(ua or ""),
             "client_type": client_type,
@@ -4370,18 +4384,20 @@ class Handler(BaseHTTPRequestHandler):
             "is_bot": client_type == CLIENT_BOT,
             "target_url": target or "",
             "matched_rule": rule,
+            "enter_split": bool(target),
         }
 
     def client_test_click(self, data):
-        """Perform a real routing decision for a pasted UA and 302 to the result."""
+        """Perform the entry-time routing decision for a pasted UA and 302 to the result."""
         ua = str(data.get("ua", "")).strip()
         if not ua:
             return self.json(400, {"error": "请填写要测试的 User-Agent"})
         client_type, client_reasons = classify_client(ua)
-        target, rule = self.pick_click_target({}, client_type)
+        settings = STORE.get_settings()
+        target, rule = self.resolve_enter_split(client_type, settings)
         if not target:
             return self.json(404, {
-                "error": "尚未配置任何跳转链接",
+                "error": "该 UA 进入站点时不会分流（分流未启用或该端未配地址）；点击时会走模板跳转链接",
                 "client_type": client_type,
                 "client_label": CLIENT_LABELS[client_type],
                 "client_reasons": client_reasons,
@@ -4456,25 +4472,16 @@ class Handler(BaseHTTPRequestHandler):
         """
         if not ctx.get("is_document") or self._preview_host:
             return False
-        if not settings.get("client_redirect_enabled"):
-            return False
         client_type, _ = self.current_client()
-        if client_type == CLIENT_BOT:
+        target, rule = self.resolve_enter_split(client_type, settings)
+        if not target:
             return False
-        rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
-        candidates = [rules.get(client_type, {})]
-        if client_type in (CLIENT_IOS, CLIENT_ANDROID):
-            candidates.append(rules.get(CLIENT_UNKNOWN, {}))
-        for rule in candidates:
-            target = safe_target_url((rule or {}).get("url"))
-            if target:
-                self.send_response(302)
-                self.send_header("Location", target)
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Gateway-Rule", f"enter_split:{client_type}")
-                self.end_headers()
-                return True
-        return False
+        self.send_response(302)
+        self.send_header("Location", target)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Gateway-Rule", rule)
+        self.end_headers()
+        return True
 
     def resolve_public_target(self, path: str, domain: dict) -> dict | None:
         """把请求路径解析成实际文件，并判定它是不是「文档页」。

@@ -179,14 +179,14 @@
             <div class="block-heading"><div><h3>客户端分流跳转</h3><p>访客打开站点入口页时，按设备类型直接跳转到对应 URL，爬虫单独处理。<b>这是全站优先级最高的跳转配置</b>。</p></div></div>
             <label class="switch-row"><span><b>启用客户端分流跳转</b><small>关闭后访客正常进入页面，点击时走下方「模板跳转链接」轮换池</small></span><input id="client_redirect_enabled" type="checkbox"><i></i></label>
             <div id="clientRuleEditor" class="client-rule-editor"></div>
-            <p class="client-rule-help">每类客户端可单独填写跳转 URL 与点击上限；留空表示该类客户端进入时不分流，点击时回落到模板跳转链接。未知客户端同时作为手机端未精确匹配时的兜底。</p>
+            <p class="client-rule-help">每类客户端可单独填写跳转 URL；访客打开站点入口页时直接跳转。留空表示该类客户端进入时不分流，点击时回落到模板跳转链接。未知客户端同时作为手机端未精确匹配时的兜底。</p>
             <div class="client-test-box">
-              <div class="client-test-head"><h4>测试按钮</h4><p>粘贴任意 User-Agent，查看会被识别成什么客户端、并跳到哪个 URL。</p></div>
+              <div class="client-test-head"><h4>测试按钮</h4><p>粘贴任意 User-Agent，查看会被识别成什么客户端、进入站点时会跳到哪个 URL。</p></div>
               <label class="field"><span>测试 User-Agent</span><textarea id="clientTestUa" rows="3" placeholder="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile"></textarea></label>
               <div class="client-test-presets" id="clientTestPresets"></div>
               <div class="client-test-actions">
                 <button id="clientDetectBtn" class="secondary" type="button">检测判定</button>
-                <button id="clientJumpBtn" class="primary" type="button">点击跳转测试</button>
+                <button id="clientJumpBtn" class="primary" type="button">跳转测试</button>
               </div>
               <div id="clientTestResult" class="client-test-result hidden"></div>
             </div>

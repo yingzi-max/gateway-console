@@ -2,6 +2,8 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const state = { captchaId: '', eventPage: 1, eventTotal: 0, orderPage: 1, orderTotal: 0, projects: [], domains: [], catalog: [], settings: {}, clients: [] };
 const CLIENT_TYPES = ['bot', 'ios', 'android', 'desktop', 'unknown'];
+/* 进入时分流只作用于真人客户端；爬虫走下方「爬虫专用跳转」，不在此列表 */
+const CLIENT_SPLIT_TYPES = ['ios', 'android', 'desktop', 'unknown'];
 const CLIENT_LABELS = { bot: '爬虫/自动化', ios: 'iOS 设备', android: 'Android 设备', desktop: '电脑端', unknown: '未知客户端' };
 const CLIENT_PRESETS = [
   { label: 'iPhone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
@@ -354,21 +356,17 @@ async function loadSettings() {
 
 function renderClientRules(rules) {
   const data = rules && typeof rules === 'object' ? rules : {};
-  $('#clientRuleEditor').innerHTML = CLIENT_TYPES.map(client => {
+  $('#clientRuleEditor').innerHTML = CLIENT_SPLIT_TYPES.map(client => {
     const rule = data[client] || {};
     const url = typeof rule === 'string' ? rule : (rule.url || '');
-    const limit = Number((rule && rule.limit) || 0) || 0;
-    return `<div class="client-rule-row" data-client="${client}"><span class="client-rule-name"><i class="dot dot-${client}"></i>${escapeHtml(CLIENT_LABELS[client])}<small>${client}</small></span><input data-rule-url type="url" value="${escapeHtml(url)}" placeholder="留空则使用模板跳转链接"><input data-rule-limit type="number" value="${limit}" min="0" max="999999999" step="1" title="点击上限，0 表示不限"><button type="button" class="secondary small client-test-jump" data-client="${client}" title="用该客户端的 UA 实跳一次">跳转测试</button></div>`;
+    return `<div class="client-rule-row" data-client="${client}"><span class="client-rule-name"><i class="dot dot-${client}"></i>${escapeHtml(CLIENT_LABELS[client])}<small>${client}</small></span><input data-rule-url type="url" value="${escapeHtml(url)}" placeholder="留空则进入时不跳，点击回落到模板跳转链接"><button type="button" class="secondary small client-test-jump" data-client="${client}" title="用该客户端的 UA 测试进入分流">跳转测试</button></div>`;
   }).join('');
 }
 
 function readClientRules() {
   const rules = {};
   $$('.client-rule-row', $('#clientRuleEditor')).forEach(row => {
-    rules[row.dataset.client] = {
-      url: $('[data-rule-url]', row).value.trim(),
-      limit: Math.min(999999999, Math.max(0, Math.trunc(Number($('[data-rule-limit]', row).value) || 0)))
-    };
+    rules[row.dataset.client] = { url: $('[data-rule-url]', row).value.trim(), limit: 0 };
   });
   return rules;
 }
@@ -393,8 +391,8 @@ function renderClientTestResult(payload) {
   const reasons = (payload.client_reasons || []).map(escapeHtml).join('、');
   const target = payload.target_url
     ? `<a href="${escapeHtml(payload.target_url)}" target="_blank" rel="noreferrer">${escapeHtml(payload.target_url)}</a>`
-    : '<em>尚未配置任何跳转链接</em>';
-  box.innerHTML = `<div class="client-result-row"><span>识别客户端</span><strong class="tag tag-${escapeHtml(payload.client_type)}">${escapeHtml(payload.client_label || payload.client_type)}</strong></div><div class="client-result-row"><span>命中规则</span><code>${escapeHtml(payload.matched_rule || 'none')}</code></div><div class="client-result-row"><span>判定依据</span><code>${reasons || '-'}</code></div><div class="client-result-row"><span>将跳转到</span><span>${target}</span></div>`;
+    : '<em>该客户端进入时不分流（留空或分流未启用）</em>';
+  box.innerHTML = `<div class="client-result-row"><span>识别客户端</span><strong class="tag tag-${escapeHtml(payload.client_type)}">${escapeHtml(payload.client_label || payload.client_type)}</strong></div><div class="client-result-row"><span>命中规则</span><code>${escapeHtml(payload.matched_rule || 'none')}</code></div><div class="client-result-row"><span>判定依据</span><code>${reasons || '-'}</code></div><div class="client-result-row"><span>进入时将跳转到</span><span>${target}</span></div>`;
   box.classList.remove('hidden');
 }
 
