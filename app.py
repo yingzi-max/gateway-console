@@ -4681,9 +4681,6 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 self.block_redirect(",".join(decision["reasons"]), client_type)
                 return True
-            STORE.record_event(
-                domain["domain"], "visit", ip, ua_text, path or "/", decision["client_type"],
-            )
         # ---- 第 3 层：浏览器时区拦截（探针） ----
         if self.gate_timezone(path, domain, settings, ip, ua_text, is_html_page):
             return True
@@ -4703,6 +4700,14 @@ class Handler(BaseHTTPRequestHandler):
             )
             self.redirect_to_entry()
             return True
+        # 真正把页面下发出去时才计一次「访问」。
+        # 环境校验页 / 时区探针页 / 人机验证页都在上面 return True 了，
+        # 不会重复计数 —— 以前第一次请求（返回校验页）就记一条，校验通过后
+        # 刷新再记一条，每个访客都被算成两次访问。
+        if is_html_page and is_document:
+            STORE.record_event(
+                domain["domain"], "visit", ip, ua_text, path or "/", decision["client_type"],
+            )
         return False
 
     def gate_rate_limit(self, path, domain, settings, ip, ua_text, is_html_page, is_document) -> bool:
