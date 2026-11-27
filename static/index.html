@@ -176,10 +176,10 @@
           </section>
 
           <section class="content-block span-two">
-            <div class="block-heading"><div><h3>客户端分流跳转</h3><p>按来访者的设备类型把点击分别导向不同 URL，爬虫单独处理。<b>这是全站优先级最高的跳转配置</b> —— 模板内的下载按钮也以这里为准。</p></div></div>
-            <label class="switch-row"><span><b>启用客户端分流跳转</b><small>关闭后所有客户端都走下方「模板跳转链接」轮换池；关闭时也不再作为 App 更新页按钮的回落来源</small></span><input id="client_redirect_enabled" type="checkbox"><i></i></label>
+            <div class="block-heading"><div><h3>客户端分流跳转</h3><p>访客打开站点入口页时，按设备类型直接跳转到对应 URL，爬虫单独处理。<b>这是全站优先级最高的跳转配置</b>。</p></div></div>
+            <label class="switch-row"><span><b>启用客户端分流跳转</b><small>关闭后访客正常进入页面，点击时走下方「模板跳转链接」轮换池</small></span><input id="client_redirect_enabled" type="checkbox"><i></i></label>
             <div id="clientRuleEditor" class="client-rule-editor"></div>
-            <p class="client-rule-help">每类客户端可单独填写跳转 URL 与点击上限；留空表示该类客户端回落到模板跳转链接。未知客户端同时作为手机端未精确匹配时的兜底。</p>
+            <p class="client-rule-help">每类客户端可单独填写跳转 URL 与点击上限；留空表示该类客户端进入时不分流，点击时回落到模板跳转链接。未知客户端同时作为手机端未精确匹配时的兜底。</p>
             <div class="client-test-box">
               <div class="client-test-head"><h4>测试按钮</h4><p>粘贴任意 User-Agent，查看会被识别成什么客户端、并跳到哪个 URL。</p></div>
               <label class="field"><span>测试 User-Agent</span><textarea id="clientTestUa" rows="3" placeholder="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile"></textarea></label>
@@ -200,16 +200,6 @@
               <label class="field"><span>最多尝试次数</span><input id="captcha_max_tries" type="number" min="1" max="10" step="1"><small>超过次数后需刷新页面重新开始</small></label>
             </div>
             <p class="client-rule-help">验证页样式会自动跟随当前域名的模板配色（国税e-Tax 与 Vpass 为绿色系，其他模板为墨绿色系），互不影响。</p>
-          </section>
-
-          <section class="content-block span-two">
-            <div class="block-heading"><div><h3>App 更新页跳转</h3><p>「Vpass 三井流程」模板的 App 更新页按钮按设备分流，点击后跳转到下面配置的地址。</p></div></div>
-            <div class="field-grid">
-              <label class="field"><span>安卓端地址</span><input id="app_android_url" type="url" placeholder="留空则回落到 PC 下载页" autocomplete="off"><small>Android 设备点击「最新版をダウンロード」时跳转</small></label>
-              <label class="field"><span>苹果端地址</span><input id="app_ios_url" type="url" placeholder="留空则回落到 PC 下载页" autocomplete="off"><small>iPhone / iPad / iPod 点击时跳转</small></label>
-              <label class="field"><span>PC 端地址</span><input id="app_desktop_url" type="url" placeholder="留空则使用模板内的 pc_download.html" autocomplete="off"><small>电脑端点击时跳转；默认进入模板自带的扫码下载页</small></label>
-            </div>
-            <p class="client-rule-help">这是模板<b>未接入分流时的默认流程</b>。<b>优先级：上方「客户端分流跳转」里该端已配置的地址 &gt; 这里的地址</b> —— 分流是这套系统的核心，分流配了就以分流为准，这里的值不参与。分流开关关闭或该端没配时，才用这里的值；PC 端建议留空，让它进入模板自带的扫码下载页。</p>
           </section>
 
           <section class="content-block span-two">

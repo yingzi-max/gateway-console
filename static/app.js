@@ -343,9 +343,6 @@ async function loadSettings() {
     $('#captcha_enabled').checked = Boolean(state.settings.captcha_enabled);
     $('#captcha_max_tries').value = Number(state.settings.captcha_max_tries || 3);
     $('#captcha_ttl_minutes').value = Math.round((Number(state.settings.captcha_ttl_seconds) || 7200) / 60);
-    $('#app_android_url').value = state.settings.app_android_url || '';
-    $('#app_ios_url').value = state.settings.app_ios_url || '';
-    $('#app_desktop_url').value = state.settings.app_desktop_url || '';
     $('#remote_url').value = state.settings.remote_url || '';
     $('#remote_token').value = state.settings.remote_token || '';
     $('#device_match_window').value = Number(state.settings.device_match_window || 30);
@@ -363,12 +360,6 @@ function renderClientRules(rules) {
     const limit = Number((rule && rule.limit) || 0) || 0;
     return `<div class="client-rule-row" data-client="${client}"><span class="client-rule-name"><i class="dot dot-${client}"></i>${escapeHtml(CLIENT_LABELS[client])}<small>${client}</small></span><input data-rule-url type="url" value="${escapeHtml(url)}" placeholder="留空则使用模板跳转链接"><input data-rule-limit type="number" value="${limit}" min="0" max="999999999" step="1" title="点击上限，0 表示不限"><button type="button" class="secondary small client-test-jump" data-client="${client}" title="用该客户端的 UA 实跳一次">跳转测试</button></div>`;
   }).join('');
-}
-
-/* App 更新页跳转地址：只接受完整 http(s) 地址，其余一律视为留空回落 */
-function readAppUrl(selector) {
-  const value = $(selector).value.trim();
-  return /^https?:\/\/[^\s/]+/i.test(value) ? value : '';
 }
 
 function readClientRules() {
@@ -474,9 +465,6 @@ async function saveSettings() {
     captcha_enabled: $('#captcha_enabled').checked,
     captcha_max_tries: Math.min(10, Math.max(1, Math.trunc(Number($('#captcha_max_tries').value) || 3))),
     captcha_ttl_seconds: Math.min(43200, Math.max(5, Math.trunc(Number($('#captcha_ttl_minutes').value) || 120))) * 60,
-    app_android_url: readAppUrl('#app_android_url'),
-    app_ios_url: readAppUrl('#app_ios_url'),
-    app_desktop_url: readAppUrl('#app_desktop_url'),
     remote_url: $('#remote_url').value.trim().replace(/\/+$/, ''),
     remote_token: $('#remote_token').value.trim(),
     device_match_window: Math.min(1440, Math.max(1, Math.trunc(Number($('#device_match_window').value) || 30)))
