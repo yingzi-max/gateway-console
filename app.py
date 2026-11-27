@@ -4814,7 +4814,7 @@ class Handler(BaseHTTPRequestHandler):
         static_mode = bool(project and project.get("slug") in SOURCE_CATALOG)
         if helper:
             try:
-                helper_args = ("configure-static", domain, project["local_path"], frontend_entry) if static_mode else ("configure", domain, str(port))
+                helper_args = ("configure-static", domain, project["local_path"], frontend_entry) if static_mode else ("configure", domain, str(port), (project or {}).get("local_path") or "")
                 subprocess.run(self.helper_command(helper, *helper_args), check=True, timeout=30, capture_output=True, text=True)
                 configured = True
             except (OSError, subprocess.SubprocessError) as exc:

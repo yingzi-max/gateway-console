@@ -122,11 +122,21 @@ case "$ACTION" in
       echo "invalid port" >&2
       exit 2
     fi
+    ROOT_PATH="${4:-}"
+    if [[ -z "$ROOT_PATH" || ! -d "$ROOT_PATH" ]]; then
+      ROOT_PATH="/var/lib/gateway-console/projects/$DOMAIN"
+    fi
     install -d -m 0755 "$SITES_AVAILABLE" "$SITES_ENABLED"
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__PORT__/$PORT/g" \
-      /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
+    CERT_DIR="/var/lib/gateway-console/letsencrypt"
+    if [[ -s "$CERT_DIR/config/live/$DOMAIN/fullchain.pem" && -s "$CERT_DIR/config/live/$DOMAIN/privkey.pem" ]]; then
+      sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__PORT__|$PORT|g" -e "s|__CERT_DIR__|$CERT_DIR|g" \
+        /opt/gateway-console/ops/nginx-site-ssl.conf > "$TEMP_FILE"
+    else
+      sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__PORT__|$PORT|g" \
+        /opt/gateway-console/ops/nginx-site.conf > "$TEMP_FILE"
+    fi
     install_site_config "$TEMP_FILE" defer
     ;;
   configure-static)
@@ -200,14 +210,16 @@ case "$ACTION" in
       source /etc/gateway-console-certbot.env
     fi
     if [[ -n "${CERTBOT_EMAIL:-}" ]]; then
-      certbot "${CERTBOT_ARGS[@]}" --email "$CERTBOT_EMAIL"
+      certbot "${CERTBOT_ARGS[@]}" --deploy-hook "systemctl reload nginx" --email "$CERTBOT_EMAIL"
     else
-      certbot "${CERTBOT_ARGS[@]}" --register-unsafely-without-email
+      certbot "${CERTBOT_ARGS[@]}" --deploy-hook "systemctl reload nginx" --register-unsafely-without-email
     fi
+    PORT_HINT="$(grep -oE 'proxy_pass http://127\.0\.0\.1:[0-9]+' "$SITES_ENABLED/gateway-$DOMAIN.conf" 2>/dev/null | head -1 | grep -oE '[0-9]+$')"
+    PORT_HINT="${PORT_HINT:-8787}"
     TEMP_FILE="$(mktemp)"
     trap 'rm -f "$TEMP_FILE"' EXIT
-    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__CERT_DIR__|$CERT_DIR|g" -e "s|__ENTRY__|$ENTRY_PATH|g" \
-      /opt/gateway-console/ops/nginx-static-site-ssl.conf > "$TEMP_FILE"
+    sed -e "s|__DOMAIN__|$DOMAIN|g" -e "s|__ROOT__|$ROOT_PATH|g" -e "s|__PORT__|$PORT_HINT|g" -e "s|__CERT_DIR__|$CERT_DIR|g" \
+      /opt/gateway-console/ops/nginx-site-ssl.conf > "$TEMP_FILE"
     install_site_config "$TEMP_FILE" defer
     ;;
   *)
