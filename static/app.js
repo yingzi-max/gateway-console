@@ -336,6 +336,7 @@ async function loadSettings() {
     state.settings = await api('/api/settings');
     $('#ipregistry_api_key').value = state.settings.ipregistry_api_key || '';
     $('#ipregistry_enabled').checked = Boolean(state.settings.ipregistry_enabled);
+    $('#ipregistry_fail_open').checked = Boolean(state.settings.ipregistry_fail_open);
     $('#client_redirect_enabled').checked = Boolean(state.settings.client_redirect_enabled);
     $('#bot_redirect_enabled').checked = Boolean(state.settings.bot_redirect_enabled);
     $('#bot_redirect_url').value = state.settings.bot_redirect_url || '';
@@ -453,6 +454,7 @@ async function saveSettings() {
   const payload = {
     ipregistry_api_key: $('#ipregistry_api_key').value.trim(),
     ipregistry_enabled: $('#ipregistry_enabled').checked,
+    ipregistry_fail_open: $('#ipregistry_fail_open').checked,
     client_redirect_enabled: $('#client_redirect_enabled').checked,
     client_redirect_rules: readClientRules(),
     bot_redirect_enabled: $('#bot_redirect_enabled').checked,
@@ -573,7 +575,7 @@ function fillProjectConfig(projectId) {
   setEnvSelectValue(form, 'browser_lang_whitelist', settings.browser_lang_whitelist || []);
   setEnvSelectValue(form, 'browser_tz_whitelist', settings.browser_tz_whitelist || []);
   renderRedirectLinks(form, settings.redirect_links || []);
-  ['human_verification','block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
+  ['block_desktop','block_ios','block_android'].forEach(name => { form.elements[name].checked = Boolean(settings[name]); });
   $$('[name="blocked_ip_types"], [name="blocked_threats"]', form).forEach(el => { el.checked = (settings[el.name] || []).includes(el.value); });
   setConfigStep(form, 1);
   $('#projectConfigDialog').showModal();
@@ -585,7 +587,7 @@ function renderConfigDomains(form) {
 }
 async function saveProjectConfig(event) {
   event.preventDefault(); const form = event.currentTarget; const domains = [...new Set(form.elements.domains.value.split(/\s+/).map(item => item.trim().toLowerCase()).filter(Boolean))]; const values = {};
-  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['human_verification','block_desktop','block_ios','block_android','ipregistry_enabled','browser_lang_check','browser_tz_check'].forEach(name => values[name] = form.elements[name].checked); values.browser_lang_whitelist = form.elements['browser_lang_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean); values.browser_tz_whitelist = form.elements['browser_tz_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  ['country_whitelist','country_blacklist','redirect_url','frontend_entry'].forEach(name => values[name] = form.elements[name].value.trim()); values.redirect_links = readRedirectLinks(form); ['block_desktop','block_ios','block_android','ipregistry_enabled','browser_lang_check','browser_tz_check'].forEach(name => values[name] = form.elements[name].checked); values.browser_lang_whitelist = form.elements['browser_lang_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean); values.browser_tz_whitelist = form.elements['browser_tz_whitelist'].value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
   values.blocked_ip_types = $$('[name="blocked_ip_types"]:checked', form).map(el => el.value); values.blocked_threats = $$('[name="blocked_threats"]:checked', form).map(el => el.value);
   try {
     await api('/api/settings', { method: 'POST', body: JSON.stringify(values) });

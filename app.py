@@ -185,7 +185,13 @@ ENV_LOCK = threading.Lock()
 
 # 黑名单内存缓存（表内容启动加载、增删改查时同步）与访问频率滑动窗口
 BLACKLIST_CACHE: set[str] = set()
-BLACKLIST_LOADED = False
+BLACKLIST_LOADED_AT = 0.0
+BLACKLIST_TTL = 5.0
+# 后台登录失败计数：{ip: {"count": n, "until": ts}}，5 次失败锁 10 分钟
+LOGIN_FAILS: dict[str, dict] = {}
+LOGIN_LOCK = threading.Lock()
+LOGIN_MAX_FAILS = 5
+LOGIN_LOCK_SECONDS = 10 * 60
 RATE_HITS: dict[str, "collections.deque"] = {}
 
 
@@ -196,11 +202,11 @@ SETTINGS_DEFAULTS = {
     "ipregistry_api_key": "",
     "country_whitelist": "",
     "country_blacklist": "",
-    "human_verification": False,
     "block_desktop": False,
     "block_ios": False,
     "block_android": False,
     "ipregistry_enabled": False,
+    "ipregistry_fail_open": False,
     "blocked_ip_types": [],
     "blocked_threats": [],
     "redirect_url": "",
@@ -1449,20 +1455,22 @@ class Store:
     IP_RE = r"(\d{1,3}\.){3}\d{1,3}"
 
     def ensure_blacklist_cache(self):
-        global BLACKLIST_LOADED
-        if BLACKLIST_LOADED:
+        global BLACKLIST_LOADED_AT
+        if BLACKLIST_LOADED_AT and time.time() - BLACKLIST_LOADED_AT < BLACKLIST_TTL:
             return
         with self.connect() as db:
             rows = db.execute("SELECT ip FROM blacklist").fetchall()
         BLACKLIST_CACHE.clear()
         BLACKLIST_CACHE.update(row[0] for row in rows)
-        BLACKLIST_LOADED = True
+        BLACKLIST_LOADED_AT = time.time()
 
     def blacklist_sync_cache(self):
+        global BLACKLIST_LOADED_AT
         with self.connect() as db:
             rows = db.execute("SELECT ip FROM blacklist").fetchall()
         BLACKLIST_CACHE.clear()
         BLACKLIST_CACHE.update(row[0] for row in rows)
+        BLACKLIST_LOADED_AT = time.time()
 
     def blacklist_add(self, ip: str, reason: str, note: str = "") -> bool:
         ip = ip.strip().lower()
@@ -2078,8 +2086,8 @@ class Store:
     def save_settings(self, values: dict):
         allowed = {
             "ipregistry_api_key", "country_whitelist", "country_blacklist",
-            "human_verification", "block_desktop", "block_ios", "block_android",
-            "ipregistry_enabled", "blocked_ip_types", "blocked_threats", "redirect_url",
+            "block_desktop", "block_ios", "block_android",
+            "ipregistry_enabled", "ipregistry_fail_open", "blocked_ip_types", "blocked_threats", "redirect_url",
             "frontend_entry", "redirect_links",
             "client_redirect_rules", "client_redirect_enabled",
             "bot_redirect_enabled", "bot_redirect_url",
@@ -3048,7 +3056,8 @@ class Handler(BaseHTTPRequestHandler):
         "/api/user/export", "/api/user/statistics", "/api/user/doEmpty",
     })
 
-    server_version = "GatewayConsole/1.0"
+    server_version = "nginx"
+    sys_version = ""
     # Set per-request by the /__preview/<domain>/ local preview route.
     _preview_host = ""
     # Set per-request so the verification cookie can be bound to the domain.
@@ -3104,8 +3113,14 @@ class Handler(BaseHTTPRequestHandler):
         return session
 
     def client_ip(self):
+        # 优先取 nginx 覆盖写入的 X-Real-IP；XFF 只取最后一个（最靠近本机的跳），
+        # 防止客户端伪造 X-Forwarded-For 的第一个值绕过黑名单/频率/国家检测。
+        real = self.headers.get("X-Real-IP", "").strip()
+        if real:
+            return real
         forwarded = self.headers.get("X-Forwarded-For", "")
-        return forwarded.split(",", 1)[0].strip() or self.client_address[0]
+        parts = [part.strip() for part in forwarded.split(",") if part.strip()]
+        return parts[-1] if parts else self.client_address[0]
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -3117,6 +3132,8 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/__preview/"):
             return self.handle_preview_get(path, query)
         if path == "/api/site-flow":
+            if not self.require_auth():
+                return
             return self.api_site_flow(query)
         public_domain = STORE.domain(host_only(self.headers.get("Host", "")))
         if public_domain:
@@ -3129,6 +3146,8 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/track/visit", "/track/click"):
             return self.track(path.rsplit("/", 1)[-1], query)
         if path == "/guard/check":
+            if not self.require_auth():
+                return
             return self.guard_check(query)
         if path == "/__gateway/click":
             return self.public_click()
@@ -3142,6 +3161,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_preview_get(self, path, query):
         """本地预览：把 URL 里的域名当成 Host，跑正式前台的整条管线。"""
+        if not self.require_auth():
+            return
         rest = path[len("/__preview/"):]
         host, _, remainder = rest.partition("/")
         host = unquote(host).strip()
@@ -3364,9 +3385,20 @@ class Handler(BaseHTTPRequestHandler):
         return None
 
     def ws_channel(self):
-        """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。"""
+        """最小 WebSocket 通道：记录客户端首帧，用于对齐原平台的握手协议。
+
+        只接受已绑定域名的握手；带 Origin 的请求必须同域。未绑定的 Host 一律 403。
+        """
         key = self.headers.get("Sec-WebSocket-Key", "")
-        domain_row = STORE.domain(host_only(self.headers.get("Host", ""))) or {}
+        host = host_only(self.headers.get("Host", ""))
+        domain_row = STORE.domain(host)
+        if not domain_row:
+            self.send_error(403)
+            return
+        origin = (self.headers.get("Origin") or "").strip().rstrip("/")
+        if origin and origin not in (f"http://{host}", f"https://{host}"):
+            self.send_error(403)
+            return
         project = STORE.project(domain_row.get("project_id")) if domain_row.get("project_id") else None
         site_code = str((project or {}).get("slug") or "")
         self.send_response(101, "Switching Protocols")
@@ -3424,7 +3456,7 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def do_OPTIONS(self):
-        if urlparse(self.path).path in ("/track/visit", "/track/click", "/guard/check"):
+        if urlparse(self.path).path in ("/track/visit", "/track/click"):
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -3451,8 +3483,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_flow_post(path)
         if self.is_captcha_post(path):
             return self.handle_captcha_post(path, data)
-        if path == "/api/pages/order":
-            return self.save_page_order(data)
         if path == "/api/auth/login":
             return self.login(data)
         if path in ("/track/visit", "/track/click"):
@@ -3461,6 +3491,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.logout()
         if not self.require_auth():
             return
+        if path == "/api/pages/order":
+            return self.save_page_order(data)
         return self.handle_api_post(path, data)
 
     # 前台把表单内容送回这几个采集口，所以它们必须和 /track 一样
@@ -3681,18 +3713,37 @@ class Handler(BaseHTTPRequestHandler):
         self.json(200, {"id": captcha_id, "question": f"{left} {operation} {right} = ?"})
 
     def login(self, data):
+        ip = self.client_ip()
+        now = time.time()
+        with LOGIN_LOCK:
+            state = LOGIN_FAILS.get(ip)
+            if state and state.get("until", 0) > now:
+                return self.json(429, {"error": "尝试过于频繁，请 10 分钟后再试"})
+
+        def login_fail():
+            with LOGIN_LOCK:
+                state = LOGIN_FAILS.setdefault(ip, {"count": 0, "until": 0})
+                state["count"] += 1
+                if state["count"] >= LOGIN_MAX_FAILS:
+                    state["until"] = time.time() + LOGIN_LOCK_SECONDS
+                    state["count"] = 0
+
         captcha_id = str(data.get("captcha_id", ""))
         with MEMORY_LOCK:
             captcha = CAPTCHAS.pop(captcha_id, None)
         if not captcha or captcha["expires"] < time.time() or not hmac.compare_digest(
             str(data.get("captcha", "")).strip(), captcha["answer"]
         ):
+            login_fail()
             return self.json(400, {"error": "request failed"})
         username = str(data.get("username", "")).strip()
         user = STORE.user(username)
         if not user or not verify_password(str(data.get("password", "")), user["password_hash"]):
+            login_fail()
             time.sleep(0.25)
             return self.json(401, {"error": "用户名或密码错误"})
+        with LOGIN_LOCK:
+            LOGIN_FAILS.pop(ip, None)
         token = secrets.token_urlsafe(32)
         with MEMORY_LOCK:
             SESSIONS[token] = {"username": username, "expires": time.time() + SESSION_TTL}
@@ -3893,9 +3944,8 @@ class Handler(BaseHTTPRequestHandler):
     def verification_bypassed(self, domain: dict) -> bool:
         """Decide whether this document request may skip human verification.
 
-        Only real browser clients are gated: crawlers keep flowing through the
-        crawler guard so they still land on the decoy page instead of a captcha
-        they cannot solve. Static assets never reach this method.
+        验证关闭时直接放行；爬虫在更前面的 guard 层已被 302/403 处理，
+        这里的 bot 分支只是防御纵深（万一未来 guard 放行爬虫）。
         """
         settings = STORE.get_settings()
         if not settings.get("captcha_enabled"):
@@ -3956,7 +4006,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", target)
         self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Gateway-Flow", "restart")
         self.end_headers()
 
     def verification_prefix(self) -> str:
@@ -3978,7 +4027,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(page)))
         self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Gateway-Verify", "required")
         self.end_headers()
         self.wfile.write(page)
 
@@ -4152,7 +4200,7 @@ class Handler(BaseHTTPRequestHandler):
         return classify_client(self.headers.get("User-Agent", ""))
 
     def pre_gate_redirect_target(self) -> str:
-        """前置机器人层（黑名单/频率/爬虫/设备/语言/时区）不通过的统一跳转地址。
+        """前置拦截（黑名单/频率/爬虫/设备/语言/时区）与点击黑名单共用的跳转地址。
 
         优先「爬虫跳转地址」，未配置回落「拦截后跳转地址」，再无则空（调用方 403）。
         """
@@ -4179,9 +4227,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", target)
         self.send_header("Cache-Control", "no-store")
-        if client_type:
-            self.send_header("X-Gateway-Client", client_type)
-        self.send_header("X-Gateway-Block", reason)
         self.end_headers()
 
     def guard_decision(self):
@@ -4191,7 +4236,7 @@ class Handler(BaseHTTPRequestHandler):
         if ip_now in BLACKLIST_CACHE:
             return {
                 "allowed": False, "reasons": ["blacklist"], "redirect_url": "",
-                "human_verification": False, "country": None, "registry_error": "",
+                "country": None, "registry_error": "",
                 "client_type": CLIENT_BLACKLIST, "client_label": CLIENT_LABELS[CLIENT_BLACKLIST],
                 "client_reasons": ["in_blacklist"], "is_bot": False,
             }
@@ -4260,11 +4305,11 @@ class Handler(BaseHTTPRequestHandler):
                 except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
                     registry_error = str(exc)
 
+        fail_open = bool(settings.get("ipregistry_fail_open"))
         return {
-            "allowed": not reasons and not registry_error,
+            "allowed": not reasons and (not registry_error or fail_open),
             "reasons": reasons + (["ipregistry_unavailable"] if registry_error else []),
             "redirect_url": str(settings.get("redirect_url", "")).strip(),
-            "human_verification": bool(settings.get("human_verification")) and not reasons,
             "country": registry and registry.get("location", {}).get("country", {}).get("code", ""),
             "registry_error": registry_error,
             "client_type": client_type,
@@ -4276,9 +4321,9 @@ class Handler(BaseHTTPRequestHandler):
     def guard_check(self, query):
         decision = self.guard_decision()
         if decision["registry_error"]:
-            return self.json(502, {"error": "IPRegistry 检测暂时不可用", "detail": decision["registry_error"]}, {"Access-Control-Allow-Origin": "*"})
+            return self.json(502, {"error": "IPRegistry 检测暂时不可用", "detail": decision["registry_error"]})
         decision.pop("registry_error", None)
-        return self.json(200, decision, {"Access-Control-Allow-Origin": "*"})
+        return self.json(200, decision)
 
     def ipregistry_status(self):
         key = str(STORE.get_settings().get("ipregistry_api_key", "")).strip()
@@ -4405,7 +4450,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", target)
         self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Gateway-Client", client_type)
         self.send_header("X-Gateway-Rule", rule)
         self.end_headers()
 
@@ -4438,7 +4482,6 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", fallback)
             self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Gateway-Client", client_type)
             self.send_header("X-Gateway-Rule", f"{rule}:fallback_entry")
             self.end_headers()
             return
@@ -4449,7 +4492,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", target)
         self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Gateway-Client", client_type)
         self.send_header("X-Gateway-Rule", rule)
         self.end_headers()
 
